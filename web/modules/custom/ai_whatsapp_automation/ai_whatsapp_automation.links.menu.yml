@@ -1,0 +1,111 @@
+ai_whatsapp_automation.settings:
+  title: 'AI WhatsApp Automation'
+  description: 'Configure OpenAI, WhatsApp providers, and automation options.'
+  route_name: ai_whatsapp_automation.settings
+  parent: system.admin_config_services
+  weight: 50
+
+ai_whatsapp_automation.content:
+  title: 'AI WhatsApp'
+  description: 'Manage WhatsApp automation records.'
+  route_name: ai_whatsapp_automation.dashboard
+  parent: system.admin_content
+  weight: 50
+
+ai_whatsapp_automation.dashboard:
+  title: 'Dashboard'
+  description: 'Review WhatsApp automation metrics.'
+  route_name: ai_whatsapp_automation.dashboard
+  parent: ai_whatsapp_automation.content
+  weight: -10
+
+ai_whatsapp_automation.dashboard_reports:
+  title: 'AI WhatsApp Dashboard'
+  description: 'Review WhatsApp automation metrics.'
+  route_name: ai_whatsapp_automation.dashboard
+  parent: system.admin_reports
+  weight: 50
+
+entity.ai_whatsapp_conversation.collection:
+  title: 'Conversations'
+  description: 'Manage WhatsApp conversations.'
+  route_name: entity.ai_whatsapp_conversation.collection
+  parent: ai_whatsapp_automation.content
+  weight: 0
+
+entity.ai_whatsapp_message.collection:
+  title: 'Messages'
+  description: 'Manage WhatsApp messages.'
+  route_name: entity.ai_whatsapp_message.collection
+  parent: ai_whatsapp_automation.content
+  weight: 10
+
+entity.ai_whatsapp_lead.collection:
+  title: 'Leads'
+  description: 'Manage WhatsApp leads.'
+  route_name: entity.ai_whatsapp_lead.collection
+  parent: ai_whatsapp_automation.content
+  weight: 20
+
+entity.ai_whatsapp_account.collection:
+  title: 'WhatsApp accounts'
+  description: 'Manage WhatsApp account connections.'
+  route_name: entity.ai_whatsapp_account.collection
+  parent: ai_whatsapp_automation.content
+  weight: 30
+
+ai_whatsapp_automation.evolution_connections:
+  title: 'Evolution QR'
+  description: 'Connect WhatsApp accounts with Evolution API QR codes.'
+  route_name: ai_whatsapp_automation.evolution_connections
+  parent: ai_whatsapp_automation.content
+  weight: 31
+
+entity.ai_whatsapp_bot.collection:
+  title: 'Bots'
+  description: 'Manage AI bots.'
+  route_name: entity.ai_whatsapp_bot.collection
+  parent: ai_whatsapp_automation.content
+  weight: 40
+
+ai_whatsapp_automation.multibot_routing:
+  title: 'MultiBot routing'
+  description: 'Review WhatsApp account, bot, model, and knowledge base routing.'
+  route_name: ai_whatsapp_automation.multibot_routing
+  parent: ai_whatsapp_automation.content
+  weight: 41
+
+entity.ai_whatsapp_operator_action.collection:
+  title: 'Operator audit'
+  description: 'Review human operator actions.'
+  route_name: entity.ai_whatsapp_operator_action.collection
+  parent: ai_whatsapp_automation.content
+  weight: 50
+
+entity.ai_whatsapp_knowledge_base.collection:
+  title: 'Knowledge bases'
+  description: 'Manage RAG knowledge bases.'
+  route_name: entity.ai_whatsapp_knowledge_base.collection
+  parent: ai_whatsapp_automation.content
+  weight: 60
+
+ai_whatsapp_automation.rag_upload:
+  title: 'Upload knowledge document'
+  description: 'Upload and index TXT, DOCX, or PDF documents.'
+  route_name: ai_whatsapp_automation.rag_upload
+  parent: ai_whatsapp_automation.content
+  weight: 61
+
+entity.ai_whatsapp_knowledge_document.collection:
+  title: 'Knowledge documents'
+  description: 'Manage RAG source documents.'
+  route_name: entity.ai_whatsapp_knowledge_document.collection
+  parent: ai_whatsapp_automation.content
+  weight: 62
+
+entity.ai_whatsapp_knowledge_chunk.collection:
+  title: 'Knowledge chunks'
+  description: 'Review indexed RAG chunks.'
+  route_name: entity.ai_whatsapp_knowledge_chunk.collection
+  parent: ai_whatsapp_automation.content
+  weight: 63

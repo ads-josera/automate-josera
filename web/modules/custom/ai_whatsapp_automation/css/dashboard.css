@@ -1,0 +1,141 @@
+.ai-whatsapp-dashboard {
+  --aiwa-surface: #ffffff;
+  --aiwa-surface-muted: #f6f8fb;
+  --aiwa-border: #d9e0ea;
+  --aiwa-text: #1f2937;
+  --aiwa-muted: #667085;
+  --aiwa-blue: #2563eb;
+  --aiwa-green: #16835b;
+  --aiwa-amber: #b45309;
+  --aiwa-slate: #475569;
+  --aiwa-indigo: #4f46e5;
+  color: var(--aiwa-text);
+}
+
+.ai-whatsapp-dashboard__overview {
+  margin: 0 0 1rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--aiwa-border);
+  border-radius: 6px;
+  background: var(--aiwa-surface);
+}
+
+.ai-whatsapp-dashboard__eyebrow {
+  margin: 0 0 0.25rem;
+  color: var(--aiwa-muted);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.ai-whatsapp-dashboard__lead {
+  max-width: 52rem;
+  margin: 0;
+  color: var(--aiwa-text);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.ai-whatsapp-dashboard__kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.875rem;
+  margin: 0 0 1rem;
+}
+
+.ai-whatsapp-dashboard__kpi {
+  min-height: 6rem;
+  padding: 1rem;
+  border: 1px solid var(--aiwa-border);
+  border-left-width: 4px;
+  border-radius: 6px;
+  background: var(--aiwa-surface);
+}
+
+.ai-whatsapp-dashboard__kpi--success {
+  border-left-color: var(--aiwa-green);
+}
+
+.ai-whatsapp-dashboard__kpi--neutral {
+  border-left-color: var(--aiwa-slate);
+}
+
+.ai-whatsapp-dashboard__kpi--info {
+  border-left-color: var(--aiwa-blue);
+}
+
+.ai-whatsapp-dashboard__kpi--warning {
+  border-left-color: var(--aiwa-amber);
+}
+
+.ai-whatsapp-dashboard__kpi--cost {
+  border-left-color: var(--aiwa-indigo);
+}
+
+.ai-whatsapp-dashboard__kpi-label {
+  min-height: 2rem;
+  margin: 0 0 0.5rem;
+  color: var(--aiwa-muted);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.ai-whatsapp-dashboard__kpi-value {
+  overflow-wrap: anywhere;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.ai-whatsapp-dashboard__rankings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 28rem), 1fr));
+  gap: 1rem;
+}
+
+.ai-whatsapp-dashboard__panel {
+  border: 1px solid var(--aiwa-border);
+  border-radius: 6px;
+  background: var(--aiwa-surface);
+}
+
+.ai-whatsapp-dashboard__panel-title {
+  margin: 0;
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid var(--aiwa-border);
+  background: var(--aiwa-surface-muted);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.ai-whatsapp-dashboard__table {
+  width: 100%;
+  margin: 0;
+}
+
+.ai-whatsapp-dashboard__table th {
+  color: var(--aiwa-muted);
+  font-size: 0.8125rem;
+}
+
+.ai-whatsapp-dashboard__table td,
+.ai-whatsapp-dashboard__table th {
+  padding: 0.75rem 1rem;
+}
+
+.ai-whatsapp-dashboard__table td:last-child,
+.ai-whatsapp-dashboard__table th:last-child {
+  text-align: right;
+}
+
+@media (max-width: 48rem) {
+  .ai-whatsapp-dashboard__overview,
+  .ai-whatsapp-dashboard__kpi {
+    padding: 0.875rem;
+  }
+
+  .ai-whatsapp-dashboard__kpi-value {
+    font-size: 1.5rem;
+  }
+}

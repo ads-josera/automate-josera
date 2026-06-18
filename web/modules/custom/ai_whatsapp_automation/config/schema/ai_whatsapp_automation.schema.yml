@@ -1,0 +1,81 @@
+ai_whatsapp_automation.settings:
+  type: config_object
+  label: 'AI WhatsApp Automation settings'
+  mapping:
+    openai:
+      type: mapping
+      label: 'OpenAI settings'
+      mapping:
+        api_key:
+          type: string
+          label: 'API key'
+        default_model:
+          type: string
+          label: 'Default model'
+        timeout:
+          type: integer
+          label: 'Timeout'
+    twilio:
+      type: mapping
+      label: 'Twilio settings'
+      mapping:
+        account_sid:
+          type: string
+          label: 'Account SID'
+        auth_token:
+          type: string
+          label: 'Auth token'
+        whatsapp_number:
+          type: string
+          label: 'WhatsApp number'
+        content_template_sid:
+          type: string
+          label: 'Content template SID'
+        messaging_service_sid:
+          type: string
+          label: 'Messaging Service SID'
+    whatsapp_cloud:
+      type: mapping
+      label: 'WhatsApp Cloud API settings'
+      mapping:
+        access_token:
+          type: string
+          label: 'Access token'
+        phone_number_id:
+          type: string
+          label: 'Phone number ID'
+        business_account_id:
+          type: string
+          label: 'Business account ID'
+        verify_token:
+          type: string
+          label: 'Verify token'
+    evolution:
+      type: mapping
+      label: 'Evolution API settings'
+      mapping:
+        server_url:
+          type: string
+          label: 'Server URL'
+        api_key:
+          type: string
+          label: 'API key'
+        instance_name:
+          type: string
+          label: 'Instance name'
+    options:
+      type: mapping
+      label: 'Automation options'
+      mapping:
+        enable_ai:
+          type: boolean
+          label: 'Enable AI'
+        enable_logs:
+          type: boolean
+          label: 'Enable logs'
+        enable_storage:
+          type: boolean
+          label: 'Enable storage'
+        enable_metrics:
+          type: boolean
+          label: 'Enable metrics'

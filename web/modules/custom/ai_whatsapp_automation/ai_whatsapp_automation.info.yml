@@ -1,0 +1,9 @@
+name: AI WhatsApp Automation
+type: module
+description: Provides the base configuration for WhatsApp automation with AI.
+package: Custom
+core_version_requirement: ^11
+configure: ai_whatsapp_automation.settings
+dependencies:
+  - drupal:file
+  - drupal:views

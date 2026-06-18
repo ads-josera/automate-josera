@@ -1,0 +1,24 @@
+openai:
+  api_key: ''
+  default_model: gpt-5.5-mini
+  timeout: 30
+twilio:
+  account_sid: ''
+  auth_token: ''
+  whatsapp_number: ''
+  content_template_sid: ''
+  messaging_service_sid: ''
+whatsapp_cloud:
+  access_token: ''
+  phone_number_id: ''
+  business_account_id: ''
+  verify_token: ''
+evolution:
+  server_url: ''
+  api_key: ''
+  instance_name: ''
+options:
+  enable_ai: true
+  enable_logs: true
+  enable_storage: true
+  enable_metrics: true

@@ -1,0 +1,10 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Implements hook_cron().
+ */
+function ai_whatsapp_automation_cron(): void {
+  \Drupal::service('ai_whatsapp_automation.evolution.instance_manager')->monitorAccounts();
+}

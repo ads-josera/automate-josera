@@ -1,0 +1,150 @@
+.ai-whatsapp-settings {
+  --aiwa-settings-surface: #ffffff;
+  --aiwa-settings-muted: #f7f9fc;
+  --aiwa-settings-border: #d8e0eb;
+  --aiwa-settings-text: #202938;
+  --aiwa-settings-subtle: #667085;
+  --aiwa-settings-blue: #2563eb;
+  --aiwa-settings-green: #16835b;
+  --aiwa-settings-amber: #b45309;
+  --aiwa-settings-cyan: #0f766e;
+  --aiwa-settings-violet: #6d28d9;
+  max-width: 82rem;
+  color: var(--aiwa-settings-text);
+}
+
+.ai-whatsapp-settings__overview {
+  margin: 0 0 1rem;
+  padding: 1rem;
+  border: 1px solid var(--aiwa-settings-border);
+  border-radius: 6px;
+  background: var(--aiwa-settings-surface);
+}
+
+.ai-whatsapp-settings__title {
+  margin: 0 0 0.875rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.ai-whatsapp-settings__status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.75rem;
+}
+
+.ai-whatsapp-settings__status-card {
+  display: grid;
+  gap: 0.25rem;
+  min-height: 4.75rem;
+  padding: 0.875rem;
+  border: 1px solid var(--aiwa-settings-border);
+  border-left-width: 4px;
+  border-radius: 6px;
+  background: var(--aiwa-settings-muted);
+}
+
+.ai-whatsapp-settings__status-card--ready {
+  border-left-color: var(--aiwa-settings-green);
+}
+
+.ai-whatsapp-settings__status-card--missing {
+  border-left-color: var(--aiwa-settings-amber);
+}
+
+.ai-whatsapp-settings__status-label {
+  color: var(--aiwa-settings-subtle);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.ai-whatsapp-settings__status-value {
+  overflow-wrap: anywhere;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.ai-whatsapp-settings__section {
+  margin: 0 0 1rem;
+  border: 1px solid var(--aiwa-settings-border);
+  border-left-width: 4px;
+  border-radius: 6px;
+  background: var(--aiwa-settings-surface);
+}
+
+.ai-whatsapp-settings__section--openai {
+  border-left-color: var(--aiwa-settings-blue);
+}
+
+.ai-whatsapp-settings__section--twilio {
+  border-left-color: var(--aiwa-settings-green);
+}
+
+.ai-whatsapp-settings__section--cloud {
+  border-left-color: var(--aiwa-settings-cyan);
+}
+
+.ai-whatsapp-settings__section--evolution {
+  border-left-color: var(--aiwa-settings-violet);
+}
+
+.ai-whatsapp-settings__section--options {
+  border-left-color: var(--aiwa-settings-subtle);
+}
+
+.ai-whatsapp-settings__section > summary {
+  padding: 0.875rem 1rem;
+  background: var(--aiwa-settings-muted);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.ai-whatsapp-settings__section > .details-wrapper {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: 0.875rem 1rem;
+  padding: 1rem;
+}
+
+.ai-whatsapp-settings__section .form-item {
+  margin: 0;
+}
+
+.ai-whatsapp-settings__section input[type="text"],
+.ai-whatsapp-settings__section input[type="password"],
+.ai-whatsapp-settings__section input[type="url"],
+.ai-whatsapp-settings__section input[type="number"],
+.ai-whatsapp-settings__section select {
+  width: 100%;
+  max-width: 100%;
+}
+
+.ai-whatsapp-settings__section .description {
+  max-width: 34rem;
+  color: var(--aiwa-settings-subtle);
+  line-height: 1.4;
+}
+
+.ai-whatsapp-settings__section--options > .details-wrapper {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+}
+
+.ai-whatsapp-settings .form-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin: 1rem 0 0;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--aiwa-settings-border);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.96);
+}
+
+@media (max-width: 48rem) {
+  .ai-whatsapp-settings__overview,
+  .ai-whatsapp-settings__section > .details-wrapper,
+  .ai-whatsapp-settings .form-actions {
+    padding: 0.875rem;
+  }
+}

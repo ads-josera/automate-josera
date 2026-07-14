@@ -29,6 +29,7 @@
         "drupal/key": "^1.22",
         "drupal/pathauto": "^1.15",
         "drupal/queue_ui": "^3.2",
+        "drupal/smtp": "^1.4",
         "drupal/token": "^1.17",
         "drupal/webform": "^6.3@beta",
         "drush/drush": "^13.7"
@@ -47,7 +48,8 @@
             "phpstan/extension-installer": true,
             "dealerdirect/phpcodesniffer-composer-installer": true,
             "php-http/discovery": true,
-            "php-tuf/composer-integration": true
+            "php-tuf/composer-integration": true,
+            "symfony/runtime": true
         },
         "sort-packages": true
     },

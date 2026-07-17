@@ -298,6 +298,20 @@ final class WhatsAppAccount extends ContentEntityBase {
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
+    $fields['lead_notification_numbers'] = BaseFieldDefinition::create('string_long')
+      ->setLabel(t('Lead notification WhatsApp numbers'))
+      ->setDescription(t('Optional account-specific WhatsApp numbers to notify when a qualified lead is ready. One number per line. When empty, global notification numbers are used.'))
+      ->setDisplayOptions('form', [
+        'type' => 'string_textarea',
+        'weight' => 58,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'basic_string',
+        'weight' => 58,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
     $fields['configuration'] = BaseFieldDefinition::create('map')
       ->setLabel(t('Configuration'))
       ->setDisplayOptions('view', [

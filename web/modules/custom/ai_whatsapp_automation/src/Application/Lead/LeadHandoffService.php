@@ -169,7 +169,7 @@ final class LeadHandoffService {
    *   Delivery results.
    */
   private function notifyAdministrators(ContentEntityInterface $conversation, ContentEntityInterface $lead, string $ai_response): array {
-    $numbers = $this->notificationNumbers();
+    $numbers = $this->notificationNumbers($conversation);
     if ($numbers === []) {
       return [];
     }
@@ -223,14 +223,33 @@ final class LeadHandoffService {
    * @return string[]
    *   Phone numbers.
    */
-  private function notificationNumbers(): array {
-    $raw = (string) $this->configFactory
-      ->get('ai_whatsapp_automation.settings')
-      ->get('options.lead_notification_numbers');
+  private function notificationNumbers(ContentEntityInterface $conversation): array {
+    $raw = $this->accountNotificationNumbers($conversation);
+    if ($raw === '') {
+      $raw = (string) $this->configFactory
+        ->get('ai_whatsapp_automation.settings')
+        ->get('options.lead_notification_numbers');
+    }
 
     $numbers = preg_split('/[\r\n,]+/', $raw) ?: [];
 
     return array_values(array_filter(array_map('trim', $numbers)));
+  }
+
+  /**
+   * Returns account-specific notification numbers, if configured.
+   */
+  private function accountNotificationNumbers(ContentEntityInterface $conversation): string {
+    if (!$conversation->hasField('whatsapp_account') || $conversation->get('whatsapp_account')->isEmpty()) {
+      return '';
+    }
+
+    $account = $conversation->get('whatsapp_account')->entity;
+    if (!$account instanceof ContentEntityInterface || !$account->hasField('lead_notification_numbers')) {
+      return '';
+    }
+
+    return trim((string) $account->get('lead_notification_numbers')->value);
   }
 
   /**

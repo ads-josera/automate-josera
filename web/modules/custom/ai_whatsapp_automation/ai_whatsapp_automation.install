@@ -287,6 +287,27 @@ function ai_whatsapp_automation_update_11010(): void {
 }
 
 /**
+ * Adds account-specific lead notification numbers.
+ */
+function ai_whatsapp_automation_update_11011(): void {
+  $definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+  if ($definition_update_manager->getFieldStorageDefinition('lead_notification_numbers', 'ai_whatsapp_account') !== NULL) {
+    return;
+  }
+
+  $field_definitions = \Drupal::service('entity_field.manager')
+    ->getFieldStorageDefinitions('ai_whatsapp_account');
+  if (isset($field_definitions['lead_notification_numbers'])) {
+    $definition_update_manager->installFieldStorageDefinition(
+      'lead_notification_numbers',
+      'ai_whatsapp_account',
+      'ai_whatsapp_automation',
+      $field_definitions['lead_notification_numbers']
+    );
+  }
+}
+
+/**
  * Returns the entity type IDs provided by this module.
  *
  * @return string[]

@@ -4,40 +4,15 @@ declare(strict_types=1);
 
 namespace Drupal\ai_whatsapp_automation\Form\RAG;
 
-use Drupal\ai_whatsapp_automation\Application\RAG\KnowledgeBaseService;
 use Drupal\Core\Entity\ContentEntityInterface;
-use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\Queue\QueueFactory;
 use Drupal\file\FileInterface;
-use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Uploads and indexes knowledge documents.
  */
 final class KnowledgeDocumentUploadForm extends FormBase {
-
-  /**
-   * Constructs a KnowledgeDocumentUploadForm object.
-   */
-  public function __construct(
-    private readonly EntityTypeManagerInterface $entityTypeManager,
-    private readonly KnowledgeBaseService $knowledgeBaseService,
-    private readonly QueueFactory $queueFactory,
-  ) {
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public static function create(ContainerInterface $container): self {
-    return new self(
-      $container->get('entity_type.manager'),
-      $container->get('ai_whatsapp_automation.knowledge_base'),
-      $container->get('queue'),
-    );
-  }
 
   /**
    * {@inheritdoc}
@@ -92,7 +67,7 @@ final class KnowledgeDocumentUploadForm extends FormBase {
   public function submitForm(array &$form, FormStateInterface $form_state): void {
     $file_ids = $form_state->getValue('document');
     $file_id = is_array($file_ids) ? reset($file_ids) : NULL;
-    $file = $file_id ? $this->entityTypeManager->getStorage('file')->load($file_id) : NULL;
+    $file = $file_id ? \Drupal::entityTypeManager()->getStorage('file')->load($file_id) : NULL;
     $knowledge_base = $this->resolveKnowledgeBase((string) $form_state->getValue('title'), $form_state->getValue('knowledge_base'));
 
     if (!$file instanceof FileInterface || !$knowledge_base) {
@@ -104,9 +79,9 @@ final class KnowledgeDocumentUploadForm extends FormBase {
     $file->save();
 
     try {
-      $document = $this->knowledgeBaseService->createDocument($knowledge_base, $file, (string) $form_state->getValue('title'));
-      $this->queueFactory
-        ->get('ai_whatsapp_automation_knowledge_index')
+      $document = \Drupal::service('ai_whatsapp_automation.knowledge_base')
+        ->createDocument($knowledge_base, $file, (string) $form_state->getValue('title'));
+      \Drupal::queue('ai_whatsapp_automation_knowledge_index')
         ->createItem([
           'document_id' => $document->id(),
           'attempts' => 0,
@@ -129,7 +104,7 @@ final class KnowledgeDocumentUploadForm extends FormBase {
    * Loads the selected knowledge base or creates one from the document title.
    */
   private function resolveKnowledgeBase(string $title, mixed $knowledge_base_id): ?ContentEntityInterface {
-    $storage = $this->entityTypeManager->getStorage('ai_whatsapp_knowledge_base');
+    $storage = \Drupal::entityTypeManager()->getStorage('ai_whatsapp_knowledge_base');
     if ($knowledge_base_id) {
       $knowledge_base = $storage->load($knowledge_base_id);
 

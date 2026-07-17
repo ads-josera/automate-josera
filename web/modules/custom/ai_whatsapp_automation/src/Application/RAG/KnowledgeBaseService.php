@@ -36,16 +36,40 @@ final class KnowledgeBaseService {
    * Indexes an uploaded file into a knowledge base.
    */
   public function indexFile(ContentEntityInterface $knowledge_base, FileInterface $file, string $title): ContentEntityInterface {
+    $document = $this->createDocument($knowledge_base, $file, $title);
+
+    return $this->indexDocument($document);
+  }
+
+  /**
+   * Creates a pending source document for later indexing.
+   */
+  public function createDocument(ContentEntityInterface $knowledge_base, FileInterface $file, string $title): ContentEntityInterface {
     $document_storage = $this->entityTypeManager->getStorage('ai_whatsapp_knowledge_document');
     $document = $document_storage->create([
       'knowledge_base' => $knowledge_base->id(),
       'title' => $title,
       'file' => $file->id(),
       'mime_type' => $file->getMimeType(),
-      'status' => 'indexed',
+      'status' => 'pending',
       'chunk_count' => 0,
     ]);
     $document->save();
+
+    return $document;
+  }
+
+  /**
+   * Indexes a pending source document.
+   */
+  public function indexDocument(ContentEntityInterface $document): ContentEntityInterface {
+    $knowledge_base = $document->get('knowledge_base')->entity;
+    $file = $document->get('file')->entity;
+    if (!$knowledge_base instanceof ContentEntityInterface || !$file instanceof FileInterface) {
+      $document->set('status', 'failed');
+      $document->save();
+      throw new \RuntimeException('The knowledge document is missing its knowledge base or file.');
+    }
 
     try {
       $text = $this->documentParser->parse($file);
@@ -66,6 +90,7 @@ final class KnowledgeBaseService {
       }
 
       $document->set('chunk_count', count($chunks));
+      $document->set('status', 'indexed');
       $document->save();
     }
     catch (\Throwable $exception) {

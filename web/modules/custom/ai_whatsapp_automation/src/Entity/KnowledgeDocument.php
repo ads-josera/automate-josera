@@ -93,8 +93,8 @@ final class KnowledgeDocument extends ContentEntityBase {
     $fields['status'] = BaseFieldDefinition::create('list_string')
       ->setLabel(t('Status'))
       ->setRequired(TRUE)
-      ->setDefaultValue('indexed')
-      ->setSettings(['allowed_values' => ['indexed' => 'Indexed', 'failed' => 'Failed']])
+      ->setDefaultValue('pending')
+      ->setSettings(['allowed_values' => ['pending' => 'Pending', 'indexed' => 'Indexed', 'failed' => 'Failed']])
       ->setDisplayOptions('view', ['type' => 'list_default', 'weight' => 30])
       ->setDisplayConfigurable('view', TRUE);
 

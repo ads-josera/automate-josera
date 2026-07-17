@@ -254,6 +254,18 @@ function ai_whatsapp_automation_update_11008(): void {
 }
 
 /**
+ * Adds pending status support for asynchronous knowledge indexing.
+ */
+function ai_whatsapp_automation_update_11009(): void {
+  $field_definitions = \Drupal::service('entity_field.manager')
+    ->getFieldStorageDefinitions('ai_whatsapp_knowledge_document');
+  if (isset($field_definitions['status'])) {
+    \Drupal::entityDefinitionUpdateManager()
+      ->updateFieldStorageDefinition($field_definitions['status']);
+  }
+}
+
+/**
  * Returns the entity type IDs provided by this module.
  *
  * @return string[]

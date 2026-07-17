@@ -9,6 +9,7 @@ use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Queue\QueueFactory;
 use Drupal\file\FileInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -23,6 +24,7 @@ final class KnowledgeDocumentUploadForm extends FormBase {
   public function __construct(
     private readonly EntityTypeManagerInterface $entityTypeManager,
     private readonly KnowledgeBaseService $knowledgeBaseService,
+    private readonly QueueFactory $queueFactory,
   ) {
   }
 
@@ -33,6 +35,7 @@ final class KnowledgeDocumentUploadForm extends FormBase {
     return new self(
       $container->get('entity_type.manager'),
       $container->get('ai_whatsapp_automation.knowledge_base'),
+      $container->get('queue'),
     );
   }
 
@@ -101,9 +104,17 @@ final class KnowledgeDocumentUploadForm extends FormBase {
     $file->save();
 
     try {
-      $document = $this->knowledgeBaseService->indexFile($knowledge_base, $file, (string) $form_state->getValue('title'));
-      $this->messenger()->addStatus($this->t('Indexed @chunks chunks.', [
-        '@chunks' => (string) $document->get('chunk_count')->value,
+      $document = $this->knowledgeBaseService->createDocument($knowledge_base, $file, (string) $form_state->getValue('title'));
+      $this->queueFactory
+        ->get('ai_whatsapp_automation_knowledge_index')
+        ->createItem([
+          'document_id' => $document->id(),
+          'attempts' => 0,
+          'created' => time(),
+        ]);
+
+      $this->messenger()->addStatus($this->t('Document uploaded and queued for indexing. Document ID: @id.', [
+        '@id' => (string) $document->id(),
       ]));
       $form_state->setRedirect('entity.ai_whatsapp_knowledge_document.collection');
     }

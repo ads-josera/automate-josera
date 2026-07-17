@@ -136,7 +136,7 @@ final class OpenAIService implements OpenAIServiceInterface {
       ->get(self::SETTINGS)
       ->get('openai.default_model'));
 
-    return $configured_model !== '' ? $configured_model : 'gpt-5.5-mini';
+    return $configured_model !== '' ? $configured_model : 'gpt-5-mini';
   }
 
   /**

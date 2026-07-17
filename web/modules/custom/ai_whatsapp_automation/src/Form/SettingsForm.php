@@ -140,10 +140,13 @@ final class SettingsForm extends ConfigFormBase {
       '#type' => 'select',
       '#title' => $this->t('Default model'),
       '#options' => [
-        'gpt-5.5-mini' => $this->t('GPT-5.5 Mini'),
-        'gpt-5.5' => $this->t('GPT-5.5'),
+        'gpt-5-mini' => $this->t('GPT-5 mini'),
+        'gpt-5.1' => $this->t('GPT-5.1'),
+        'gpt-5' => $this->t('GPT-5'),
+        'gpt-5-nano' => $this->t('GPT-5 nano'),
+        'gpt-4.1-mini' => $this->t('GPT-4.1 mini'),
       ],
-      '#default_value' => $config->get('openai.default_model') ?: 'gpt-5.5-mini',
+      '#default_value' => $config->get('openai.default_model') ?: 'gpt-5-mini',
       '#required' => TRUE,
     ];
     $form['openai']['timeout'] = [

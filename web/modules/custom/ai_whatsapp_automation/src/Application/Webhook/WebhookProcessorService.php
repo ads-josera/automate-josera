@@ -66,8 +66,15 @@ final class WebhookProcessorService {
     $bot = $this->botManager->getBotForConversation($conversation);
     if (!$bot instanceof ContentEntityInterface) {
       $incoming = $this->saveIncomingMessage($conversation, $message);
-      $this->logger->warning('Webhook message @message was saved without AI processing because no active bot is associated.', [
+      $this->logger->warning('Webhook message @message was saved without AI processing because no active bot is associated. Conversation: @conversation. Account: @account. Provider: @provider. Phone: @phone. Account phone: @account_phone.', [
         '@message' => (string) $incoming->id(),
+        '@conversation' => (string) $conversation->id(),
+        '@account' => $conversation->hasField('whatsapp_account') && !$conversation->get('whatsapp_account')->isEmpty()
+          ? (string) $conversation->get('whatsapp_account')->target_id
+          : 'none',
+        '@provider' => $provider,
+        '@phone' => (string) ($message['phone'] ?? ''),
+        '@account_phone' => (string) ($message['account_phone'] ?? ''),
       ]);
 
       return [
@@ -114,6 +121,14 @@ final class WebhookProcessorService {
     if ($ids !== []) {
       $conversation = $conversation_storage->load(reset($ids));
       if ($conversation instanceof ContentEntityInterface) {
+        if (
+          $account instanceof ContentEntityInterface
+          && $conversation->hasField('whatsapp_account')
+          && $conversation->get('whatsapp_account')->isEmpty()
+        ) {
+          $conversation->set('whatsapp_account', $account->id());
+          $conversation->save();
+        }
         return $conversation;
       }
     }

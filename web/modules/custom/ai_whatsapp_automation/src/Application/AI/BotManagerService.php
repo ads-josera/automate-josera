@@ -116,6 +116,10 @@ final class BotManagerService {
     }
 
     $ids = $query->execute();
+    if ($ids === [] && $account_identifier !== '') {
+      $ids = $this->loadActiveAccountIdsForProvider($provider);
+    }
+
     if ($ids === []) {
       return NULL;
     }
@@ -123,6 +127,32 @@ final class BotManagerService {
     $account = $storage->load(reset($ids));
 
     return $account instanceof ContentEntityInterface ? $account : NULL;
+  }
+
+  /**
+   * Loads active account IDs for a provider.
+   *
+   * This is a fallback for providers that omit or alter the destination
+   * identifier in webhook payloads. It is only safe when one account matches.
+   *
+   * @return array<int|string, int|string>
+   *   Matching account IDs.
+   */
+  private function loadActiveAccountIdsForProvider(string $provider): array {
+    $storage = $this->entityTypeManager->getStorage('ai_whatsapp_account');
+    $query = $storage->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('provider', $provider)
+      ->range(0, 2);
+
+    $active_group = $query->orConditionGroup()
+      ->condition('status', 'active')
+      ->condition('connection_status', 'CONNECTED');
+    $query->condition($active_group);
+
+    $ids = $query->execute();
+
+    return count($ids) === 1 ? $ids : [];
   }
 
   /**

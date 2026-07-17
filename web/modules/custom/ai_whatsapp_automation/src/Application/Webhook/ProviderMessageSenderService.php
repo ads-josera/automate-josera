@@ -66,21 +66,49 @@ final class ProviderMessageSenderService {
     $config = $this->configFactory->get('ai_whatsapp_automation.settings');
     $account_sid = (string) $config->get('twilio.account_sid');
     $auth_token = (string) $config->get('twilio.auth_token');
-    $from = (string) $config->get('twilio.whatsapp_number');
+    $from = $this->resolveTwilioFrom($message);
     $to = (string) ($message['phone'] ?? '');
 
     if ($account_sid === '' || $auth_token === '' || $from === '' || $to === '') {
       return ['status' => 'skipped_missing_configuration'];
     }
 
+    $twilio_from = $this->prefixWhatsApp($from);
+    $twilio_to = $this->prefixWhatsApp($to);
+
     return $this->request('POST', 'https://api.twilio.com/2010-04-01/Accounts/' . $account_sid . '/Messages.json', [
       'auth' => [$account_sid, $auth_token],
       'form_params' => [
-        'From' => $this->prefixWhatsApp($from),
-        'To' => $this->prefixWhatsApp($to),
+        'From' => $twilio_from,
+        'To' => $twilio_to,
         'Body' => $text,
       ],
+      'ai_whatsapp_context' => [
+        'provider' => 'twilio',
+        'from' => $twilio_from,
+        'to' => $twilio_to,
+      ],
     ]);
+  }
+
+  /**
+   * Resolves the Twilio WhatsApp sender for a message.
+   *
+   * Account-specific phone numbers support multi-number routing. The global
+   * setting remains a fallback for legacy single-number installations.
+   *
+   * @param array<string, mixed> $message
+   *   Normalized incoming message data.
+   */
+  private function resolveTwilioFrom(array $message): string {
+    $account_phone = trim((string) ($message['account_phone'] ?? ''));
+    if ($account_phone !== '') {
+      return $account_phone;
+    }
+
+    return (string) $this->configFactory
+      ->get('ai_whatsapp_automation.settings')
+      ->get('twilio.whatsapp_number');
   }
 
   /**
@@ -160,11 +188,18 @@ final class ProviderMessageSenderService {
    *   Normalized delivery result.
    */
   private function request(string $method, string $url, array $options): array {
+    $context = is_array($options['ai_whatsapp_context'] ?? NULL)
+      ? $options['ai_whatsapp_context']
+      : [];
+    unset($options['ai_whatsapp_context']);
+
     try {
       $response = $this->httpClient->request($method, $url, $options + ['timeout' => 15]);
     }
     catch (GuzzleException $exception) {
-      $this->logger->error('Provider message send failed: @message', [
+      $this->logger->error('Provider message send failed from @from to @to: @message', [
+        '@from' => (string) ($context['from'] ?? ''),
+        '@to' => (string) ($context['to'] ?? ''),
         '@message' => $exception->getMessage(),
       ]);
 
@@ -178,6 +213,8 @@ final class ProviderMessageSenderService {
       'status' => 'sent',
       'status_code' => $response->getStatusCode(),
       'body' => (string) $response->getBody(),
+      'from' => (string) ($context['from'] ?? ''),
+      'to' => (string) ($context['to'] ?? ''),
     ];
   }
 

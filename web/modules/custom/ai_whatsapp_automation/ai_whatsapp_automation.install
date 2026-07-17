@@ -244,6 +244,16 @@ function ai_whatsapp_automation_update_11007(): void {
 }
 
 /**
+ * Adds a default inactivity timeout for AI conversations.
+ */
+function ai_whatsapp_automation_update_11008(): void {
+  $config = \Drupal::configFactory()->getEditable('ai_whatsapp_automation.settings');
+  if ($config->get('options.auto_close_ai_hours') === NULL) {
+    $config->set('options.auto_close_ai_hours', 24)->save();
+  }
+}
+
+/**
  * Returns the entity type IDs provided by this module.
  *
  * @return string[]

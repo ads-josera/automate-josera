@@ -7,4 +7,39 @@ declare(strict_types=1);
  */
 function ai_whatsapp_automation_cron(): void {
   \Drupal::service('ai_whatsapp_automation.evolution.instance_manager')->monitorAccounts();
+  ai_whatsapp_automation_close_stale_conversations();
+}
+
+/**
+ * Closes AI conversations that have been inactive longer than configured.
+ */
+function ai_whatsapp_automation_close_stale_conversations(): void {
+  $config = \Drupal::config('ai_whatsapp_automation.settings');
+  $ttl_hours = (int) ($config->get('options.auto_close_ai_hours') ?? 24);
+  if ($ttl_hours <= 0) {
+    return;
+  }
+
+  $cutoff = \Drupal::time()->getRequestTime() - ($ttl_hours * 3600);
+  $storage = \Drupal::entityTypeManager()->getStorage('ai_whatsapp_conversation');
+  $ids = $storage->getQuery()
+    ->accessCheck(FALSE)
+    ->condition('status', 'AI_ACTIVE')
+    ->condition('changed', $cutoff, '<')
+    ->range(0, 100)
+    ->execute();
+
+  if ($ids === []) {
+    return;
+  }
+
+  foreach ($storage->loadMultiple($ids) as $conversation) {
+    $conversation->set('status', 'CLOSED');
+    $conversation->save();
+  }
+
+  \Drupal::logger('ai_whatsapp_automation')->notice('Closed @count inactive AI conversations after @hours hours.', [
+    '@count' => (string) count($ids),
+    '@hours' => (string) $ttl_hours,
+  ]);
 }

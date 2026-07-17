@@ -47,6 +47,7 @@ final class WebhookProcessorService {
     $provider = (string) ($item['provider'] ?? '');
     $message = is_array($item['message'] ?? NULL) ? $item['message'] : [];
     $conversation = $this->loadOrCreateConversation($provider, $message);
+    $this->touchConversation($conversation);
 
     if ($conversation->hasField('status') && $conversation->get('status')->value !== 'AI_ACTIVE') {
       $incoming = $this->saveIncomingMessage($conversation, $message);
@@ -143,6 +144,18 @@ final class WebhookProcessorService {
     $conversation->save();
 
     return $conversation;
+  }
+
+  /**
+   * Marks a conversation as recently active.
+   */
+  private function touchConversation(ContentEntityInterface $conversation): void {
+    if (!$conversation->hasField('changed')) {
+      return;
+    }
+
+    $conversation->set('changed', time());
+    $conversation->save();
   }
 
   /**

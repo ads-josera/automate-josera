@@ -22,3 +22,4 @@ options:
   enable_logs: true
   enable_storage: true
   enable_metrics: true
+  auto_close_ai_hours: 24

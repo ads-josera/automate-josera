@@ -308,6 +308,16 @@ final class SettingsForm extends ConfigFormBase {
       '#title' => $this->t('Enable metrics'),
       '#default_value' => (bool) $config->get('options.enable_metrics'),
     ];
+    $form['options']['auto_close_ai_hours'] = [
+      '#type' => 'number',
+      '#title' => $this->t('Auto-close inactive AI conversations'),
+      '#default_value' => $config->get('options.auto_close_ai_hours') ?? 24,
+      '#min' => 0,
+      '#max' => 8760,
+      '#field_suffix' => $this->t('hours'),
+      '#description' => $this->t('Conversations in AI active status are closed by cron after this many inactive hours. Use 0 to disable automatic closing.'),
+      '#required' => TRUE,
+    ];
 
     return parent::buildForm($form, $form_state);
   }
@@ -387,6 +397,11 @@ final class SettingsForm extends ConfigFormBase {
     if ($timeout < 1 || $timeout > 120) {
       $form_state->setErrorByName('openai][timeout', $this->t('Timeout must be between 1 and 120 seconds.'));
     }
+
+    $auto_close_ai_hours = (int) $form_state->getValue(['options', 'auto_close_ai_hours']);
+    if ($auto_close_ai_hours < 0 || $auto_close_ai_hours > 8760) {
+      $form_state->setErrorByName('options][auto_close_ai_hours', $this->t('Auto-close hours must be between 0 and 8760.'));
+    }
   }
 
   /**
@@ -421,6 +436,7 @@ final class SettingsForm extends ConfigFormBase {
       ->set('options.enable_logs', (bool) $options['enable_logs'])
       ->set('options.enable_storage', (bool) $options['enable_storage'])
       ->set('options.enable_metrics', (bool) $options['enable_metrics'])
+      ->set('options.auto_close_ai_hours', (int) $options['auto_close_ai_hours'])
       ->save();
 
     parent::submitForm($form, $form_state);

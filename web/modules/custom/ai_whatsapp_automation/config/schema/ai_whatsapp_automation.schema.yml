@@ -79,3 +79,6 @@ ai_whatsapp_automation.settings:
         enable_metrics:
           type: boolean
           label: 'Enable metrics'
+        auto_close_ai_hours:
+          type: integer
+          label: 'Auto-close inactive AI conversations after hours'

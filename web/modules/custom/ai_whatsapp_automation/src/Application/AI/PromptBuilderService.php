@@ -55,7 +55,7 @@ final class PromptBuilderService {
         $rag_context = $this->ragService->buildContext($knowledge_base, $incoming_message);
         $knowledge_context = trim((string) ($rag_context['context'] ?? ''));
         $metadata['knowledge_base_id'] = (string) $knowledge_base->id();
-        $metadata['rag_results'] = count(is_array($rag_context['results'] ?? NULL) ? $rag_context['results'] : []);
+        $metadata['rag_results'] = (string) count(is_array($rag_context['results'] ?? NULL) ? $rag_context['results'] : []);
       }
       catch (\Throwable $exception) {
         $this->logger->warning('RAG context generation failed for conversation @conversation: @message', [
@@ -95,9 +95,32 @@ final class PromptBuilderService {
       'model' => $this->botManager->getEffectiveModel($bot, $account),
       'options' => [
         'instructions' => $this->botManager->getEffectivePrompt($bot, $account),
-        'metadata' => $metadata,
+        'metadata' => $this->stringifyMetadata($metadata),
       ],
     ];
+  }
+
+  /**
+   * Ensures OpenAI metadata values are strings.
+   *
+   * @param array<string, mixed> $metadata
+   *   Metadata values.
+   *
+   * @return array<string, string>
+   *   String metadata values.
+   */
+  private function stringifyMetadata(array $metadata): array {
+    $string_metadata = [];
+    foreach ($metadata as $key => $value) {
+      if (is_scalar($value) || $value === NULL) {
+        $string_metadata[$key] = (string) $value;
+        continue;
+      }
+
+      $string_metadata[$key] = json_encode($value, JSON_THROW_ON_ERROR);
+    }
+
+    return $string_metadata;
   }
 
   /**

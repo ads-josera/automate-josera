@@ -266,6 +266,27 @@ function ai_whatsapp_automation_update_11009(): void {
 }
 
 /**
+ * Adds lead handoff notification settings and action value.
+ */
+function ai_whatsapp_automation_update_11010(): void {
+  $config = \Drupal::configFactory()->getEditable('ai_whatsapp_automation.settings');
+  if ($config->get('options.enable_lead_notifications') === NULL) {
+    $config->set('options.enable_lead_notifications', FALSE);
+  }
+  if ($config->get('options.lead_notification_numbers') === NULL) {
+    $config->set('options.lead_notification_numbers', '');
+  }
+  $config->save();
+
+  $field_definitions = \Drupal::service('entity_field.manager')
+    ->getFieldStorageDefinitions('ai_whatsapp_operator_action');
+  if (isset($field_definitions['action'])) {
+    \Drupal::entityDefinitionUpdateManager()
+      ->updateFieldStorageDefinition($field_definitions['action']);
+  }
+}
+
+/**
  * Returns the entity type IDs provided by this module.
  *
  * @return string[]

@@ -318,6 +318,19 @@ final class SettingsForm extends ConfigFormBase {
       '#description' => $this->t('Conversations in AI active status are closed by cron after this many inactive hours. Use 0 to disable automatic closing.'),
       '#required' => TRUE,
     ];
+    $form['options']['enable_lead_notifications'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Enable lead handoff notifications'),
+      '#default_value' => (bool) $config->get('options.enable_lead_notifications'),
+      '#description' => $this->t('When a conversation looks ready for human follow-up, create a lead, assign it to human handling, and notify administrators.'),
+    ];
+    $form['options']['lead_notification_numbers'] = [
+      '#type' => 'textarea',
+      '#title' => $this->t('Lead notification WhatsApp numbers'),
+      '#default_value' => $config->get('options.lead_notification_numbers') ?: '',
+      '#rows' => 3,
+      '#description' => $this->t('One WhatsApp number per line, including country code. Example: +5215512345678.'),
+    ];
 
     return parent::buildForm($form, $form_state);
   }
@@ -437,6 +450,8 @@ final class SettingsForm extends ConfigFormBase {
       ->set('options.enable_storage', (bool) $options['enable_storage'])
       ->set('options.enable_metrics', (bool) $options['enable_metrics'])
       ->set('options.auto_close_ai_hours', (int) $options['auto_close_ai_hours'])
+      ->set('options.enable_lead_notifications', (bool) $options['enable_lead_notifications'])
+      ->set('options.lead_notification_numbers', $options['lead_notification_numbers'])
       ->save();
 
     parent::submitForm($form, $form_state);

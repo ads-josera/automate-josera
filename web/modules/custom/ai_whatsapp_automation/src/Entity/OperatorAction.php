@@ -112,6 +112,7 @@ final class OperatorAction extends ContentEntityBase {
           'MANUAL_REPLY_SENT' => 'Manual reply sent',
           'AI_REACTIVATED' => 'AI reactivated',
           'CONVERSATION_CLOSED' => 'Conversation closed',
+          'LEAD_HANDOFF' => 'Lead handoff',
         ],
       ])
       ->setDisplayOptions('form', [

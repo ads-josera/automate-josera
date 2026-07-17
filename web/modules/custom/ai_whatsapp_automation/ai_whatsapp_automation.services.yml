@@ -48,6 +48,7 @@ services:
       - '@ai_whatsapp_automation.bot_manager'
       - '@ai_whatsapp_automation.conversation_engine'
       - '@ai_whatsapp_automation.provider_message_sender'
+      - '@ai_whatsapp_automation.lead_handoff'
       - '@logger.factory'
 
   ai_whatsapp_automation.provider_message_sender:
@@ -64,6 +65,14 @@ services:
       - '@entity_type.manager'
       - '@ai_whatsapp_automation.provider_message_sender'
       - '@current_user'
+      - '@logger.factory'
+
+  ai_whatsapp_automation.lead_handoff:
+    class: Drupal\ai_whatsapp_automation\Application\Lead\LeadHandoffService
+    arguments:
+      - '@entity_type.manager'
+      - '@config.factory'
+      - '@ai_whatsapp_automation.provider_message_sender'
       - '@logger.factory'
 
   ai_whatsapp_automation.dashboard_metrics:

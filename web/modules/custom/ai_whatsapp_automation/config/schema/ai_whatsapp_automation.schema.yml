@@ -82,3 +82,9 @@ ai_whatsapp_automation.settings:
         auto_close_ai_hours:
           type: integer
           label: 'Auto-close inactive AI conversations after hours'
+        enable_lead_notifications:
+          type: boolean
+          label: 'Enable lead handoff notifications'
+        lead_notification_numbers:
+          type: string
+          label: 'Lead notification WhatsApp numbers'

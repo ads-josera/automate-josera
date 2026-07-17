@@ -6,6 +6,7 @@ namespace Drupal\ai_whatsapp_automation\Application\Webhook;
 
 use Drupal\ai_whatsapp_automation\Application\AI\BotManagerService;
 use Drupal\ai_whatsapp_automation\Application\AI\ConversationEngineService;
+use Drupal\ai_whatsapp_automation\Application\Lead\LeadHandoffService;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
@@ -29,6 +30,7 @@ final class WebhookProcessorService {
     private readonly BotManagerService $botManager,
     private readonly ConversationEngineService $conversationEngine,
     private readonly ProviderMessageSenderService $messageSender,
+    private readonly LeadHandoffService $leadHandoff,
     LoggerChannelFactoryInterface $loggerFactory,
   ) {
     $this->logger = $loggerFactory->get('ai_whatsapp_automation');
@@ -90,9 +92,11 @@ final class WebhookProcessorService {
     ]);
 
     $delivery = $this->messageSender->sendText($provider, $message, (string) $engine_result['response_text']);
+    $handoff = $this->leadHandoff->handle($conversation, (string) $engine_result['response_text']);
 
     return $engine_result + [
       'delivery' => $delivery,
+      'handoff' => $handoff,
     ];
   }
 

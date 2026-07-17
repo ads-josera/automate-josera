@@ -23,3 +23,5 @@ options:
   enable_storage: true
   enable_metrics: true
   auto_close_ai_hours: 24
+  enable_lead_notifications: false
+  lead_notification_numbers: ''

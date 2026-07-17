@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\ai_whatsapp_automation\Form\RAG;
 
 use Drupal\ai_whatsapp_automation\Application\RAG\KnowledgeBaseService;
+use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
@@ -48,9 +49,9 @@ final class KnowledgeDocumentUploadForm extends FormBase {
   public function buildForm(array $form, FormStateInterface $form_state): array {
     $form['knowledge_base'] = [
       '#type' => 'entity_autocomplete',
-      '#title' => $this->t('Knowledge base'),
+      '#title' => $this->t('Existing knowledge base'),
       '#target_type' => 'ai_whatsapp_knowledge_base',
-      '#required' => TRUE,
+      '#description' => $this->t('Select an existing knowledge base or leave empty to create one from the title.'),
     ];
 
     $form['title'] = [
@@ -89,9 +90,7 @@ final class KnowledgeDocumentUploadForm extends FormBase {
     $file_ids = $form_state->getValue('document');
     $file_id = is_array($file_ids) ? reset($file_ids) : NULL;
     $file = $file_id ? $this->entityTypeManager->getStorage('file')->load($file_id) : NULL;
-    $knowledge_base = $this->entityTypeManager
-      ->getStorage('ai_whatsapp_knowledge_base')
-      ->load($form_state->getValue('knowledge_base'));
+    $knowledge_base = $this->resolveKnowledgeBase((string) $form_state->getValue('title'), $form_state->getValue('knowledge_base'));
 
     if (!$file instanceof FileInterface || !$knowledge_base) {
       $this->messenger()->addError($this->t('The document could not be indexed.'));
@@ -113,6 +112,28 @@ final class KnowledgeDocumentUploadForm extends FormBase {
         '@message' => $exception->getMessage(),
       ]));
     }
+  }
+
+  /**
+   * Loads the selected knowledge base or creates one from the document title.
+   */
+  private function resolveKnowledgeBase(string $title, mixed $knowledge_base_id): ?ContentEntityInterface {
+    $storage = $this->entityTypeManager->getStorage('ai_whatsapp_knowledge_base');
+    if ($knowledge_base_id) {
+      $knowledge_base = $storage->load($knowledge_base_id);
+
+      return $knowledge_base instanceof ContentEntityInterface ? $knowledge_base : NULL;
+    }
+
+    $knowledge_base = $storage->create([
+      'name' => $title,
+      'description' => (string) $this->t('Created while uploading @title.', ['@title' => $title]),
+      'embedding_model' => 'text-embedding-3-small',
+      'status' => 'active',
+    ]);
+    $knowledge_base->save();
+
+    return $knowledge_base;
   }
 
 }

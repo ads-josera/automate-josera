@@ -17,6 +17,11 @@ use Psr\Log\LoggerInterface;
 final class ProviderMessageSenderService {
 
   /**
+   * Conservative message body limit for WhatsApp/Twilio text sends.
+   */
+  private const MESSAGE_SEGMENT_LIMIT = 1400;
+
+  /**
    * The logger channel.
    */
   private readonly LoggerInterface $logger;
@@ -76,19 +81,27 @@ final class ProviderMessageSenderService {
     $twilio_from = $this->prefixWhatsApp($from);
     $twilio_to = $this->prefixWhatsApp($to);
 
-    return $this->request('POST', 'https://api.twilio.com/2010-04-01/Accounts/' . $account_sid . '/Messages.json', [
-      'auth' => [$account_sid, $auth_token],
-      'form_params' => [
-        'From' => $twilio_from,
-        'To' => $twilio_to,
-        'Body' => $text,
-      ],
-      'ai_whatsapp_context' => [
-        'provider' => 'twilio',
-        'from' => $twilio_from,
-        'to' => $twilio_to,
-      ],
-    ]);
+    return $this->sendTextSegments(
+      'twilio',
+      $this->splitText($text),
+      static fn(string $segment): array => [
+        'method' => 'POST',
+        'url' => 'https://api.twilio.com/2010-04-01/Accounts/' . $account_sid . '/Messages.json',
+        'options' => [
+          'auth' => [$account_sid, $auth_token],
+          'form_params' => [
+            'From' => $twilio_from,
+            'To' => $twilio_to,
+            'Body' => $segment,
+          ],
+          'ai_whatsapp_context' => [
+            'provider' => 'twilio',
+            'from' => $twilio_from,
+            'to' => $twilio_to,
+          ],
+        ],
+      ]
+    );
   }
 
   /**
@@ -127,21 +140,33 @@ final class ProviderMessageSenderService {
       return ['status' => 'skipped_missing_configuration'];
     }
 
-    return $this->request('POST', 'https://graph.facebook.com/v20.0/' . $phone_number_id . '/messages', [
-      'headers' => [
-        'Authorization' => 'Bearer ' . $access_token,
-        'Content-Type' => 'application/json',
-      ],
-      'json' => [
-        'messaging_product' => 'whatsapp',
-        'to' => ltrim($to, '+'),
-        'type' => 'text',
-        'text' => [
-          'preview_url' => FALSE,
-          'body' => $text,
+    return $this->sendTextSegments(
+      'cloud_api',
+      $this->splitText($text),
+      static fn(string $segment): array => [
+        'method' => 'POST',
+        'url' => 'https://graph.facebook.com/v20.0/' . $phone_number_id . '/messages',
+        'options' => [
+          'headers' => [
+            'Authorization' => 'Bearer ' . $access_token,
+            'Content-Type' => 'application/json',
+          ],
+          'json' => [
+            'messaging_product' => 'whatsapp',
+            'to' => ltrim($to, '+'),
+            'type' => 'text',
+            'text' => [
+              'preview_url' => FALSE,
+              'body' => $segment,
+            ],
+          ],
+          'ai_whatsapp_context' => [
+            'provider' => 'cloud_api',
+            'to' => $to,
+          ],
         ],
-      ],
-    ]);
+      ]
+    );
   }
 
   /**
@@ -162,20 +187,109 @@ final class ProviderMessageSenderService {
       return ['status' => 'skipped_missing_configuration'];
     }
 
-    $result = $this->qrProvider->sendMessage($instance, $to, $text);
+    $results = [];
+    foreach ($this->splitText($text) as $segment) {
+      $result = $this->qrProvider->sendMessage($instance, $to, $segment);
+      $results[] = $result;
 
-    if (($result['success'] ?? FALSE) !== TRUE) {
-      return [
-        'status' => 'failed',
-        'error' => (string) ($result['error'] ?? $result['status'] ?? 'Evolution API send failed.'),
-      ];
+      if (($result['success'] ?? FALSE) !== TRUE) {
+        return [
+          'status' => 'failed',
+          'error' => (string) ($result['error'] ?? $result['status'] ?? 'Evolution API send failed.'),
+          'segments' => count($results),
+          'results' => $results,
+        ];
+      }
     }
 
     return [
       'status' => 'sent',
-      'status_code' => $result['status_code'] ?? NULL,
-      'body' => json_encode($result['data'] ?? [], JSON_THROW_ON_ERROR),
+      'status_code' => $results[array_key_last($results)]['status_code'] ?? NULL,
+      'body' => json_encode($results, JSON_THROW_ON_ERROR),
+      'segments' => count($results),
+      'results' => $results,
     ];
+  }
+
+  /**
+   * Sends text segments through an HTTP provider.
+   *
+   * @param string[] $segments
+   *   Message text segments.
+   * @param callable(string): array{method: string, url: string, options: array<string, mixed>} $request_builder
+   *   Builds request data for a segment.
+   *
+   * @return array<string, mixed>
+   *   Delivery result.
+   */
+  private function sendTextSegments(string $provider, array $segments, callable $request_builder): array {
+    $results = [];
+    foreach ($segments as $segment) {
+      $request = $request_builder($segment);
+      $result = $this->request($request['method'], $request['url'], $request['options']);
+      $results[] = $result;
+
+      if (($result['status'] ?? '') !== 'sent') {
+        return [
+          'status' => 'failed',
+          'provider' => $provider,
+          'segments' => count($results),
+          'results' => $results,
+        ];
+      }
+    }
+
+    $last_result = $results[array_key_last($results)] ?? [];
+
+    return $last_result + [
+      'status' => 'sent',
+      'provider' => $provider,
+      'segments' => count($results),
+      'results' => $results,
+    ];
+  }
+
+  /**
+   * Splits long provider messages into deliverable text segments.
+   *
+   * @return string[]
+   *   Text segments.
+   */
+  private function splitText(string $text): array {
+    $text = trim($text);
+    if (mb_strlen($text) <= self::MESSAGE_SEGMENT_LIMIT) {
+      return [$text];
+    }
+
+    $segments = [];
+    $remaining = $text;
+    while (mb_strlen($remaining) > self::MESSAGE_SEGMENT_LIMIT) {
+      $chunk = mb_substr($remaining, 0, self::MESSAGE_SEGMENT_LIMIT);
+      $split_position = $this->findSplitPosition($chunk);
+
+      $segments[] = trim(mb_substr($remaining, 0, $split_position));
+      $remaining = trim(mb_substr($remaining, $split_position));
+    }
+
+    if ($remaining !== '') {
+      $segments[] = $remaining;
+    }
+
+    return $segments;
+  }
+
+  /**
+   * Finds a natural split position near the end of a chunk.
+   */
+  private function findSplitPosition(string $chunk): int {
+    foreach (["\n\n", "\n", '. ', ' '] as $separator) {
+      $position = mb_strrpos($chunk, $separator);
+      if ($position !== FALSE && $position > (int) (self::MESSAGE_SEGMENT_LIMIT * 0.6)) {
+        return $position + mb_strlen($separator);
+      }
+    }
+
+    return self::MESSAGE_SEGMENT_LIMIT;
   }
 
   /**

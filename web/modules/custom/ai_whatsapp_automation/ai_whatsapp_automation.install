@@ -198,6 +198,52 @@ function ai_whatsapp_automation_update_11006(): void {
 }
 
 /**
+ * Replaces retired OpenAI model IDs with current model IDs.
+ */
+function ai_whatsapp_automation_update_11007(): void {
+  $model_map = [
+    'gpt-5.5-mini' => 'gpt-5-mini',
+    'gpt-5.5' => 'gpt-5.1',
+  ];
+
+  $config = \Drupal::configFactory()->getEditable('ai_whatsapp_automation.settings');
+  $default_model = (string) $config->get('openai.default_model');
+  if (isset($model_map[$default_model])) {
+    $config->set('openai.default_model', $model_map[$default_model])->save();
+  }
+
+  $database = \Drupal::database();
+  foreach ($model_map as $old_model => $new_model) {
+    if ($database->schema()->tableExists('ai_whatsapp_bot')) {
+      $database->update('ai_whatsapp_bot')
+        ->fields(['model' => $new_model])
+        ->condition('model', $old_model)
+        ->execute();
+    }
+
+    if ($database->schema()->tableExists('ai_whatsapp_account')) {
+      $database->update('ai_whatsapp_account')
+        ->fields(['model_override' => $new_model])
+        ->condition('model_override', $old_model)
+        ->execute();
+    }
+  }
+
+  $definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+  $field_manager = \Drupal::service('entity_field.manager');
+
+  foreach ([
+    'ai_whatsapp_bot' => 'model',
+    'ai_whatsapp_account' => 'model_override',
+  ] as $entity_type_id => $field_name) {
+    $field_definitions = $field_manager->getFieldStorageDefinitions($entity_type_id);
+    if (isset($field_definitions[$field_name])) {
+      $definition_update_manager->updateFieldStorageDefinition($field_definitions[$field_name]);
+    }
+  }
+}
+
+/**
  * Returns the entity type IDs provided by this module.
  *
  * @return string[]

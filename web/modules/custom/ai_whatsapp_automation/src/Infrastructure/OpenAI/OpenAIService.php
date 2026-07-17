@@ -129,14 +129,14 @@ final class OpenAIService implements OpenAIServiceInterface {
   public function selectModel(?string $requested_model = NULL): string {
     $requested_model = trim((string) $requested_model);
     if ($requested_model !== '') {
-      return $requested_model;
+      return $this->normalizeModel($requested_model);
     }
 
     $configured_model = trim((string) $this->configFactory
       ->get(self::SETTINGS)
       ->get('openai.default_model'));
 
-    return $configured_model !== '' ? $configured_model : 'gpt-5-mini';
+    return $configured_model !== '' ? $this->normalizeModel($configured_model) : 'gpt-5-mini';
   }
 
   /**
@@ -276,6 +276,17 @@ final class OpenAIService implements OpenAIServiceInterface {
     }
 
     return trim(implode("\n", $text_parts));
+  }
+
+  /**
+   * Maps removed model IDs to currently available equivalents.
+   */
+  private function normalizeModel(string $model): string {
+    return match ($model) {
+      'gpt-5.5-mini' => 'gpt-5-mini',
+      'gpt-5.5' => 'gpt-5.1',
+      default => $model,
+    };
   }
 
   /**

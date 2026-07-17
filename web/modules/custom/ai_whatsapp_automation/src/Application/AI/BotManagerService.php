@@ -169,9 +169,13 @@ final class BotManagerService {
    */
   public function getEffectiveModel(ContentEntityInterface $bot, ?ContentEntityInterface $account = NULL): ?string {
     $override = $account instanceof ContentEntityInterface ? $this->getFieldValue($account, 'model_override') : '';
-    $model = $override !== '' ? $override : $this->getFieldValue($bot, 'model');
+    if ($override !== '') {
+      return $this->normalizeModel($override);
+    }
 
-    return $model !== '' ? $model : NULL;
+    $model = $this->getFieldValue($bot, 'model');
+
+    return $model !== '' ? $this->normalizeModel($model) : NULL;
   }
 
   /**
@@ -213,6 +217,17 @@ final class BotManagerService {
     $value = $entity->get($field_name)->value;
 
     return is_scalar($value) ? (string) $value : '';
+  }
+
+  /**
+   * Maps removed model IDs to currently available equivalents.
+   */
+  private function normalizeModel(string $model): string {
+    return match ($model) {
+      'gpt-5.5-mini' => 'gpt-5-mini',
+      'gpt-5.5' => 'gpt-5.1',
+      default => $model,
+    };
   }
 
   /**

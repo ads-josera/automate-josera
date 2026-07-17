@@ -22,6 +22,11 @@ final class SettingsForm extends ConfigFormBase {
   private const SETTINGS = 'ai_whatsapp_automation.settings';
 
   /**
+   * Maximum length for provider secrets.
+   */
+  private const SECRET_MAX_LENGTH = 2048;
+
+  /**
    * Constructs a SettingsForm object.
    */
   public function __construct(
@@ -124,6 +129,11 @@ final class SettingsForm extends ConfigFormBase {
     $form['openai']['api_key'] = [
       '#type' => 'password',
       '#title' => $this->t('API Key'),
+      '#maxlength' => self::SECRET_MAX_LENGTH,
+      '#attributes' => [
+        'autocomplete' => 'new-password',
+        'spellcheck' => 'false',
+      ],
       '#description' => $config->get('openai.api_key') ? $this->t('An API key is already configured. Leave empty to keep the current value.') : $this->t('Enter the OpenAI API key.'),
     ];
     $form['openai']['default_model'] = [
@@ -164,6 +174,11 @@ final class SettingsForm extends ConfigFormBase {
     $form['twilio']['auth_token'] = [
       '#type' => 'password',
       '#title' => $this->t('Auth Token'),
+      '#maxlength' => self::SECRET_MAX_LENGTH,
+      '#attributes' => [
+        'autocomplete' => 'new-password',
+        'spellcheck' => 'false',
+      ],
       '#description' => $config->get('twilio.auth_token') ? $this->t('An auth token is already configured. Leave empty to keep the current value.') : $this->t('Enter the Twilio auth token.'),
     ];
     $form['twilio']['whatsapp_number'] = [
@@ -199,6 +214,11 @@ final class SettingsForm extends ConfigFormBase {
     $form['whatsapp_cloud']['access_token'] = [
       '#type' => 'password',
       '#title' => $this->t('Access Token'),
+      '#maxlength' => self::SECRET_MAX_LENGTH,
+      '#attributes' => [
+        'autocomplete' => 'new-password',
+        'spellcheck' => 'false',
+      ],
       '#description' => $config->get('whatsapp_cloud.access_token') ? $this->t('An access token is already configured. Leave empty to keep the current value.') : $this->t('Enter the WhatsApp Cloud API access token.'),
     ];
     $form['whatsapp_cloud']['phone_number_id'] = [
@@ -216,6 +236,11 @@ final class SettingsForm extends ConfigFormBase {
     $form['whatsapp_cloud']['verify_token'] = [
       '#type' => 'password',
       '#title' => $this->t('Verify Token'),
+      '#maxlength' => self::SECRET_MAX_LENGTH,
+      '#attributes' => [
+        'autocomplete' => 'new-password',
+        'spellcheck' => 'false',
+      ],
       '#description' => $config->get('whatsapp_cloud.verify_token') ? $this->t('A verify token is already configured. Leave empty to keep the current value.') : $this->t('Enter the webhook verify token.'),
     ];
 
@@ -237,6 +262,11 @@ final class SettingsForm extends ConfigFormBase {
     $form['evolution']['api_key'] = [
       '#type' => 'password',
       '#title' => $this->t('API Key'),
+      '#maxlength' => self::SECRET_MAX_LENGTH,
+      '#attributes' => [
+        'autocomplete' => 'new-password',
+        'spellcheck' => 'false',
+      ],
       '#description' => $config->get('evolution.api_key') ? $this->t('An API key is already configured. Leave empty to keep the current value.') : $this->t('Enter the Evolution API key.'),
     ];
     $form['evolution']['instance_name'] = [

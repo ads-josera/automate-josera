@@ -169,6 +169,78 @@ final class Bot extends ContentEntityBase {
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
+    $fields['handoff_enabled'] = BaseFieldDefinition::create('boolean')
+      ->setLabel(t('Enable lead handoff'))
+      ->setDescription(t('Allow this bot to create a lead, assign the conversation to human handling, and notify administrators when the configured criteria are met.'))
+      ->setDefaultValue(TRUE)
+      ->setDisplayOptions('form', [
+        'type' => 'boolean_checkbox',
+        'weight' => 46,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'boolean',
+        'weight' => 46,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['handoff_required_fields'] = BaseFieldDefinition::create('string_long')
+      ->setLabel(t('Lead handoff required signals'))
+      ->setDescription(t('One signal group per line. Use commas for alternatives, for example: company, business, client. The handoff fires when enough groups are detected. Leave empty to use generic lead signals.'))
+      ->setDisplayOptions('form', [
+        'type' => 'string_textarea',
+        'weight' => 47,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'basic_string',
+        'weight' => 47,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['handoff_minimum_fields'] = BaseFieldDefinition::create('integer')
+      ->setLabel(t('Minimum signals for lead handoff'))
+      ->setDescription(t('How many configured signal groups must be present before notifying an administrator.'))
+      ->setDefaultValue(5)
+      ->setDisplayOptions('form', [
+        'type' => 'number',
+        'weight' => 48,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'number_integer',
+        'weight' => 48,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['handoff_trigger_phrases'] = BaseFieldDefinition::create('string_long')
+      ->setLabel(t('Lead handoff trigger phrases'))
+      ->setDescription(t('Words or phrases that indicate the conversation is ready for human follow-up. One phrase per line. Leave empty to use generic phrases.'))
+      ->setDisplayOptions('form', [
+        'type' => 'string_textarea',
+        'weight' => 49,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'basic_string',
+        'weight' => 49,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['handoff_prompt_rules'] = BaseFieldDefinition::create('string_long')
+      ->setLabel(t('Lead handoff prompt rules'))
+      ->setDescription(t('Optional bot-specific rules appended to the AI instructions, such as what to say when enough data has been collected.'))
+      ->setDisplayOptions('form', [
+        'type' => 'string_textarea',
+        'weight' => 50,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'basic_string',
+        'weight' => 50,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
     $fields['status'] = BaseFieldDefinition::create('list_string')
       ->setLabel(t('Status'))
       ->setRequired(TRUE)
@@ -181,11 +253,11 @@ final class Bot extends ContentEntityBase {
       ])
       ->setDisplayOptions('form', [
         'type' => 'options_select',
-        'weight' => 50,
+        'weight' => 55,
       ])
       ->setDisplayOptions('view', [
         'type' => 'list_default',
-        'weight' => 50,
+        'weight' => 55,
       ])
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);

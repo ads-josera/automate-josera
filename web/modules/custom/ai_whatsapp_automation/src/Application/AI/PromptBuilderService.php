@@ -105,15 +105,23 @@ final class PromptBuilderService {
    */
   private function buildInstructions(ContentEntityInterface $bot, ?ContentEntityInterface $account): string {
     $instructions = trim($this->botManager->getEffectivePrompt($bot, $account));
-    $handoff_guardrails = trim(implode("\n", [
+    $bot_rules = $this->getFieldValue($bot, 'handoff_prompt_rules');
+    $handoff_guardrails = [
       'Operational rules:',
       '- Do not ask again for information the user has already provided in the current conversation.',
-      '- When company, merchandise, origin, destination, transport method, approximate value or frequency, and contact details are already present, summarize the captured data and ask only for truly missing or ambiguous details.',
-      '- Once the quote request is sufficiently qualified, tell the user that a JG MYLARD specialist will follow up. Do not restart the intake checklist.',
+      '- Use the current conversation context before asking for new data.',
+      '- When the request is sufficiently qualified for this bot\'s service, summarize the captured data and ask only for truly missing or ambiguous details.',
+      '- Once the request is ready for human follow-up, tell the user that a specialist will follow up. Do not restart the intake checklist.',
       '- Keep WhatsApp responses concise, structured, and professional.',
-    ]));
+    ];
 
-    return trim($instructions . "\n\n" . $handoff_guardrails);
+    if ($bot_rules !== '') {
+      $handoff_guardrails[] = '';
+      $handoff_guardrails[] = 'Bot-specific handoff rules:';
+      $handoff_guardrails[] = $bot_rules;
+    }
+
+    return trim($instructions . "\n\n" . trim(implode("\n", $handoff_guardrails)));
   }
 
   /**

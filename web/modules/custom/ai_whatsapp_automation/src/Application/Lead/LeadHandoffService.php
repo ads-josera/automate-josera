@@ -45,7 +45,12 @@ final class LeadHandoffService {
       return ['status' => 'disabled'];
     }
 
-    if (!$this->isLeadReady($conversation, $ai_response)) {
+    $bot = $this->getBotForConversation($conversation);
+    if ($bot instanceof ContentEntityInterface && $bot->hasField('handoff_enabled') && !(bool) $bot->get('handoff_enabled')->value) {
+      return ['status' => 'disabled_for_bot'];
+    }
+
+    if (!$this->isLeadReady($conversation, $ai_response, $bot)) {
       return ['status' => 'not_ready'];
     }
 
@@ -81,42 +86,153 @@ final class LeadHandoffService {
   /**
    * Checks whether the recent conversation looks ready for human follow-up.
    */
-  private function isLeadReady(ContentEntityInterface $conversation, string $ai_response): bool {
+  private function isLeadReady(ContentEntityInterface $conversation, string $ai_response, ?ContentEntityInterface $bot): bool {
     $text = mb_strtolower($this->recentConversationText($conversation) . "\n" . $ai_response);
+    $conversation_phone = $conversation->hasField('phone') ? trim((string) $conversation->get('phone')->value) : '';
 
-    $has_contact = str_contains($text, '@')
+    $has_contact = $conversation_phone !== ''
+      || str_contains($text, '@')
       || preg_match('/\b(?:tel[eé]fono|celular|whatsapp|contacto|correo|email)\b/u', $text)
       || preg_match('/(?:\+?52\s?1?\s?)?\d{10,}/', $text);
-    $has_handoff_signal = preg_match('/\b(?:asesor|especialista|propuesta personalizada|se pondr[aá] en contacto|elaborar[aá] una propuesta)\b/u', $text);
+    $has_handoff_signal = $this->containsAnySignal($text, $this->handoffTriggerPhrases($bot));
     $has_summary_signal = preg_match('/\b(?:datos recibidos|resumo|resumen|gracias por la informaci[oó]n|informaci[oó]n inicial)\b/u', $text);
-    $quote_field_count = $this->countQuoteFields($text);
+    $signal_count = $this->countSignalGroups($text, $this->handoffRequiredSignals($bot));
+    $minimum_signals = $this->minimumSignals($bot);
 
-    return (bool) ($has_contact && $quote_field_count >= 5 && ($has_handoff_signal || $has_summary_signal));
+    return (bool) ($has_contact && $signal_count >= $minimum_signals && ($has_handoff_signal || $has_summary_signal));
   }
 
   /**
-   * Counts quote-related fields detected in conversation text.
+   * Counts configured signal groups detected in conversation text.
    */
-  private function countQuoteFields(string $text): int {
-    $patterns = [
-      '/\bempresa\b/u',
-      '/\b(?:mercanc[ií]a|producto|carga)\b/u',
-      '/\borigen\b/u',
-      '/\bdestino\b/u',
-      '/\b(?:medio|transporte|multimodal|mar[ií]timo|terrestre|a[eé]reo)\b/u',
-      '/\b(?:valor|monto|usd|mxn|\$)\b/u',
-      '/\b(?:frecuencia|embarques?|mensual|semanal|ocasional)\b/u',
-      '/\b(?:cobertura|nacional|internacional)\b/u',
-    ];
-
+  private function countSignalGroups(string $text, array $signal_groups): int {
     $count = 0;
-    foreach ($patterns as $pattern) {
-      if (preg_match($pattern, $text)) {
+    foreach ($signal_groups as $signals) {
+      if ($this->containsAnySignal($text, $signals)) {
         $count++;
       }
     }
 
     return $count;
+  }
+
+  /**
+   * Checks whether text contains any of the provided literal signals.
+   *
+   * @param string[] $signals
+   *   Literal signals to match.
+   */
+  private function containsAnySignal(string $text, array $signals): bool {
+    foreach ($signals as $signal) {
+      $signal = trim(mb_strtolower($signal));
+      if ($signal === '') {
+        continue;
+      }
+      if (str_contains($text, $signal)) {
+        return TRUE;
+      }
+    }
+
+    return FALSE;
+  }
+
+  /**
+   * Returns the required handoff signal groups for a bot.
+   *
+   * @return array<int, string[]>
+   *   Signal groups.
+   */
+  private function handoffRequiredSignals(?ContentEntityInterface $bot): array {
+    $configured = $bot instanceof ContentEntityInterface ? $this->getFieldValue($bot, 'handoff_required_fields') : '';
+    if ($configured !== '') {
+      return $this->parseSignalGroups($configured);
+    }
+
+    return [
+      ['empresa', 'negocio', 'cliente', 'nombre'],
+      ['mercancía', 'mercancia', 'producto', 'servicio', 'interés', 'interes', 'necesidad'],
+      ['origen', 'ubicación', 'ubicacion', 'ciudad'],
+      ['destino', 'entrega', 'cobertura'],
+      ['medio', 'transporte', 'modalidad', 'multimodal', 'terrestre', 'marítimo', 'maritimo', 'aéreo', 'aereo'],
+      ['valor', 'monto', 'presupuesto', 'usd', 'mxn', '$'],
+      ['frecuencia', 'cantidad', 'volumen', 'embarque', 'embarques', 'mensual', 'semanal', 'ocasional'],
+      ['contacto', 'teléfono', 'telefono', 'whatsapp', 'correo', 'email', '@'],
+    ];
+  }
+
+  /**
+   * Returns handoff trigger phrases for a bot.
+   *
+   * @return string[]
+   *   Trigger phrases.
+   */
+  private function handoffTriggerPhrases(?ContentEntityInterface $bot): array {
+    $configured = $bot instanceof ContentEntityInterface ? $this->getFieldValue($bot, 'handoff_trigger_phrases') : '';
+    if ($configured !== '') {
+      return $this->parseSignalList($configured);
+    }
+
+    return [
+      'asesor',
+      'especialista',
+      'ejecutivo',
+      'representante',
+      'humano',
+      'propuesta personalizada',
+      'se pondrá en contacto',
+      'se pondra en contacto',
+      'elaborará una propuesta',
+      'elaborara una propuesta',
+      'seguimiento',
+      'contactar',
+      'cotización',
+      'cotizacion',
+      'solicitud',
+      'agendar',
+      'reservar',
+      'contratar',
+    ];
+  }
+
+  /**
+   * Returns the minimum configured signal count.
+   */
+  private function minimumSignals(?ContentEntityInterface $bot): int {
+    if (!$bot instanceof ContentEntityInterface || !$bot->hasField('handoff_minimum_fields') || $bot->get('handoff_minimum_fields')->isEmpty()) {
+      return 5;
+    }
+
+    return max(1, (int) $bot->get('handoff_minimum_fields')->value);
+  }
+
+  /**
+   * Parses one signal group per line with comma alternatives.
+   *
+   * @return array<int, string[]>
+   *   Signal groups.
+   */
+  private function parseSignalGroups(string $value): array {
+    $groups = [];
+    foreach (preg_split('/\R+/', $value) ?: [] as $line) {
+      $signals = $this->parseSignalList($line);
+      if ($signals !== []) {
+        $groups[] = $signals;
+      }
+    }
+
+    return $groups;
+  }
+
+  /**
+   * Parses signals separated by commas, pipes, or new lines.
+   *
+   * @return string[]
+   *   Signals.
+   */
+  private function parseSignalList(string $value): array {
+    $signals = preg_split('/[\r\n,|]+/', $value) ?: [];
+
+    return array_values(array_filter(array_map('trim', $signals), static fn (string $signal): bool => $signal !== ''));
   }
 
   /**
@@ -305,6 +421,37 @@ final class LeadHandoffService {
     }
 
     return (string) $account->get('phone_number')->value;
+  }
+
+  /**
+   * Returns the bot associated with the conversation account.
+   */
+  private function getBotForConversation(ContentEntityInterface $conversation): ?ContentEntityInterface {
+    if (!$conversation->hasField('whatsapp_account') || $conversation->get('whatsapp_account')->isEmpty()) {
+      return NULL;
+    }
+
+    $account = $conversation->get('whatsapp_account')->entity;
+    if (!$account instanceof ContentEntityInterface || !$account->hasField('bot') || $account->get('bot')->isEmpty()) {
+      return NULL;
+    }
+
+    $bot = $account->get('bot')->entity;
+
+    return $bot instanceof ContentEntityInterface ? $bot : NULL;
+  }
+
+  /**
+   * Reads a scalar field value from an entity.
+   */
+  private function getFieldValue(ContentEntityInterface $entity, string $field_name): string {
+    if (!$entity->hasField($field_name) || $entity->get($field_name)->isEmpty()) {
+      return '';
+    }
+
+    $value = $entity->get($field_name)->value;
+
+    return is_scalar($value) ? (string) $value : '';
   }
 
   /**

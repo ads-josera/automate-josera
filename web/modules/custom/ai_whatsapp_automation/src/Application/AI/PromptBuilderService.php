@@ -94,10 +94,26 @@ final class PromptBuilderService {
       'prompt' => implode("\n", $context_lines),
       'model' => $this->botManager->getEffectiveModel($bot, $account),
       'options' => [
-        'instructions' => $this->botManager->getEffectivePrompt($bot, $account),
+        'instructions' => $this->buildInstructions($bot, $account),
         'metadata' => $this->stringifyMetadata($metadata),
       ],
     ];
+  }
+
+  /**
+   * Builds effective AI instructions with operational safeguards.
+   */
+  private function buildInstructions(ContentEntityInterface $bot, ?ContentEntityInterface $account): string {
+    $instructions = trim($this->botManager->getEffectivePrompt($bot, $account));
+    $handoff_guardrails = trim(implode("\n", [
+      'Operational rules:',
+      '- Do not ask again for information the user has already provided in the current conversation.',
+      '- When company, merchandise, origin, destination, transport method, approximate value or frequency, and contact details are already present, summarize the captured data and ask only for truly missing or ambiguous details.',
+      '- Once the quote request is sufficiently qualified, tell the user that a JG MYLARD specialist will follow up. Do not restart the intake checklist.',
+      '- Keep WhatsApp responses concise, structured, and professional.',
+    ]));
+
+    return trim($instructions . "\n\n" . $handoff_guardrails);
   }
 
   /**

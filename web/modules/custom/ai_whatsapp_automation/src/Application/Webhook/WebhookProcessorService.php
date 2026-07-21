@@ -93,6 +93,10 @@ final class WebhookProcessorService {
 
     $delivery = $this->messageSender->sendText($provider, $message, (string) $engine_result['response_text']);
     $handoff = $this->leadHandoff->handle($conversation, (string) $engine_result['response_text']);
+    $this->logger->notice('Lead handoff check for conversation @conversation finished with status @status.', [
+      '@conversation' => (string) $conversation->id(),
+      '@status' => (string) ($handoff['status'] ?? 'unknown'),
+    ]);
 
     return $engine_result + [
       'delivery' => $delivery,

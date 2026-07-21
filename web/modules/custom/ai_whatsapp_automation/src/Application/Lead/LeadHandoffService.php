@@ -59,6 +59,17 @@ final class LeadHandoffService {
     $this->auditHandoff($conversation, $lead);
 
     $notifications = $this->notifyAdministrators($conversation, $lead, $ai_response);
+    if ($notifications === []) {
+      $this->logger->warning('Lead handoff created for conversation @conversation, but no administrator notification numbers were configured.', [
+        '@conversation' => (string) $conversation->id(),
+      ]);
+
+      return [
+        'status' => 'created_without_recipients',
+        'lead_id' => $lead->id(),
+        'notifications' => [],
+      ];
+    }
 
     return [
       'status' => 'notified',
@@ -73,11 +84,39 @@ final class LeadHandoffService {
   private function isLeadReady(ContentEntityInterface $conversation, string $ai_response): bool {
     $text = mb_strtolower($this->recentConversationText($conversation) . "\n" . $ai_response);
 
-    $has_contact = str_contains($text, '@') || preg_match('/\b(?:tel[eé]fono|celular|whatsapp|contacto|correo|email)\b/u', $text);
-    $has_quote_data = preg_match('/\b(?:cotizaci[oó]n|propuesta|mercanc[ií]a|origen|destino|valor|embarque|cobertura|empresa)\b/u', $text);
+    $has_contact = str_contains($text, '@')
+      || preg_match('/\b(?:tel[eé]fono|celular|whatsapp|contacto|correo|email)\b/u', $text)
+      || preg_match('/(?:\+?52\s?1?\s?)?\d{10,}/', $text);
     $has_handoff_signal = preg_match('/\b(?:asesor|especialista|propuesta personalizada|se pondr[aá] en contacto|elaborar[aá] una propuesta)\b/u', $text);
+    $has_summary_signal = preg_match('/\b(?:datos recibidos|resumo|resumen|gracias por la informaci[oó]n|informaci[oó]n inicial)\b/u', $text);
+    $quote_field_count = $this->countQuoteFields($text);
 
-    return (bool) ($has_contact && $has_quote_data && $has_handoff_signal);
+    return (bool) ($has_contact && $quote_field_count >= 5 && ($has_handoff_signal || $has_summary_signal));
+  }
+
+  /**
+   * Counts quote-related fields detected in conversation text.
+   */
+  private function countQuoteFields(string $text): int {
+    $patterns = [
+      '/\bempresa\b/u',
+      '/\b(?:mercanc[ií]a|producto|carga)\b/u',
+      '/\borigen\b/u',
+      '/\bdestino\b/u',
+      '/\b(?:medio|transporte|multimodal|mar[ií]timo|terrestre|a[eé]reo)\b/u',
+      '/\b(?:valor|monto|usd|mxn|\$)\b/u',
+      '/\b(?:frecuencia|embarques?|mensual|semanal|ocasional)\b/u',
+      '/\b(?:cobertura|nacional|internacional)\b/u',
+    ];
+
+    $count = 0;
+    foreach ($patterns as $pattern) {
+      if (preg_match($pattern, $text)) {
+        $count++;
+      }
+    }
+
+    return $count;
   }
 
   /**

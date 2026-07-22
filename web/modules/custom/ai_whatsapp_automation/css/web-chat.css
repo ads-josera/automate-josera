@@ -1,0 +1,173 @@
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #f6f8fb;
+}
+
+.aiwa-chat-shell {
+  box-sizing: border-box;
+  min-height: 100vh;
+  padding: 0;
+  font-family: Inter, Arial, sans-serif;
+}
+
+.aiwa-chat {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  overflow: hidden;
+  height: 100vh;
+  min-height: 420px;
+  background: #fff;
+  color: #1f2937;
+}
+
+.aiwa-chat__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--aiwa-primary), var(--aiwa-secondary));
+}
+
+.aiwa-chat__logo,
+.aiwa-chat__logo-fallback {
+  display: grid;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .18);
+  object-fit: cover;
+  font-weight: 800;
+}
+
+.aiwa-chat__title {
+  min-width: 0;
+}
+
+.aiwa-chat__title strong,
+.aiwa-chat__title span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aiwa-chat__title strong {
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.aiwa-chat__title span {
+  margin-top: 3px;
+  font-size: 12px;
+  opacity: .86;
+}
+
+.aiwa-chat__messages {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  padding: 18px 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .8), rgba(255, 255, 255, 0)),
+    #f6f8fb;
+}
+
+.aiwa-message {
+  box-sizing: border-box;
+  max-width: min(82%, 560px);
+  padding: 11px 13px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .06);
+}
+
+.aiwa-message--ai {
+  align-self: flex-start;
+  border: 1px solid #e5e7eb;
+  border-bottom-left-radius: 6px;
+  background: #fff;
+}
+
+.aiwa-message--user {
+  align-self: flex-end;
+  border-bottom-right-radius: 6px;
+  background: var(--aiwa-primary);
+  color: #fff;
+}
+
+.aiwa-message--system {
+  align-self: center;
+  max-width: 92%;
+  padding: 8px 10px;
+  border: 1px solid #fee2e2;
+  background: #fff7f7;
+  color: #991b1b;
+  font-size: 12px;
+}
+
+.aiwa-chat__form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  padding: 12px;
+  border-top: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+.aiwa-chat__form textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  max-height: 112px;
+  resize: none;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  padding: 11px 12px;
+  font: inherit;
+  line-height: 1.35;
+  color: #111827;
+  outline: none;
+}
+
+.aiwa-chat__form textarea:focus {
+  border-color: var(--aiwa-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--aiwa-primary) 16%, transparent);
+}
+
+.aiwa-chat__form button {
+  min-width: 76px;
+  height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--aiwa-primary);
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.aiwa-chat__form button:disabled {
+  cursor: progress;
+  opacity: .68;
+}
+
+@media (max-width: 520px) {
+  .aiwa-chat {
+    min-height: 100vh;
+  }
+
+  .aiwa-message {
+    max-width: 90%;
+  }
+}

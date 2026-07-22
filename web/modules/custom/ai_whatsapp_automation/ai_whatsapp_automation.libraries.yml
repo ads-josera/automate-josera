@@ -7,3 +7,22 @@ settings:
   css:
     theme:
       css/settings.css: {}
+
+integration_admin:
+  css:
+    theme:
+      css/integration-admin.css: {}
+  js:
+    js/integration-admin.js: {}
+  dependencies:
+    - core/drupal
+
+web_chat:
+  css:
+    theme:
+      css/web-chat.css: {}
+  js:
+    js/web-chat.js: {}
+  dependencies:
+    - core/drupal
+    - core/drupalSettings

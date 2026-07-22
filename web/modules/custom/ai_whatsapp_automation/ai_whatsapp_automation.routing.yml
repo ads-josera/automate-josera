@@ -15,6 +15,34 @@ ai_whatsapp_automation.webhook:
     provider: 'twilio|cloud_api|evolution'
   methods: [GET, POST]
 
+ai_whatsapp_automation.web_chat_page:
+  path: '/ai-whatsapp-automation/chat/{token}'
+  defaults:
+    _controller: '\Drupal\ai_whatsapp_automation\Controller\WebChatController::page'
+    _title: 'Chat'
+  requirements:
+    _access: 'TRUE'
+    token: '[A-Za-z0-9_-]+'
+  methods: [GET]
+
+ai_whatsapp_automation.web_chat_embed:
+  path: '/ai-whatsapp-automation/embed/{token}.js'
+  defaults:
+    _controller: '\Drupal\ai_whatsapp_automation\Controller\WebChatController::embed'
+  requirements:
+    _access: 'TRUE'
+    token: '[A-Za-z0-9_-]+'
+  methods: [GET]
+
+ai_whatsapp_automation.web_chat_api:
+  path: '/ai-whatsapp-automation/api/web-chat/{token}'
+  defaults:
+    _controller: '\Drupal\ai_whatsapp_automation\Controller\WebChatController::message'
+  requirements:
+    _access: 'TRUE'
+    token: '[A-Za-z0-9_-]+'
+  methods: [POST, OPTIONS]
+
 ai_whatsapp_automation.dashboard:
   path: '/admin/reports/ai-whatsapp-automation'
   defaults:
@@ -58,6 +86,18 @@ ai_whatsapp_automation.multibot_routing:
     _title: 'MultiBot routing'
   requirements:
     _permission: 'administer ai whatsapp automation entities'
+
+ai_whatsapp_automation.bot_web_integration:
+  path: '/admin/content/ai-whatsapp/bots/{ai_whatsapp_bot}/web-integration'
+  defaults:
+    _controller: '\Drupal\ai_whatsapp_automation\Controller\WebIntegrationController::overview'
+    _title: 'Web integration'
+  requirements:
+    _permission: 'administer ai whatsapp automation entities'
+  options:
+    parameters:
+      ai_whatsapp_bot:
+        type: entity:ai_whatsapp_bot
 
 ai_whatsapp_automation.conversation_stop_ai:
   path: '/admin/content/ai-whatsapp/conversations/{ai_whatsapp_conversation}/stop-ai'

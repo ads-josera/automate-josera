@@ -349,6 +349,106 @@ function ai_whatsapp_automation_update_11012(): void {
 }
 
 /**
+ * Adds web widget integration fields and web conversation support.
+ */
+function ai_whatsapp_automation_update_11013(): void {
+  $definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+  $field_manager = \Drupal::service('entity_field.manager');
+
+  $bot_field_definitions = $field_manager->getFieldStorageDefinitions('ai_whatsapp_bot');
+  foreach ([
+    'web_widget_enabled',
+    'web_widget_token',
+    'web_widget_primary_color',
+    'web_widget_secondary_color',
+    'web_widget_logo_url',
+    'web_widget_assistant_name',
+    'web_widget_welcome_message',
+    'web_widget_position',
+    'web_widget_icon',
+    'web_widget_size',
+    'web_widget_language',
+    'web_widget_allowed_domains',
+    'web_widget_api_key',
+  ] as $field_name) {
+    if ($definition_update_manager->getFieldStorageDefinition($field_name, 'ai_whatsapp_bot') !== NULL) {
+      continue;
+    }
+
+    if (isset($bot_field_definitions[$field_name])) {
+      $definition_update_manager->installFieldStorageDefinition(
+        $field_name,
+        'ai_whatsapp_bot',
+        'ai_whatsapp_automation',
+        $bot_field_definitions[$field_name]
+      );
+    }
+  }
+
+  $conversation_field_definitions = $field_manager->getFieldStorageDefinitions('ai_whatsapp_conversation');
+  foreach (['channel', 'provider'] as $field_name) {
+    if (isset($conversation_field_definitions[$field_name])) {
+      $definition_update_manager->updateFieldStorageDefinition($conversation_field_definitions[$field_name]);
+    }
+  }
+
+  if (
+    $definition_update_manager->getFieldStorageDefinition('bot', 'ai_whatsapp_conversation') === NULL
+    && isset($conversation_field_definitions['bot'])
+  ) {
+    $definition_update_manager->installFieldStorageDefinition(
+      'bot',
+      'ai_whatsapp_conversation',
+      'ai_whatsapp_automation',
+      $conversation_field_definitions['bot']
+    );
+  }
+
+  $database = \Drupal::database();
+  if ($database->schema()->tableExists('ai_whatsapp_bot')) {
+    $fields = [
+      'web_widget_enabled' => 0,
+      'web_widget_primary_color' => '#155EEF',
+      'web_widget_secondary_color' => '#111827',
+      'web_widget_welcome_message' => 'Hola, ¿en qué puedo ayudarte?',
+      'web_widget_position' => 'right',
+      'web_widget_icon' => 'chat',
+      'web_widget_size' => 'medium',
+      'web_widget_language' => 'es',
+    ];
+
+    foreach ($fields as $field_name => $value) {
+      $database->update('ai_whatsapp_bot')
+        ->fields([$field_name => $value])
+        ->isNull($field_name)
+        ->execute();
+    }
+  }
+
+  \Drupal::entityTypeManager()->clearCachedDefinitions();
+  \Drupal::service('entity_field.manager')->clearCachedFieldDefinitions();
+
+  $bot_storage = \Drupal::entityTypeManager()->getStorage('ai_whatsapp_bot');
+  foreach ($bot_storage->loadMultiple() as $bot) {
+    if (!$bot instanceof \Drupal\Core\Entity\ContentEntityInterface) {
+      continue;
+    }
+    $changed = FALSE;
+    if ($bot->hasField('web_widget_token') && $bot->get('web_widget_token')->isEmpty()) {
+      $bot->set('web_widget_token', (string) $bot->uuid());
+      $changed = TRUE;
+    }
+    if ($bot->hasField('web_widget_assistant_name') && $bot->get('web_widget_assistant_name')->isEmpty()) {
+      $bot->set('web_widget_assistant_name', (string) $bot->label());
+      $changed = TRUE;
+    }
+    if ($changed) {
+      $bot->save();
+    }
+  }
+}
+
+/**
  * Returns the entity type IDs provided by this module.
  *
  * @return string[]

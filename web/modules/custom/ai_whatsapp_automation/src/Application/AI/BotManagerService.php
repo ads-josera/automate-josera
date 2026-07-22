@@ -24,6 +24,13 @@ final class BotManagerService {
    * Loads the active bot associated with a conversation.
    */
   public function getBotForConversation(ContentEntityInterface $conversation): ?ContentEntityInterface {
+    if ($conversation->hasField('bot') && !$conversation->get('bot')->isEmpty()) {
+      $bot = $conversation->get('bot')->entity;
+      if ($bot instanceof ContentEntityInterface && $this->isActive($bot)) {
+        return $bot;
+      }
+    }
+
     $account = $this->getAccountForConversation($conversation);
     if (!$account instanceof ContentEntityInterface) {
       return NULL;

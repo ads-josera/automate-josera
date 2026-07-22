@@ -106,6 +106,7 @@ final class Conversation extends ContentEntityBase {
       ->setSettings([
         'allowed_values' => [
           'whatsapp' => 'WhatsApp',
+          'web' => 'Web chat',
         ],
       ])
       ->setDisplayOptions('form', [
@@ -127,6 +128,7 @@ final class Conversation extends ContentEntityBase {
           'twilio' => 'Twilio',
           'cloud_api' => 'WhatsApp Cloud API',
           'evolution' => 'Evolution API',
+          'web' => 'Web widget',
         ],
       ])
       ->setDisplayOptions('form', [
@@ -188,6 +190,22 @@ final class Conversation extends ContentEntityBase {
       ->setDisplayOptions('view', [
         'type' => 'entity_reference_label',
         'weight' => 60,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['bot'] = BaseFieldDefinition::create('entity_reference')
+      ->setLabel(t('Bot'))
+      ->setDescription(t('Direct bot reference used by web chat conversations.'))
+      ->setSetting('target_type', 'ai_whatsapp_bot')
+      ->setSetting('handler', 'default')
+      ->setDisplayOptions('form', [
+        'type' => 'entity_reference_autocomplete',
+        'weight' => 65,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'entity_reference_label',
+        'weight' => 65,
       ])
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);

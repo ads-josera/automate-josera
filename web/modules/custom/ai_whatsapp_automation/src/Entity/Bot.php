@@ -241,6 +241,224 @@ final class Bot extends ContentEntityBase {
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
+    $fields['web_widget_enabled'] = BaseFieldDefinition::create('boolean')
+      ->setLabel(t('Enable web widget'))
+      ->setDescription(t('Allow this bot to be embedded as a public web chat widget.'))
+      ->setDefaultValue(FALSE)
+      ->setDisplayOptions('form', [
+        'type' => 'boolean_checkbox',
+        'weight' => 51,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'boolean',
+        'weight' => 51,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['web_widget_token'] = BaseFieldDefinition::create('string')
+      ->setLabel(t('Web widget token'))
+      ->setDescription(t('Public UUID used in iframe and JavaScript embed URLs.'))
+      ->setSetting('max_length', 64)
+      ->setDefaultValueCallback(static::class . '::generateWidgetToken')
+      ->setDisplayOptions('form', [
+        'type' => 'string_textfield',
+        'weight' => 52,
+        'settings' => [
+          'size' => 64,
+        ],
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'string',
+        'weight' => 52,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['web_widget_primary_color'] = BaseFieldDefinition::create('string')
+      ->setLabel(t('Web widget primary color'))
+      ->setSetting('max_length', 16)
+      ->setDefaultValue('#155EEF')
+      ->setDisplayOptions('form', [
+        'type' => 'string_textfield',
+        'weight' => 53,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'string',
+        'weight' => 53,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['web_widget_secondary_color'] = BaseFieldDefinition::create('string')
+      ->setLabel(t('Web widget secondary color'))
+      ->setSetting('max_length', 16)
+      ->setDefaultValue('#111827')
+      ->setDisplayOptions('form', [
+        'type' => 'string_textfield',
+        'weight' => 54,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'string',
+        'weight' => 54,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['web_widget_logo_url'] = BaseFieldDefinition::create('string')
+      ->setLabel(t('Web widget logo URL'))
+      ->setDescription(t('Optional absolute URL for the assistant logo.'))
+      ->setSetting('max_length', 512)
+      ->setDisplayOptions('form', [
+        'type' => 'string_textfield',
+        'weight' => 55,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'string',
+        'weight' => 55,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['web_widget_assistant_name'] = BaseFieldDefinition::create('string')
+      ->setLabel(t('Web widget assistant name'))
+      ->setSetting('max_length', 128)
+      ->setDisplayOptions('form', [
+        'type' => 'string_textfield',
+        'weight' => 56,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'string',
+        'weight' => 56,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['web_widget_welcome_message'] = BaseFieldDefinition::create('string_long')
+      ->setLabel(t('Web widget welcome message'))
+      ->setDefaultValue('Hola, ¿en qué puedo ayudarte?')
+      ->setDisplayOptions('form', [
+        'type' => 'string_textarea',
+        'weight' => 57,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'basic_string',
+        'weight' => 57,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['web_widget_position'] = BaseFieldDefinition::create('list_string')
+      ->setLabel(t('Web widget button position'))
+      ->setDefaultValue('right')
+      ->setSettings([
+        'allowed_values' => [
+          'right' => 'Right',
+          'left' => 'Left',
+        ],
+      ])
+      ->setDisplayOptions('form', [
+        'type' => 'options_select',
+        'weight' => 58,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'list_default',
+        'weight' => 58,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['web_widget_icon'] = BaseFieldDefinition::create('list_string')
+      ->setLabel(t('Web widget button icon'))
+      ->setDefaultValue('chat')
+      ->setSettings([
+        'allowed_values' => [
+          'chat' => 'Chat',
+          'sparkles' => 'Sparkles',
+          'help' => 'Help',
+        ],
+      ])
+      ->setDisplayOptions('form', [
+        'type' => 'options_select',
+        'weight' => 59,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'list_default',
+        'weight' => 59,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['web_widget_size'] = BaseFieldDefinition::create('list_string')
+      ->setLabel(t('Web widget size'))
+      ->setDefaultValue('medium')
+      ->setSettings([
+        'allowed_values' => [
+          'small' => 'Small',
+          'medium' => 'Medium',
+          'large' => 'Large',
+        ],
+      ])
+      ->setDisplayOptions('form', [
+        'type' => 'options_select',
+        'weight' => 60,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'list_default',
+        'weight' => 60,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['web_widget_language'] = BaseFieldDefinition::create('list_string')
+      ->setLabel(t('Web widget language'))
+      ->setDefaultValue('es')
+      ->setSettings([
+        'allowed_values' => [
+          'es' => 'Spanish',
+          'en' => 'English',
+        ],
+      ])
+      ->setDisplayOptions('form', [
+        'type' => 'options_select',
+        'weight' => 61,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'list_default',
+        'weight' => 61,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['web_widget_allowed_domains'] = BaseFieldDefinition::create('string_long')
+      ->setLabel(t('Web widget allowed domains'))
+      ->setDescription(t('Optional list of authorized domains, one per line. Leave empty to allow any domain.'))
+      ->setDisplayOptions('form', [
+        'type' => 'string_textarea',
+        'weight' => 62,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'basic_string',
+        'weight' => 62,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['web_widget_api_key'] = BaseFieldDefinition::create('string')
+      ->setLabel(t('Web widget API key'))
+      ->setDescription(t('Optional API key required by JavaScript and API requests. Leave empty for public domain-restricted access.'))
+      ->setSetting('max_length', 128)
+      ->setDisplayOptions('form', [
+        'type' => 'string_textfield',
+        'weight' => 63,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'string',
+        'weight' => 63,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
     $fields['status'] = BaseFieldDefinition::create('list_string')
       ->setLabel(t('Status'))
       ->setRequired(TRUE)
@@ -253,11 +471,11 @@ final class Bot extends ContentEntityBase {
       ])
       ->setDisplayOptions('form', [
         'type' => 'options_select',
-        'weight' => 55,
+        'weight' => 70,
       ])
       ->setDisplayOptions('view', [
         'type' => 'list_default',
-        'weight' => 55,
+        'weight' => 70,
       ])
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
@@ -279,6 +497,16 @@ final class Bot extends ContentEntityBase {
       ->setDisplayConfigurable('view', TRUE);
 
     return $fields;
+  }
+
+  /**
+   * Generates a public widget token for new bots.
+   *
+   * @return string[]
+   *   Default field value.
+   */
+  public static function generateWidgetToken(): array {
+    return [\Drupal::service('uuid')->generate()];
   }
 
 }

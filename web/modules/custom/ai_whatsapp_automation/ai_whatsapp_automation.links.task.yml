@@ -1,0 +1,5 @@
+ai_whatsapp_automation.bot_web_integration:
+  route_name: ai_whatsapp_automation.bot_web_integration
+  base_route: entity.ai_whatsapp_bot.canonical
+  title: 'Web integration'
+  weight: 20

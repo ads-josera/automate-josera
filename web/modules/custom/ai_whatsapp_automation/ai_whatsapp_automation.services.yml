@@ -30,6 +30,13 @@ services:
       - '@ai_whatsapp_automation.openai_service'
       - '@logger.factory'
 
+  ai_whatsapp_automation.web_chat:
+    class: Drupal\ai_whatsapp_automation\Application\WebChat\WebChatService
+    arguments:
+      - '@entity_type.manager'
+      - '@ai_whatsapp_automation.conversation_engine'
+      - '@logger.factory'
+
   ai_whatsapp_automation.webhook_provider:
     class: Drupal\ai_whatsapp_automation\Application\Webhook\WebhookProviderService
     arguments:

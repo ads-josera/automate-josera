@@ -39,6 +39,28 @@ final class WebIntegrationController extends ControllerBase {
         'summary' => [
           '#markup' => '<p>' . $this->t('Use these snippets to embed this assistant in WordPress, Drupal, Joomla, HTML, React, Vue, Angular, or any site that accepts iframe or JavaScript embeds.') . '</p>',
         ],
+        'actions' => [
+          '#type' => 'container',
+          '#attributes' => ['class' => ['aiwa-integration-actions']],
+          'open_chat' => [
+            '#type' => 'link',
+            '#title' => $this->t('Open public chat'),
+            '#url' => Url::fromUri($chat_url),
+            '#attributes' => [
+              'class' => ['button', 'button--primary'],
+              'target' => '_blank',
+              'rel' => 'noopener noreferrer',
+            ],
+          ],
+          'edit_bot' => [
+            '#type' => 'link',
+            '#title' => $this->t('Edit bot settings'),
+            '#url' => $ai_whatsapp_bot->toUrl('edit-form'),
+            '#attributes' => [
+              'class' => ['button'],
+            ],
+          ],
+        ],
       ],
     ];
 
@@ -73,10 +95,29 @@ final class WebIntegrationController extends ControllerBase {
         '#markup' => '<h3>' . htmlspecialchars((string) $title, ENT_QUOTES, 'UTF-8') . '</h3>',
       ],
       'code' => [
-        '#markup' => '<textarea id="' . $id . '" readonly rows="4">' . htmlspecialchars($code, ENT_QUOTES, 'UTF-8') . '</textarea>',
+        '#type' => 'html_tag',
+        '#tag' => 'textarea',
+        '#value' => $code,
+        '#attributes' => [
+          'id' => $id,
+          'readonly' => 'readonly',
+          'rows' => 4,
+          'class' => ['aiwa-integration-code'],
+        ],
       ],
-      'copy' => [
-        '#markup' => '<button type="button" class="button button--primary aiwa-copy-button" data-aiwa-copy-target="' . $id . '">' . $this->t('Copy') . '</button>',
+      'actions' => [
+        '#type' => 'container',
+        '#attributes' => ['class' => ['aiwa-integration-card__actions']],
+        'copy' => [
+          '#type' => 'html_tag',
+          '#tag' => 'button',
+          '#value' => $this->t('Copy'),
+          '#attributes' => [
+            'type' => 'button',
+            'class' => ['button', 'button--primary', 'aiwa-copy-button'],
+            'data-aiwa-copy-target' => $id,
+          ],
+        ],
       ],
     ];
   }

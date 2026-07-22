@@ -51,6 +51,16 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
       ];
     }
 
+    if ($entity->getEntityTypeId() === 'ai_whatsapp_bot') {
+      $operations['web_integration'] = [
+        'title' => $this->t('Web integration'),
+        'weight' => 20,
+        'url' => Url::fromRoute('ai_whatsapp_automation.bot_web_integration', [
+          'ai_whatsapp_bot' => $entity->id(),
+        ]),
+      ];
+    }
+
     if ($entity->getEntityTypeId() !== 'ai_whatsapp_conversation') {
       return $operations;
     }

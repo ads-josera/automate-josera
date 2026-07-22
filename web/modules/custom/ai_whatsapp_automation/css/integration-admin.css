@@ -84,3 +84,8 @@
 .aiwa-copy-button.is-copied {
   background: #047857;
 }
+
+.aiwa-web-integration-form-link {
+  display: inline-block;
+  margin: 0 0 16px;
+}

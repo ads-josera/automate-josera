@@ -89,35 +89,21 @@ final class WebIntegrationController extends ControllerBase {
     $id = 'aiwa-snippet-' . substr(hash('sha256', $code), 0, 12);
 
     return [
-      '#type' => 'container',
-      '#attributes' => ['class' => ['aiwa-integration-card']],
-      'title' => [
-        '#markup' => '<h3>' . htmlspecialchars((string) $title, ENT_QUOTES, 'UTF-8') . '</h3>',
-      ],
-      'code' => [
-        '#type' => 'html_tag',
-        '#tag' => 'textarea',
-        '#value' => $code,
-        '#attributes' => [
-          'id' => $id,
-          'readonly' => 'readonly',
-          'rows' => 4,
-          'class' => ['aiwa-integration-code'],
-        ],
-      ],
-      'actions' => [
-        '#type' => 'container',
-        '#attributes' => ['class' => ['aiwa-integration-card__actions']],
-        'copy' => [
-          '#type' => 'html_tag',
-          '#tag' => 'button',
-          '#value' => $this->t('Copy'),
-          '#attributes' => [
-            'type' => 'button',
-            'class' => ['button', 'button--primary', 'aiwa-copy-button'],
-            'data-aiwa-copy-target' => $id,
-          ],
-        ],
+      '#type' => 'inline_template',
+      '#template' => '
+        <div class="aiwa-integration-card">
+          <h3>{{ title }}</h3>
+          <textarea id="{{ id }}" readonly rows="4" class="aiwa-integration-code">{{ code }}</textarea>
+          <div class="aiwa-integration-card__actions">
+            <button type="button" class="button button--primary aiwa-copy-button" data-aiwa-copy-target="{{ id }}">{{ copy }}</button>
+          </div>
+        </div>
+      ',
+      '#context' => [
+        'title' => (string) $title,
+        'id' => $id,
+        'code' => $code,
+        'copy' => $this->t('Copy'),
       ],
     ];
   }

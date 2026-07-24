@@ -38,6 +38,13 @@ services:
       - '@ai_whatsapp_automation.conversation_engine'
       - '@logger.factory'
 
+  ai_whatsapp_automation.web_chat_frame_response_subscriber:
+    class: Drupal\ai_whatsapp_automation\EventSubscriber\WebChatFrameResponseSubscriber
+    arguments:
+      - '@ai_whatsapp_automation.web_chat'
+    tags:
+      - { name: event_subscriber }
+
   ai_whatsapp_automation.webhook_provider:
     class: Drupal\ai_whatsapp_automation\Application\Webhook\WebhookProviderService
     arguments:

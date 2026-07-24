@@ -131,6 +131,27 @@ final class WebChatService {
   }
 
   /**
+   * Returns CSP frame-ancestors values for the public chat page.
+   *
+   * @return string[]
+   *   Allowed embedding origins.
+   */
+  public function frameAncestors(ContentEntityInterface $bot): array {
+    $domains = $this->allowedDomains($bot);
+    if ($domains === []) {
+      return ['*'];
+    }
+
+    $origins = [];
+    foreach ($domains as $domain) {
+      $origins[] = 'https://' . $domain;
+      $origins[] = 'http://' . $domain;
+    }
+
+    return array_values(array_unique($origins));
+  }
+
+  /**
    * Builds public widget configuration.
    *
    * @return array<string, string>

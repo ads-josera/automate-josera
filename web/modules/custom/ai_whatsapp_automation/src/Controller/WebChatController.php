@@ -38,7 +38,7 @@ final class WebChatController extends ControllerBase {
   /**
    * Displays the embeddable chat page.
    */
-  public function page(Request $request, string $token): array|Response {
+  public function page(Request $request, string $token): Response {
     $bot = $this->webChat->loadBot($token);
     if (!$bot instanceof ContentEntityInterface || !$this->webChat->isRequestAllowed($bot, $request)) {
       return new Response('Chat not available.', Response::HTTP_FORBIDDEN);
@@ -47,57 +47,30 @@ final class WebChatController extends ControllerBase {
     $config = $this->webChat->widgetConfig($bot);
     $api_url = Url::fromRoute('ai_whatsapp_automation.web_chat_api', ['token' => $this->publicToken($bot)], ['absolute' => TRUE])->toString();
 
-    return [
-      '#type' => 'inline_template',
-      '#template' => '
-        <div class="aiwa-chat-shell">
-          <div class="aiwa-chat" style="--aiwa-primary:{{ primary_color }};--aiwa-secondary:{{ secondary_color }};">
-            <div class="aiwa-chat__header">
-              {% if logo_url %}
-                <img class="aiwa-chat__logo" src="{{ logo_url }}" alt="">
-              {% else %}
-                <span class="aiwa-chat__logo-fallback">AI</span>
-              {% endif %}
-              <div class="aiwa-chat__title">
-                <strong>{{ name }}</strong>
-                <span>{{ status }}</span>
-              </div>
-            </div>
-            <div class="aiwa-chat__messages" data-aiwa-messages>
-              <div class="aiwa-message aiwa-message--ai">{{ welcome_message }}</div>
-            </div>
-            <form class="aiwa-chat__form" data-aiwa-form>
-              <textarea data-aiwa-input rows="1" maxlength="1400" placeholder="{{ placeholder }}"></textarea>
-              <button type="submit">{{ send }}</button>
-            </form>
-          </div>
-        </div>
-      ',
-      '#attributes' => [
-        'class' => ['aiwa-chat-shell'],
-      ],
-      '#context' => [
-        'primary_color' => $this->safeColor($config['primaryColor']),
-        'secondary_color' => $this->safeColor($config['secondaryColor']),
-        'logo_url' => $config['logoUrl'],
-        'name' => $config['name'],
-        'status' => $this->t('Online assistant'),
-        'welcome_message' => $config['welcomeMessage'],
-        'placeholder' => $this->t('Write your message...'),
-        'send' => $this->t('Send'),
-      ],
-      '#attached' => [
-        'library' => ['ai_whatsapp_automation/web_chat'],
-        'drupalSettings' => [
-          'aiWhatsappAutomationWebChat' => [
-            'apiUrl' => $api_url,
-            'apiKey' => $this->getFieldValue($bot, 'web_widget_api_key'),
-            'token' => $this->publicToken($bot),
-            'language' => $config['language'],
-          ],
-        ],
-      ],
-    ];
+    $settings = json_encode([
+      'apiUrl' => $api_url,
+      'apiKey' => $this->getFieldValue($bot, 'web_widget_api_key'),
+      'token' => $this->publicToken($bot),
+      'language' => $config['language'],
+    ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR);
+    $assets_base = rtrim($request->getSchemeAndHttpHost(), '/') . base_path() . 'modules/custom/ai_whatsapp_automation';
+    $logo = $config['logoUrl'] !== ''
+      ? '<img class="aiwa-chat__logo" src="' . $this->escape($config['logoUrl']) . '" alt="">'
+      : '<span class="aiwa-chat__logo-fallback">AI</span>';
+    $html = '<!doctype html><html lang="' . $this->escape($config['language']) . '"><head>'
+      . '<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
+      . '<link rel="stylesheet" href="' . $this->escape($assets_base . '/css/web-chat.css') . '">'
+      . '</head><body><div class="aiwa-chat-shell"><div class="aiwa-chat" style="--aiwa-primary:' . $this->safeColor($config['primaryColor']) . ';--aiwa-secondary:' . $this->safeColor($config['secondaryColor']) . ';">'
+      . '<div class="aiwa-chat__header">' . $logo . '<div class="aiwa-chat__title"><strong>' . $this->escape($config['name']) . '</strong><span>' . $this->escape((string) $this->t('Online assistant')) . '</span></div></div>'
+      . '<div class="aiwa-chat__messages" data-aiwa-messages><div class="aiwa-message aiwa-message--ai">' . $this->escape($config['welcomeMessage']) . '</div></div>'
+      . '<form class="aiwa-chat__form" data-aiwa-form><textarea data-aiwa-input rows="1" maxlength="1400" placeholder="' . $this->escape((string) $this->t('Write your message...')) . '"></textarea><button type="submit">' . $this->escape((string) $this->t('Send')) . '</button></form>'
+      . '</div></div><script>window.drupalSettings=window.drupalSettings||{};window.drupalSettings.aiWhatsappAutomationWebChat=' . $settings . ';</script>'
+      . '<script src="' . $this->escape($assets_base . '/js/web-chat.js') . '"></script></body></html>';
+
+    return new Response($html, Response::HTTP_OK, [
+      'Content-Type' => 'text/html; charset=UTF-8',
+      'Cache-Control' => 'no-store, private',
+    ]);
   }
 
   /**
@@ -214,6 +187,13 @@ final class WebChatController extends ControllerBase {
    */
   private function safeColor(string $color): string {
     return preg_match('/^#[0-9A-Fa-f]{3,8}$/', $color) ? $color : '#155EEF';
+  }
+
+  /**
+   * Escapes a value for the standalone public chat HTML document.
+   */
+  private function escape(string $value): string {
+    return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
   }
 
   /**

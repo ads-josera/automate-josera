@@ -107,6 +107,13 @@ final class WebChatService {
       return TRUE;
     }
 
+    // The embedded page is served by this Drupal site, so its fetch requests
+    // legitimately originate from the application host rather than the parent
+    // website that embeds the iframe.
+    if ($host === $this->normalizeHost($request->getHost())) {
+      return TRUE;
+    }
+
     return in_array($host, $allowed_domains, TRUE);
   }
 

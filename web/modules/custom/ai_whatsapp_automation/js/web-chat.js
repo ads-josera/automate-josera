@@ -1,15 +1,14 @@
-(function (Drupal, drupalSettings) {
+(function (window, document) {
   'use strict';
 
-  Drupal.behaviors.aiWhatsappAutomationWebChat = {
-    attach: function attach(context) {
-      var form = context.querySelector && context.querySelector('[data-aiwa-form]');
-      if (!form || form.dataset.aiwaBound === 'true') {
-        return;
-      }
+(function attach(context) {
+    var form = context.querySelector && context.querySelector('[data-aiwa-form]');
+    if (!form || form.dataset.aiwaBound === 'true') {
+      return;
+    }
       form.dataset.aiwaBound = 'true';
 
-      var settings = drupalSettings.aiWhatsappAutomationWebChat || {};
+      var settings = (window.drupalSettings || {}).aiWhatsappAutomationWebChat || {};
       var messages = context.querySelector('[data-aiwa-messages]');
       var input = context.querySelector('[data-aiwa-input]');
       var button = form.querySelector('button[type="submit"]');
@@ -75,8 +74,7 @@
           form.dispatchEvent(new Event('submit', { cancelable: true }));
         }
       });
-    }
-  };
+  })(document);
 
   function requestHeaders(settings) {
     var headers = {
@@ -119,4 +117,4 @@
 
     return String(Date.now()) + String(Math.random()).slice(2);
   }
-})(Drupal, drupalSettings);
+})(window, document);

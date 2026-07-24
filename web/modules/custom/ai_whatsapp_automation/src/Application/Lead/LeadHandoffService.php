@@ -76,8 +76,21 @@ final class LeadHandoffService {
       ];
     }
 
+    $successful_notifications = array_filter($notifications, static fn (array $notification): bool => ($notification['status'] ?? '') === 'sent');
+    if ($successful_notifications === []) {
+      $this->logger->error('Lead handoff created for conversation @conversation, but every administrator notification failed.', [
+        '@conversation' => (string) $conversation->id(),
+      ]);
+
+      return [
+        'status' => 'created_notification_failed',
+        'lead_id' => $lead->id(),
+        'notifications' => $notifications,
+      ];
+    }
+
     return [
-      'status' => 'notified',
+      'status' => count($successful_notifications) === count($notifications) ? 'notified' : 'partially_notified',
       'lead_id' => $lead->id(),
       'notifications' => $notifications,
     ];
@@ -357,7 +370,7 @@ final class LeadHandoffService {
       ], $message);
     }
 
-    $this->logger->notice('Lead handoff notification sent for conversation @conversation to @count administrators.', [
+    $this->logger->notice('Lead handoff notification attempted for conversation @conversation to @count administrators.', [
       '@conversation' => (string) $conversation->id(),
       '@count' => (string) count($numbers),
     ]);

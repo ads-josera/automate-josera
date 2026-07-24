@@ -78,8 +78,8 @@ final class ProviderMessageSenderService {
       return ['status' => 'skipped_missing_configuration'];
     }
 
-    $twilio_from = $this->prefixWhatsApp($from);
-    $twilio_to = $this->prefixWhatsApp($to);
+    $twilio_from = $this->prefixWhatsApp($this->normalizeTwilioPhone($from));
+    $twilio_to = $this->prefixWhatsApp($this->normalizeTwilioPhone($to));
 
     return $this->sendTextSegments(
       'twilio',
@@ -339,6 +339,23 @@ final class ProviderMessageSenderService {
     $phone = trim($phone);
 
     return str_starts_with($phone, 'whatsapp:') ? $phone : 'whatsapp:' . $phone;
+  }
+
+  /**
+   * Normalizes phone input to the format Twilio expects for WhatsApp.
+   *
+   * Twilio channels in Mexico retain the mobile 1 after country code 52.
+   * Account records imported without it would otherwise fail with error 63007.
+   */
+  private function normalizeTwilioPhone(string $phone): string {
+    $phone = preg_replace('/^whatsapp:/i', '', trim($phone)) ?? '';
+    $digits = preg_replace('/\D+/', '', $phone) ?? '';
+
+    if (str_starts_with($digits, '52') && strlen($digits) === 12) {
+      $digits = '521' . substr($digits, 2);
+    }
+
+    return $digits === '' ? '' : '+' . $digits;
   }
 
 }

@@ -93,6 +93,14 @@ final class PromptBuilderService {
       $context_lines[] = $history;
     }
 
+    $previous_history = $this->recentPriorConversationHistory($conversation, $history);
+    if ($previous_history !== '') {
+      $context_lines[] = '';
+      $context_lines[] = 'Previous interaction with this same contact:';
+      $context_lines[] = $previous_history;
+      $context_lines[] = 'Use this only if it matches the current request. If it does, do not ask again for data already captured.';
+    }
+
     $context_lines = array_merge($context_lines, [
       '',
       'Incoming WhatsApp message:',
@@ -167,6 +175,46 @@ final class PromptBuilderService {
     }
 
     return mb_substr(implode("\n", $lines), -7000);
+  }
+
+  /**
+   * Supplies recent context from an automatically closed prior interaction.
+   */
+  private function recentPriorConversationHistory(ContentEntityInterface $conversation, string $current_history): string {
+    // A mature current conversation has enough context of its own. This only
+    // bridges the short gap created when a contact returns after auto-close.
+    if (substr_count($current_history, "\n") >= 4 || !$conversation->hasField('phone') || !$conversation->hasField('provider')) {
+      return '';
+    }
+
+    $query = $this->entityTypeManager
+      ->getStorage('ai_whatsapp_conversation')
+      ->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('id', $conversation->id(), '<>')
+      ->condition('phone', (string) $conversation->get('phone')->value)
+      ->condition('provider', (string) $conversation->get('provider')->value)
+      ->condition('status', 'CLOSED')
+      ->condition('changed', \Drupal::time()->getRequestTime() - (7 * 86400), '>')
+      ->sort('changed', 'DESC')
+      ->range(0, 1);
+
+    if ($conversation->hasField('whatsapp_account') && !$conversation->get('whatsapp_account')->isEmpty()) {
+      $query->condition('whatsapp_account', $conversation->get('whatsapp_account')->target_id);
+    }
+
+    $ids = $query->execute();
+    if ($ids === []) {
+      return '';
+    }
+
+    $previous = $this->entityTypeManager
+      ->getStorage('ai_whatsapp_conversation')
+      ->load(reset($ids));
+
+    return $previous instanceof ContentEntityInterface
+      ? mb_substr($this->recentConversationHistory($previous), -3500)
+      : '';
   }
 
   /**

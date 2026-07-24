@@ -6,6 +6,7 @@ namespace Drupal\ai_whatsapp_automation\Application\AI;
 
 use Drupal\ai_whatsapp_automation\Application\RAG\RAGService;
 use Drupal\Core\Entity\ContentEntityInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Psr\Log\LoggerInterface;
 
@@ -25,6 +26,7 @@ final class PromptBuilderService {
   public function __construct(
     private readonly BotManagerService $botManager,
     private readonly RAGService $ragService,
+    private readonly EntityTypeManagerInterface $entityTypeManager,
     LoggerChannelFactoryInterface $loggerFactory,
   ) {
     $this->logger = $loggerFactory->get('ai_whatsapp_automation');
@@ -84,6 +86,13 @@ final class PromptBuilderService {
       $context_lines[] = $knowledge_context;
     }
 
+    $history = $this->recentConversationHistory($conversation);
+    if ($history !== '') {
+      $context_lines[] = '';
+      $context_lines[] = 'Recent conversation history:';
+      $context_lines[] = $history;
+    }
+
     $context_lines = array_merge($context_lines, [
       '',
       'Incoming WhatsApp message:',
@@ -122,6 +131,42 @@ final class PromptBuilderService {
     }
 
     return trim($instructions . "\n\n" . trim(implode("\n", $handoff_guardrails)));
+  }
+
+  /**
+   * Builds a bounded transcript so the assistant retains collected data.
+   */
+  private function recentConversationHistory(ContentEntityInterface $conversation): string {
+    $ids = $this->entityTypeManager
+      ->getStorage('ai_whatsapp_message')
+      ->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('conversation', $conversation->id())
+      ->sort('id', 'DESC')
+      ->range(0, 16)
+      ->execute();
+
+    if ($ids === []) {
+      return '';
+    }
+
+    $messages = $this->entityTypeManager
+      ->getStorage('ai_whatsapp_message')
+      ->loadMultiple($ids);
+    $lines = [];
+    foreach (array_reverse($messages) as $message) {
+      if (!$message instanceof ContentEntityInterface) {
+        continue;
+      }
+
+      $sender = (string) $message->get('sender')->value;
+      $content = trim((string) $message->get('content')->value);
+      if ($content !== '') {
+        $lines[] = $sender . ': ' . mb_substr($content, 0, 700);
+      }
+    }
+
+    return mb_substr(implode("\n", $lines), -7000);
   }
 
   /**

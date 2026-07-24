@@ -142,6 +142,19 @@ final class WebhookProcessorService {
       }
     }
 
+    // A conversation closed by the inactivity timer has no operator close
+    // audit. Resume it so a returning contact keeps the collected context.
+    $closed_conversation = $this->findReopenableClosedConversation($provider, $message, $account);
+    if ($closed_conversation instanceof ContentEntityInterface) {
+      $closed_conversation->set('status', 'AI_ACTIVE');
+      $closed_conversation->save();
+      $this->logger->notice('Resumed inactive conversation @conversation for returning contact.', [
+        '@conversation' => (string) $closed_conversation->id(),
+      ]);
+
+      return $closed_conversation;
+    }
+
     $conversation = $conversation_storage->create([
       'phone' => (string) $message['phone'],
       'channel' => 'whatsapp',
@@ -152,6 +165,50 @@ final class WebhookProcessorService {
     $conversation->save();
 
     return $conversation;
+  }
+
+  /**
+   * Finds a conversation closed automatically, never one closed by an agent.
+   */
+  private function findReopenableClosedConversation(string $provider, array $message, ?ContentEntityInterface $account): ?ContentEntityInterface {
+    $storage = $this->entityTypeManager->getStorage('ai_whatsapp_conversation');
+    $query = $storage->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('phone', (string) $message['phone'])
+      ->condition('provider', $provider)
+      ->condition('status', 'CLOSED')
+      ->sort('changed', 'DESC')
+      ->range(0, 5);
+
+    if ($account instanceof ContentEntityInterface) {
+      $query->condition('whatsapp_account', $account->id());
+    }
+
+    foreach ($storage->loadMultiple($query->execute()) as $conversation) {
+      if (!$conversation instanceof ContentEntityInterface || $this->wasClosedByOperator($conversation)) {
+        continue;
+      }
+
+      return $conversation;
+    }
+
+    return NULL;
+  }
+
+  /**
+   * Returns whether an operator intentionally closed the conversation.
+   */
+  private function wasClosedByOperator(ContentEntityInterface $conversation): bool {
+    $ids = $this->entityTypeManager
+      ->getStorage('ai_whatsapp_operator_action')
+      ->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('conversation', $conversation->id())
+      ->condition('action', 'CONVERSATION_CLOSED')
+      ->range(0, 1)
+      ->execute();
+
+    return $ids !== [];
   }
 
   /**

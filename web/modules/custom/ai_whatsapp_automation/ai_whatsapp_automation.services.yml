@@ -19,6 +19,7 @@ services:
     arguments:
       - '@ai_whatsapp_automation.bot_manager'
       - '@ai_whatsapp_automation.rag'
+      - '@entity_type.manager'
       - '@logger.factory'
 
   ai_whatsapp_automation.conversation_engine:

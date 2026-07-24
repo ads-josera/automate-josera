@@ -215,10 +215,11 @@ final class WebChatController extends ControllerBase {
   private function embedScript(): string {
     return <<<'JS'
 (function () {
-  var config = window.AIWhatsAppAutomationWidget || {};
-  if (!config.chatUrl || document.querySelector('[data-aiwa-widget-root]')) {
-    return;
-  }
+  function mount() {
+    var config = window.AIWhatsAppAutomationWidget || {};
+    if (!config.chatUrl || document.querySelector('[data-aiwa-widget-root]')) {
+      return;
+    }
 
   var root = document.createElement('div');
   root.setAttribute('data-aiwa-widget-root', 'true');
@@ -264,7 +265,15 @@ final class WebChatController extends ControllerBase {
 
   root.appendChild(frame);
   root.appendChild(button);
-  document.body.appendChild(root);
+    document.body.appendChild(root);
+  }
+
+  if (document.body) {
+    mount();
+  }
+  else {
+    document.addEventListener('DOMContentLoaded', mount, { once: true });
+  }
 }());
 JS;
   }

@@ -361,13 +361,19 @@ final class LeadHandoffService {
     $message = $this->buildNotificationMessage($conversation, $lead, $ai_response);
     $account_phone = $this->getAccountPhone($conversation);
     $provider = (string) $conversation->get('provider')->value;
+    $template_sid = trim((string) $this->configFactory
+      ->get('ai_whatsapp_automation.settings')
+      ->get('twilio.content_template_sid'));
     $results = [];
 
     foreach ($numbers as $number) {
-      $results[] = $this->messageSender->sendText($provider, [
+      $recipient = [
         'phone' => $number,
         'account_phone' => $account_phone,
-      ], $message);
+      ];
+      $results[] = $provider === 'twilio' && $template_sid !== ''
+        ? $this->messageSender->sendTemplate($provider, $recipient, $template_sid, $this->notificationTemplateVariables($conversation, $lead, $ai_response))
+        : $this->messageSender->sendText($provider, $recipient, $message);
     }
 
     $this->logger->notice('Lead handoff notification attempted for conversation @conversation to @count administrators.', [
@@ -376,6 +382,25 @@ final class LeadHandoffService {
     ]);
 
     return $results;
+  }
+
+  /**
+   * Builds variables for the approved lead-notification template.
+   *
+   * @return array<string, string>
+   *   Values for placeholders {{1}} through {{6}}.
+   */
+  private function notificationTemplateVariables(ContentEntityInterface $conversation, ContentEntityInterface $lead, string $ai_response): array {
+    $base_url = rtrim((string) ($GLOBALS['base_url'] ?? ''), '/');
+
+    return [
+      '1' => (string) $lead->id(),
+      '2' => (string) $lead->label(),
+      '3' => (string) $conversation->get('phone')->value,
+      '4' => (string) ($lead->get('email')->value ?: 'No capturado'),
+      '5' => mb_substr(trim($ai_response), 0, 500),
+      '6' => $base_url . '/admin/content/ai-whatsapp/conversations/' . $conversation->id(),
+    ];
   }
 
   /**

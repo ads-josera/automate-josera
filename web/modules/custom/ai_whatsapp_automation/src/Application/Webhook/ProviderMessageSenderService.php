@@ -62,6 +62,25 @@ final class ProviderMessageSenderService {
   }
 
   /**
+   * Sends an approved provider template for a business-initiated message.
+   *
+   * @param array<string, mixed> $message
+   *   Normalized recipient and account data.
+   * @param array<string, string> $variables
+   *   Template variables keyed by their Twilio placeholder number.
+   *
+   * @return array<string, mixed>
+   *   Delivery result.
+   */
+  public function sendTemplate(string $provider, array $message, string $content_sid, array $variables = []): array {
+    if ($provider !== 'twilio') {
+      return ['status' => 'unsupported_template_provider'];
+    }
+
+    return $this->sendTwilioTemplate($message, $content_sid, $variables);
+  }
+
+  /**
    * Sends a Twilio WhatsApp message.
    *
    * @param array<string, mixed> $message
@@ -102,6 +121,48 @@ final class ProviderMessageSenderService {
         ],
       ]
     );
+  }
+
+  /**
+   * Sends a Twilio Content API template through Programmable Messaging.
+   *
+   * @param array<string, mixed> $message
+   *   Normalized recipient and account data.
+   * @param array<string, string> $variables
+   *   Template variables keyed by their Twilio placeholder number.
+   */
+  private function sendTwilioTemplate(array $message, string $content_sid, array $variables): array {
+    $config = $this->configFactory->get('ai_whatsapp_automation.settings');
+    $account_sid = (string) $config->get('twilio.account_sid');
+    $auth_token = (string) $config->get('twilio.auth_token');
+    $from = $this->resolveTwilioFrom($message);
+    $to = (string) ($message['phone'] ?? '');
+    $content_sid = trim($content_sid);
+
+    if ($account_sid === '' || $auth_token === '' || $from === '' || $to === '' || $content_sid === '') {
+      return ['status' => 'skipped_missing_configuration'];
+    }
+
+    $twilio_from = $this->prefixWhatsApp($this->normalizeTwilioPhone($from));
+    $twilio_to = $this->prefixWhatsApp($this->normalizeTwilioPhone($to));
+    $form_params = [
+      'From' => $twilio_from,
+      'To' => $twilio_to,
+      'ContentSid' => $content_sid,
+    ];
+    if ($variables !== []) {
+      $form_params['ContentVariables'] = json_encode($variables, JSON_THROW_ON_ERROR);
+    }
+
+    return $this->request('POST', 'https://api.twilio.com/2010-04-01/Accounts/' . $account_sid . '/Messages.json', [
+      'auth' => [$account_sid, $auth_token],
+      'form_params' => $form_params,
+      'ai_whatsapp_context' => [
+        'provider' => 'twilio',
+        'from' => $twilio_from,
+        'to' => $twilio_to,
+      ],
+    ]) + ['provider' => 'twilio', 'template_sid' => $content_sid];
   }
 
   /**

@@ -26,7 +26,7 @@ ai_whatsapp_automation.web_chat_page:
   methods: [GET]
 
 ai_whatsapp_automation.web_chat_embed:
-  path: '/ai-whatsapp-automation/embed/{token}.js'
+  path: '/ai-whatsapp-automation/embed/{token}'
   defaults:
     _controller: '\Drupal\ai_whatsapp_automation\Controller\WebChatController::embed'
   requirements:

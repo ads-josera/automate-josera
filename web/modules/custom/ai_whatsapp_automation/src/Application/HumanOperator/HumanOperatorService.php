@@ -91,6 +91,7 @@ final class HumanOperatorService {
       [
         'phone' => (string) $conversation->get('phone')->value,
         'account_phone' => $this->getAccountPhone($conversation),
+        'whatsapp_account_id' => $conversation->hasField('whatsapp_account') ? $conversation->get('whatsapp_account')->target_id : NULL,
       ],
       $reply
     );

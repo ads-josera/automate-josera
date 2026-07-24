@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Drupal\ai_whatsapp_automation\Application\Webhook;
 
 use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Entity\ContentEntityInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 
@@ -19,6 +21,7 @@ final class WebhookProviderService {
   public function __construct(
     private readonly ConfigFactoryInterface $configFactory,
     private readonly RequestStack $requestStack,
+    private readonly EntityTypeManagerInterface $entityTypeManager,
   ) {
   }
 
@@ -69,12 +72,9 @@ final class WebhookProviderService {
    * Validates Twilio signatures.
    */
   private function validateTwilio(Request $request): bool {
-    $auth_token = (string) $this->configFactory
-      ->get('ai_whatsapp_automation.settings')
-      ->get('twilio.auth_token');
     $signature = (string) $request->headers->get('X-Twilio-Signature', '');
 
-    if ($auth_token === '' || $signature === '') {
+    if ($signature === '') {
       return FALSE;
     }
 
@@ -89,9 +89,51 @@ final class WebhookProviderService {
       }
     }
 
-    $expected = base64_encode(hash_hmac('sha1', $data, $auth_token, TRUE));
+    foreach ($this->twilioWebhookAuthTokens($request) as $auth_token) {
+      $expected = base64_encode(hash_hmac('sha1', $data, $auth_token, TRUE));
+      if (hash_equals($expected, $signature)) {
+        return TRUE;
+      }
+    }
 
-    return hash_equals($expected, $signature);
+    return FALSE;
+  }
+
+  /**
+   * Returns the global and matching account-specific tokens for validation.
+   *
+   * @return string[]
+   *   Candidate Twilio auth tokens.
+   */
+  private function twilioWebhookAuthTokens(Request $request): array {
+    $tokens = [(string) $this->configFactory
+      ->get('ai_whatsapp_automation.settings')
+      ->get('twilio.auth_token')];
+    $account_sid = trim((string) $request->request->get('AccountSid', ''));
+    if ($account_sid === '') {
+      return array_values(array_filter($tokens));
+    }
+
+    $ids = $this->entityTypeManager
+      ->getStorage('ai_whatsapp_account')
+      ->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('provider', 'twilio')
+      ->condition('twilio_account_sid', $account_sid)
+      ->range(0, 1)
+      ->execute();
+    if ($ids === []) {
+      return array_values(array_filter($tokens));
+    }
+
+    $account = $this->entityTypeManager
+      ->getStorage('ai_whatsapp_account')
+      ->load(reset($ids));
+    if ($account instanceof ContentEntityInterface) {
+      $tokens[] = (string) $account->get('twilio_auth_token')->value;
+    }
+
+    return array_values(array_unique(array_filter($tokens)));
   }
 
   /**

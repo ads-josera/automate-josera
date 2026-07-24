@@ -91,7 +91,10 @@ final class WebhookProcessorService {
       'provider_message_id' => (string) ($message['provider_message_id'] ?? ''),
     ]);
 
-    $delivery = $this->messageSender->sendText($provider, $message, (string) $engine_result['response_text']);
+    $outbound_message = $message + [
+      'whatsapp_account_id' => $conversation->hasField('whatsapp_account') ? $conversation->get('whatsapp_account')->target_id : NULL,
+    ];
+    $delivery = $this->messageSender->sendText($provider, $outbound_message, (string) $engine_result['response_text']);
     $handoff = $this->leadHandoff->handle($conversation, (string) $engine_result['response_text']);
     $this->logger->notice('Lead handoff check for conversation @conversation finished with status @status.', [
       '@conversation' => (string) $conversation->id(),

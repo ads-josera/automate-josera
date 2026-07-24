@@ -368,6 +368,7 @@ final class LeadHandoffService {
       $recipient = [
         'phone' => $number,
         'account_phone' => $account_phone,
+        'whatsapp_account_id' => $conversation->hasField('whatsapp_account') ? $conversation->get('whatsapp_account')->target_id : NULL,
       ];
       $results[] = $provider === 'twilio' && $template_sid !== ''
         ? $this->messageSender->sendTemplate($provider, $recipient, $template_sid, $this->notificationTemplateVariables($conversation, $lead, $ai_response))

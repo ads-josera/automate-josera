@@ -476,6 +476,30 @@ function ai_whatsapp_automation_update_11014(): void {
 }
 
 /**
+ * Adds account-specific Twilio credentials for multi-account routing.
+ */
+function ai_whatsapp_automation_update_11015(): void {
+  $definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+  $fields = \Drupal::service('entity_field.manager')
+    ->getFieldStorageDefinitions('ai_whatsapp_account');
+
+  foreach (['twilio_account_sid', 'twilio_auth_token'] as $field_name) {
+    if ($definition_update_manager->getFieldStorageDefinition($field_name, 'ai_whatsapp_account') !== NULL) {
+      continue;
+    }
+
+    if (isset($fields[$field_name])) {
+      $definition_update_manager->installFieldStorageDefinition(
+        $field_name,
+        'ai_whatsapp_account',
+        'ai_whatsapp_automation',
+        $fields[$field_name]
+      );
+    }
+  }
+}
+
+/**
  * Returns the entity type IDs provided by this module.
  *
  * @return string[]

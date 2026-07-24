@@ -121,6 +121,28 @@ final class WhatsAppAccount extends ContentEntityBase {
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
+    $fields['twilio_account_sid'] = BaseFieldDefinition::create('string')
+      ->setLabel(t('Twilio Account SID'))
+      ->setDescription(t('Optional Twilio Account SID for this WhatsApp account. Leave empty to use the global Twilio credentials.'))
+      ->setSetting('max_length', 64)
+      ->setDisplayOptions('form', [
+        'type' => 'string_textfield',
+        'weight' => 22,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', FALSE);
+
+    $fields['twilio_auth_token'] = BaseFieldDefinition::create('string')
+      ->setLabel(t('Twilio Auth Token'))
+      ->setDescription(t('Optional Twilio Auth Token for this WhatsApp account. Configure it together with the Account SID.'))
+      ->setSetting('max_length', 128)
+      ->setDisplayOptions('form', [
+        'type' => 'string_textfield',
+        'weight' => 23,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', FALSE);
+
     $fields['status'] = BaseFieldDefinition::create('list_string')
       ->setLabel(t('Status'))
       ->setRequired(TRUE)

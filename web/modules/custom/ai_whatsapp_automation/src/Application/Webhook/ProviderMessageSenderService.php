@@ -6,6 +6,8 @@ namespace Drupal\ai_whatsapp_automation\Application\Webhook;
 
 use Drupal\ai_whatsapp_automation\Application\Evolution\QRProvider;
 use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Entity\ContentEntityInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\GuzzleException;
@@ -32,6 +34,7 @@ final class ProviderMessageSenderService {
   public function __construct(
     private readonly ClientInterface $httpClient,
     private readonly ConfigFactoryInterface $configFactory,
+    private readonly EntityTypeManagerInterface $entityTypeManager,
     LoggerChannelFactoryInterface $loggerFactory,
     private readonly QRProvider $qrProvider,
   ) {
@@ -87,9 +90,9 @@ final class ProviderMessageSenderService {
    *   Normalized incoming message data.
    */
   private function sendTwilio(array $message, string $text): array {
-    $config = $this->configFactory->get('ai_whatsapp_automation.settings');
-    $account_sid = (string) $config->get('twilio.account_sid');
-    $auth_token = (string) $config->get('twilio.auth_token');
+    $credentials = $this->resolveTwilioCredentials($message);
+    $account_sid = $credentials['account_sid'];
+    $auth_token = $credentials['auth_token'];
     $from = $this->resolveTwilioFrom($message);
     $to = (string) ($message['phone'] ?? '');
 
@@ -132,9 +135,9 @@ final class ProviderMessageSenderService {
    *   Template variables keyed by their Twilio placeholder number.
    */
   private function sendTwilioTemplate(array $message, string $content_sid, array $variables): array {
-    $config = $this->configFactory->get('ai_whatsapp_automation.settings');
-    $account_sid = (string) $config->get('twilio.account_sid');
-    $auth_token = (string) $config->get('twilio.auth_token');
+    $credentials = $this->resolveTwilioCredentials($message);
+    $account_sid = $credentials['account_sid'];
+    $auth_token = $credentials['auth_token'];
     $from = $this->resolveTwilioFrom($message);
     $to = (string) ($message['phone'] ?? '');
     $content_sid = trim($content_sid);
@@ -183,6 +186,57 @@ final class ProviderMessageSenderService {
     return (string) $this->configFactory
       ->get('ai_whatsapp_automation.settings')
       ->get('twilio.whatsapp_number');
+  }
+
+  /**
+   * Resolves credentials for the routed WhatsApp account with global fallback.
+   *
+   * @param array<string, mixed> $message
+   *   Normalized message data.
+   *
+   * @return array{account_sid: string, auth_token: string}
+   *   Credentials for the outbound request.
+   */
+  private function resolveTwilioCredentials(array $message): array {
+    $config = $this->configFactory->get('ai_whatsapp_automation.settings');
+    $credentials = [
+      'account_sid' => (string) $config->get('twilio.account_sid'),
+      'auth_token' => (string) $config->get('twilio.auth_token'),
+    ];
+    $account = $this->getMessageAccount($message);
+    if (!$account instanceof ContentEntityInterface) {
+      return $credentials;
+    }
+
+    $account_sid = trim((string) ($account->get('twilio_account_sid')->value ?? ''));
+    $auth_token = trim((string) ($account->get('twilio_auth_token')->value ?? ''));
+    if ($account_sid !== '' && $auth_token !== '') {
+      return [
+        'account_sid' => $account_sid,
+        'auth_token' => $auth_token,
+      ];
+    }
+
+    return $credentials;
+  }
+
+  /**
+   * Loads the explicit account associated with an outbound message.
+   *
+   * @param array<string, mixed> $message
+   *   Normalized message data.
+   */
+  private function getMessageAccount(array $message): ?ContentEntityInterface {
+    $account_id = $message['whatsapp_account_id'] ?? NULL;
+    if ($account_id === NULL || $account_id === '') {
+      return NULL;
+    }
+
+    $account = $this->entityTypeManager
+      ->getStorage('ai_whatsapp_account')
+      ->load($account_id);
+
+    return $account instanceof ContentEntityInterface ? $account : NULL;
   }
 
   /**

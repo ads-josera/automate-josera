@@ -43,6 +43,7 @@ services:
     arguments:
       - '@config.factory'
       - '@request_stack'
+      - '@entity_type.manager'
 
   ai_whatsapp_automation.webhook_queue:
     class: Drupal\ai_whatsapp_automation\Application\Webhook\WebhookQueueService
@@ -64,6 +65,7 @@ services:
     arguments:
       - '@http_client'
       - '@config.factory'
+      - '@entity_type.manager'
       - '@logger.factory'
       - '@ai_whatsapp_automation.evolution.qr_provider'
 

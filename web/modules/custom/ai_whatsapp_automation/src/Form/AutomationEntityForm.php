@@ -35,6 +35,14 @@ final class AutomationEntityForm extends ContentEntityForm {
       ];
     }
 
+    if ($entity->getEntityTypeId() === 'ai_whatsapp_account' && isset($form['twilio_auth_token']['widget'][0]['value'])) {
+      $form['twilio_auth_token']['widget'][0]['value']['#type'] = 'password';
+      $form['twilio_auth_token']['widget'][0]['value']['#default_value'] = '';
+      $form['twilio_auth_token']['widget'][0]['value']['#description'] = $entity->get('twilio_auth_token')->isEmpty()
+        ? $this->t('Enter the Twilio Auth Token for this account.')
+        : $this->t('A token is already configured. Leave empty to keep it.');
+    }
+
     return $form;
   }
 
@@ -42,8 +50,22 @@ final class AutomationEntityForm extends ContentEntityForm {
    * {@inheritdoc}
    */
   public function save(array $form, FormStateInterface $form_state): int {
-    $result = parent::save($form, $form_state);
     $entity = $this->getEntity();
+    if (
+      $entity->getEntityTypeId() === 'ai_whatsapp_account'
+      && !$entity->isNew()
+      && $entity->hasField('twilio_auth_token')
+      && trim((string) $entity->get('twilio_auth_token')->value) === ''
+    ) {
+      $original = \Drupal::entityTypeManager()
+        ->getStorage('ai_whatsapp_account')
+        ->loadUnchanged($entity->id());
+      if ($original !== NULL && !$original->get('twilio_auth_token')->isEmpty()) {
+        $entity->set('twilio_auth_token', $original->get('twilio_auth_token')->value);
+      }
+    }
+
+    $result = parent::save($form, $form_state);
 
     $this->messenger()->addStatus($this->t('Saved %label.', [
       '%label' => $entity->label(),

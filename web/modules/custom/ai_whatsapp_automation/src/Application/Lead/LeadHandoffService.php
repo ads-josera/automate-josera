@@ -361,9 +361,7 @@ final class LeadHandoffService {
     $message = $this->buildNotificationMessage($conversation, $lead, $ai_response);
     $account_phone = $this->getAccountPhone($conversation);
     $provider = (string) $conversation->get('provider')->value;
-    $template_sid = trim((string) $this->configFactory
-      ->get('ai_whatsapp_automation.settings')
-      ->get('twilio.content_template_sid'));
+    $template_sid = $this->notificationTemplateSid($conversation);
     $results = [];
 
     foreach ($numbers as $number) {
@@ -382,6 +380,25 @@ final class LeadHandoffService {
     ]);
 
     return $results;
+  }
+
+  /**
+   * Resolves the lead template by account, bot, then global default.
+   */
+  private function notificationTemplateSid(ContentEntityInterface $conversation): string {
+    $account_template = $this->getFieldValue($this->getAccountForConversation($conversation), 'lead_notification_template_sid');
+    if ($account_template !== '') {
+      return $account_template;
+    }
+
+    $bot_template = $this->getFieldValue($this->getBotForConversation($conversation), 'lead_notification_template_sid');
+    if ($bot_template !== '') {
+      return $bot_template;
+    }
+
+    return trim((string) $this->configFactory
+      ->get('ai_whatsapp_automation.settings')
+      ->get('twilio.content_template_sid'));
   }
 
   /**
@@ -449,43 +466,34 @@ final class LeadHandoffService {
    * Returns account-specific notification numbers, if configured.
    */
   private function accountNotificationNumbers(ContentEntityInterface $conversation): string {
-    if (!$conversation->hasField('whatsapp_account') || $conversation->get('whatsapp_account')->isEmpty()) {
-      return '';
-    }
-
-    $account = $conversation->get('whatsapp_account')->entity;
-    if (!$account instanceof ContentEntityInterface || !$account->hasField('lead_notification_numbers')) {
-      return '';
-    }
-
-    return trim((string) $account->get('lead_notification_numbers')->value);
+    return $this->getFieldValue($this->getAccountForConversation($conversation), 'lead_notification_numbers');
   }
 
   /**
    * Returns the WhatsApp account phone associated with the conversation.
    */
   private function getAccountPhone(ContentEntityInterface $conversation): string {
+    return $this->getFieldValue($this->getAccountForConversation($conversation), 'phone_number');
+  }
+
+  /**
+   * Loads the WhatsApp account associated with a conversation.
+   */
+  private function getAccountForConversation(ContentEntityInterface $conversation): ?ContentEntityInterface {
     if (!$conversation->hasField('whatsapp_account') || $conversation->get('whatsapp_account')->isEmpty()) {
-      return '';
+      return NULL;
     }
 
     $account = $conversation->get('whatsapp_account')->entity;
-    if (!$account instanceof ContentEntityInterface || !$account->hasField('phone_number')) {
-      return '';
-    }
 
-    return (string) $account->get('phone_number')->value;
+    return $account instanceof ContentEntityInterface ? $account : NULL;
   }
 
   /**
    * Returns the bot associated with the conversation account.
    */
   private function getBotForConversation(ContentEntityInterface $conversation): ?ContentEntityInterface {
-    if (!$conversation->hasField('whatsapp_account') || $conversation->get('whatsapp_account')->isEmpty()) {
-      return NULL;
-    }
-
-    $account = $conversation->get('whatsapp_account')->entity;
+    $account = $this->getAccountForConversation($conversation);
     if (!$account instanceof ContentEntityInterface || !$account->hasField('bot') || $account->get('bot')->isEmpty()) {
       return NULL;
     }
@@ -498,8 +506,8 @@ final class LeadHandoffService {
   /**
    * Reads a scalar field value from an entity.
    */
-  private function getFieldValue(ContentEntityInterface $entity, string $field_name): string {
-    if (!$entity->hasField($field_name) || $entity->get($field_name)->isEmpty()) {
+  private function getFieldValue(?ContentEntityInterface $entity, string $field_name): string {
+    if (!$entity instanceof ContentEntityInterface || !$entity->hasField($field_name) || $entity->get($field_name)->isEmpty()) {
       return '';
     }
 

@@ -312,6 +312,21 @@ final class WhatsAppAccount extends ContentEntityBase {
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
+    $fields['lead_notification_template_sid'] = BaseFieldDefinition::create('string')
+      ->setLabel(t('Lead notification Template SID'))
+      ->setDescription(t('Optional approved Twilio WhatsApp Content SID (HX...) used for leads received by this account. It overrides the selected bot and global template.'))
+      ->setSetting('max_length', 64)
+      ->setDisplayOptions('form', [
+        'type' => 'string_textfield',
+        'weight' => 59,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'string',
+        'weight' => 59,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
     $fields['configuration'] = BaseFieldDefinition::create('map')
       ->setLabel(t('Configuration'))
       ->setDisplayOptions('view', [

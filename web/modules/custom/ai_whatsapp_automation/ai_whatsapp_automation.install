@@ -449,6 +449,33 @@ function ai_whatsapp_automation_update_11013(): void {
 }
 
 /**
+ * Adds lead notification template overrides for bots and WhatsApp accounts.
+ */
+function ai_whatsapp_automation_update_11014(): void {
+  $definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+  $field_manager = \Drupal::service('entity_field.manager');
+
+  foreach ([
+    'ai_whatsapp_bot',
+    'ai_whatsapp_account',
+  ] as $entity_type_id) {
+    if ($definition_update_manager->getFieldStorageDefinition('lead_notification_template_sid', $entity_type_id) !== NULL) {
+      continue;
+    }
+
+    $fields = $field_manager->getFieldStorageDefinitions($entity_type_id);
+    if (isset($fields['lead_notification_template_sid'])) {
+      $definition_update_manager->installFieldStorageDefinition(
+        'lead_notification_template_sid',
+        $entity_type_id,
+        'ai_whatsapp_automation',
+        $fields['lead_notification_template_sid']
+      );
+    }
+  }
+}
+
+/**
  * Returns the entity type IDs provided by this module.
  *
  * @return string[]

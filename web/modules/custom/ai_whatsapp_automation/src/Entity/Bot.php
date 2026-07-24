@@ -241,6 +241,21 @@ final class Bot extends ContentEntityBase {
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
+    $fields['lead_notification_template_sid'] = BaseFieldDefinition::create('string')
+      ->setLabel(t('Lead notification Template SID'))
+      ->setDescription(t('Optional approved Twilio WhatsApp Content SID (HX...) used for this bot\'s qualified-lead notifications. When empty, the WhatsApp account or global template is used.'))
+      ->setSetting('max_length', 64)
+      ->setDisplayOptions('form', [
+        'type' => 'string_textfield',
+        'weight' => 50,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'string',
+        'weight' => 50,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
     $fields['web_widget_enabled'] = BaseFieldDefinition::create('boolean')
       ->setLabel(t('Enable web widget'))
       ->setDescription(t('Allow this bot to be embedded as a public web chat widget.'))

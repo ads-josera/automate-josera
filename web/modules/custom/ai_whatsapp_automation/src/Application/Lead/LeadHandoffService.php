@@ -95,7 +95,10 @@ final class LeadHandoffService {
       || preg_match('/\b(?:tel[eé]fono|celular|whatsapp|contacto|correo|email)\b/u', $text)
       || preg_match('/(?:\+?52\s?1?\s?)?\d{10,}/', $text);
     $has_handoff_signal = $this->containsAnySignal($text, $this->handoffTriggerPhrases($bot));
-    $has_summary_signal = preg_match('/\b(?:datos recibidos|resumo|resumen|gracias por la informaci[oó]n|informaci[oó]n inicial)\b/u', $text);
+    // These are natural closing phrases used by the assistant once it has
+    // captured the service data. They are intentionally independent from a
+    // bot's optional custom trigger list.
+    $has_summary_signal = preg_match('/\b(?:datos recibidos|confirmo los datos|datos capturados|resumo|resumen|gracias por la informaci[oó]n|informaci[oó]n inicial|pr[oó]ximo paso|solicitud lista|preparar[aá] una propuesta)\b/u', $text);
     $signal_count = $this->countSignalGroups($text, $this->handoffRequiredSignals($bot));
     $minimum_signals = $this->minimumSignals($bot);
 
@@ -168,11 +171,7 @@ final class LeadHandoffService {
    */
   private function handoffTriggerPhrases(?ContentEntityInterface $bot): array {
     $configured = $bot instanceof ContentEntityInterface ? $this->getFieldValue($bot, 'handoff_trigger_phrases') : '';
-    if ($configured !== '') {
-      return $this->parseSignalList($configured);
-    }
-
-    return [
+    $default_phrases = [
       'asesor',
       'especialista',
       'ejecutivo',
@@ -191,7 +190,24 @@ final class LeadHandoffService {
       'agendar',
       'reservar',
       'contratar',
+      'próximo paso',
+      'proximo paso',
+      'confirmo los datos',
+      'datos capturados',
+      'solicitud lista',
+      'revisará la operación',
+      'revisara la operacion',
+      'preparará una propuesta',
+      'preparara una propuesta',
     ];
+
+    // Custom phrases expand the reliable defaults instead of replacing them.
+    // This prevents a bot-specific setup from accidentally disabling normal
+    // lead handoff wording such as "Próximo paso" or "asesor".
+    return array_values(array_unique(array_merge(
+      $default_phrases,
+      $configured === '' ? [] : $this->parseSignalList($configured),
+    )));
   }
 
   /**

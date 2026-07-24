@@ -500,6 +500,27 @@ function ai_whatsapp_automation_update_11015(): void {
 }
 
 /**
+ * Adds an explicit notification delivery account to each bot.
+ */
+function ai_whatsapp_automation_update_11016(): void {
+  $definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+  if ($definition_update_manager->getFieldStorageDefinition('lead_notification_account', 'ai_whatsapp_bot') !== NULL) {
+    return;
+  }
+
+  $fields = \Drupal::service('entity_field.manager')
+    ->getFieldStorageDefinitions('ai_whatsapp_bot');
+  if (isset($fields['lead_notification_account'])) {
+    $definition_update_manager->installFieldStorageDefinition(
+      'lead_notification_account',
+      'ai_whatsapp_bot',
+      'ai_whatsapp_automation',
+      $fields['lead_notification_account']
+    );
+  }
+}
+
+/**
  * Returns the entity type IDs provided by this module.
  *
  * @return string[]

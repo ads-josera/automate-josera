@@ -63,7 +63,7 @@ final class LeadHandoffService {
     $conversation->save();
     $this->auditHandoff($conversation, $lead);
 
-    $notifications = $this->notifyAdministrators($conversation, $lead, $ai_response);
+    $notifications = $this->notifyAdministrators($conversation, $lead, $ai_response, $bot);
     if ($notifications === []) {
       $this->logger->warning('Lead handoff created for conversation @conversation, but no administrator notification numbers were configured.', [
         '@conversation' => (string) $conversation->id(),
@@ -352,23 +352,31 @@ final class LeadHandoffService {
    * @return array<int, array<string, mixed>>
    *   Delivery results.
    */
-  private function notifyAdministrators(ContentEntityInterface $conversation, ContentEntityInterface $lead, string $ai_response): array {
-    $numbers = $this->notificationNumbers($conversation);
+  private function notifyAdministrators(ContentEntityInterface $conversation, ContentEntityInterface $lead, string $ai_response, ?ContentEntityInterface $bot): array {
+    $account = $this->notificationAccount($conversation, $bot);
+    $numbers = $this->notificationNumbers($account);
     if ($numbers === []) {
       return [];
     }
 
     $message = $this->buildNotificationMessage($conversation, $lead, $ai_response);
-    $account_phone = $this->getAccountPhone($conversation);
-    $provider = (string) $conversation->get('provider')->value;
-    $template_sid = $this->notificationTemplateSid($conversation);
+    if (!$account instanceof ContentEntityInterface) {
+      $this->logger->warning('Lead handoff for conversation @conversation has recipients but no WhatsApp account for delivery.', [
+        '@conversation' => (string) $conversation->id(),
+      ]);
+      return [];
+    }
+
+    $account_phone = $this->getFieldValue($account, 'phone_number');
+    $provider = $this->getFieldValue($account, 'provider');
+    $template_sid = $this->notificationTemplateSid($account, $bot);
     $results = [];
 
     foreach ($numbers as $number) {
       $recipient = [
         'phone' => $number,
         'account_phone' => $account_phone,
-        'whatsapp_account_id' => $conversation->hasField('whatsapp_account') ? $conversation->get('whatsapp_account')->target_id : NULL,
+        'whatsapp_account_id' => $account->id(),
       ];
       $results[] = $provider === 'twilio' && $template_sid !== ''
         ? $this->messageSender->sendTemplate($provider, $recipient, $template_sid, $this->notificationTemplateVariables($conversation, $lead, $ai_response))
@@ -386,13 +394,13 @@ final class LeadHandoffService {
   /**
    * Resolves the lead template by account, bot, then global default.
    */
-  private function notificationTemplateSid(ContentEntityInterface $conversation): string {
-    $account_template = $this->getFieldValue($this->getAccountForConversation($conversation), 'lead_notification_template_sid');
+  private function notificationTemplateSid(?ContentEntityInterface $account, ?ContentEntityInterface $bot): string {
+    $account_template = $this->getFieldValue($account, 'lead_notification_template_sid');
     if ($account_template !== '') {
       return $account_template;
     }
 
-    $bot_template = $this->getFieldValue($this->getBotForConversation($conversation), 'lead_notification_template_sid');
+    $bot_template = $this->getFieldValue($bot, 'lead_notification_template_sid');
     if ($bot_template !== '') {
       return $bot_template;
     }
@@ -450,8 +458,8 @@ final class LeadHandoffService {
    * @return string[]
    *   Phone numbers.
    */
-  private function notificationNumbers(ContentEntityInterface $conversation): array {
-    $raw = $this->accountNotificationNumbers($conversation);
+  private function notificationNumbers(?ContentEntityInterface $account): array {
+    $raw = $this->getFieldValue($account, 'lead_notification_numbers');
     if ($raw === '') {
       $raw = (string) $this->configFactory
         ->get('ai_whatsapp_automation.settings')
@@ -461,20 +469,6 @@ final class LeadHandoffService {
     $numbers = preg_split('/[\r\n,]+/', $raw) ?: [];
 
     return array_values(array_filter(array_map('trim', $numbers)));
-  }
-
-  /**
-   * Returns account-specific notification numbers, if configured.
-   */
-  private function accountNotificationNumbers(ContentEntityInterface $conversation): string {
-    return $this->getFieldValue($this->getAccountForConversation($conversation), 'lead_notification_numbers');
-  }
-
-  /**
-   * Returns the WhatsApp account phone associated with the conversation.
-   */
-  private function getAccountPhone(ContentEntityInterface $conversation): string {
-    return $this->getFieldValue($this->getAccountForConversation($conversation), 'phone_number');
   }
 
   /**
@@ -494,6 +488,13 @@ final class LeadHandoffService {
    * Returns the bot associated with the conversation account.
    */
   private function getBotForConversation(ContentEntityInterface $conversation): ?ContentEntityInterface {
+    if ($conversation->hasField('bot') && !$conversation->get('bot')->isEmpty()) {
+      $bot = $conversation->get('bot')->entity;
+      if ($bot instanceof ContentEntityInterface) {
+        return $bot;
+      }
+    }
+
     $account = $this->getAccountForConversation($conversation);
     if (!$account instanceof ContentEntityInterface || !$account->hasField('bot') || $account->get('bot')->isEmpty()) {
       return NULL;
@@ -502,6 +503,45 @@ final class LeadHandoffService {
     $bot = $account->get('bot')->entity;
 
     return $bot instanceof ContentEntityInterface ? $bot : NULL;
+  }
+
+  /**
+   * Resolves the WhatsApp account used to notify administrators.
+   */
+  private function notificationAccount(ContentEntityInterface $conversation, ?ContentEntityInterface $bot): ?ContentEntityInterface {
+    $conversation_account = $this->getAccountForConversation($conversation);
+    if ($conversation_account instanceof ContentEntityInterface) {
+      return $conversation_account;
+    }
+
+    if ($bot instanceof ContentEntityInterface && $bot->hasField('lead_notification_account') && !$bot->get('lead_notification_account')->isEmpty()) {
+      $account = $bot->get('lead_notification_account')->entity;
+      if ($account instanceof ContentEntityInterface) {
+        return $account;
+      }
+    }
+
+    if (!$bot instanceof ContentEntityInterface) {
+      return NULL;
+    }
+
+    $ids = $this->entityTypeManager
+      ->getStorage('ai_whatsapp_account')
+      ->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('bot', $bot->id())
+      ->condition('status', 'active')
+      ->range(0, 2)
+      ->execute();
+    if (count($ids) !== 1) {
+      return NULL;
+    }
+
+    $account = $this->entityTypeManager
+      ->getStorage('ai_whatsapp_account')
+      ->load(reset($ids));
+
+    return $account instanceof ContentEntityInterface ? $account : NULL;
   }
 
   /**

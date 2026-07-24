@@ -36,6 +36,7 @@ services:
     arguments:
       - '@entity_type.manager'
       - '@ai_whatsapp_automation.conversation_engine'
+      - '@ai_whatsapp_automation.lead_handoff'
       - '@logger.factory'
 
   ai_whatsapp_automation.web_chat_frame_response_subscriber:

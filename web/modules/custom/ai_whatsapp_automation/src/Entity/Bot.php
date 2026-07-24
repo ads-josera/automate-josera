@@ -256,6 +256,22 @@ final class Bot extends ContentEntityBase {
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
+    $fields['lead_notification_account'] = BaseFieldDefinition::create('entity_reference')
+      ->setLabel(t('Lead notification WhatsApp account'))
+      ->setDescription(t('Optional WhatsApp account used to notify administrators about this bot\'s leads, including leads from the web widget. When empty, the system uses the only active account assigned to this bot.'))
+      ->setSetting('target_type', 'ai_whatsapp_account')
+      ->setSetting('handler', 'default')
+      ->setDisplayOptions('form', [
+        'type' => 'entity_reference_autocomplete',
+        'weight' => 51,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'entity_reference_label',
+        'weight' => 51,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
     $fields['web_widget_enabled'] = BaseFieldDefinition::create('boolean')
       ->setLabel(t('Enable web widget'))
       ->setDescription(t('Allow this bot to be embedded as a public web chat widget.'))

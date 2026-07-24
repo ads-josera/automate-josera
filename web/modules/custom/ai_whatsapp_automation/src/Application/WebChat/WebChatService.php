@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\ai_whatsapp_automation\Application\WebChat;
 
 use Drupal\ai_whatsapp_automation\Application\AI\ConversationEngineService;
+use Drupal\ai_whatsapp_automation\Application\Lead\LeadHandoffService;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
@@ -27,6 +28,7 @@ final class WebChatService {
   public function __construct(
     private readonly EntityTypeManagerInterface $entityTypeManager,
     private readonly ConversationEngineService $conversationEngine,
+    private readonly LeadHandoffService $leadHandoff,
     LoggerChannelFactoryInterface $loggerFactory,
   ) {
     $this->logger = $loggerFactory->get('ai_whatsapp_automation');
@@ -76,12 +78,14 @@ final class WebChatService {
       'sender' => 'contact',
       'provider_message_id' => 'web-' . $session_id . '-' . time(),
     ]);
+    $handoff = $this->leadHandoff->handle($conversation, (string) $result['response_text']);
 
     return [
       'status' => 'ok',
       'session_id' => $session_id,
       'conversation_id' => $conversation->id(),
       'message' => (string) $result['response_text'],
+      'handoff' => $handoff,
     ];
   }
 

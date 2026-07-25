@@ -552,6 +552,35 @@ function ai_whatsapp_automation_update_11018(): void {
 }
 
 /**
+ * Converts OpenAI cost rates to a configuration-safe list.
+ */
+function ai_whatsapp_automation_update_11019(): void {
+  $config = \Drupal::configFactory()->getEditable('ai_whatsapp_automation.settings');
+  $stored_rates = $config->get('openai.cost_rates');
+  if (!is_array($stored_rates)) {
+    return;
+  }
+
+  $rates = [];
+  foreach ($stored_rates as $model => $rate) {
+    if (!is_array($rate)) {
+      continue;
+    }
+    $model = trim((string) ($rate['model'] ?? $model));
+    if ($model === '') {
+      continue;
+    }
+    $rates[] = [
+      'model' => $model,
+      'input' => (float) ($rate['input'] ?? 0),
+      'output' => (float) ($rate['output'] ?? 0),
+    ];
+  }
+
+  $config->set('openai.cost_rates', $rates)->save();
+}
+
+/**
  * Returns the entity type IDs provided by this module.
  *
  * @return string[]

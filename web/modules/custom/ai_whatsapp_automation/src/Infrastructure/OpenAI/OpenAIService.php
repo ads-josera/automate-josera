@@ -227,11 +227,23 @@ final class OpenAIService implements OpenAIServiceInterface {
    */
   private function configuredCostRates($config, string $model): array {
     $rates = $config->get('openai.cost_rates');
-    if (!is_array($rates) || !is_array($rates[$model] ?? NULL)) {
+    if (!is_array($rates)) {
       return [];
     }
 
-    return $rates[$model];
+    // Current storage is a list because Drupal configuration keys cannot
+    // contain dots, as used by model IDs such as gpt-5.1.
+    foreach ($rates as $key => $rate) {
+      if (!is_array($rate)) {
+        continue;
+      }
+      $rate_model = trim((string) ($rate['model'] ?? (is_string($key) ? $key : '')));
+      if ($rate_model === $model) {
+        return $rate;
+      }
+    }
+
+    return [];
   }
 
   /**

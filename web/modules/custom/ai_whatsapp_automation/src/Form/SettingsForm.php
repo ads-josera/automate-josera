@@ -158,7 +158,7 @@ final class SettingsForm extends ConfigFormBase {
       '#field_suffix' => $this->t('seconds'),
       '#required' => TRUE,
     ];
-    $stored_cost_rates = is_array($config->get('openai.cost_rates')) ? $config->get('openai.cost_rates') : [];
+    $stored_cost_rates = $this->costRatesByModel($config->get('openai.cost_rates'));
     $cost_models = array_values(array_unique(array_merge([
       'gpt-5-mini',
       'gpt-5.1',
@@ -556,8 +556,8 @@ final class SettingsForm extends ConfigFormBase {
   /**
    * Normalizes submitted rates for configuration storage.
    *
-   * @return array<string, array{input: float, output: float}>
-   *   Rates keyed by model ID.
+   * @return array<int, array{model: string, input: float, output: float}>
+   *   Rates as configuration-safe rows.
    */
   private function submittedCostRates(array $openai): array {
     $rates = [];
@@ -568,9 +568,42 @@ final class SettingsForm extends ConfigFormBase {
       if ($model === '' || ($row['input'] ?? '') === '' || ($row['output'] ?? '') === '') {
         continue;
       }
-      $rates[$model] = [
+      $rates[] = [
+        'model' => $model,
         'input' => (float) $row['input'],
         'output' => (float) $row['output'],
+      ];
+    }
+
+    return $rates;
+  }
+
+  /**
+   * Indexes saved cost-rate rows by model for form display.
+   *
+   * Supports the original keyed storage format for sites that stored model
+   * names without dots before cost rates became a configuration-safe list.
+   *
+   * @return array<string, array{input: float|int|string, output: float|int|string}>
+   *   Rates keyed by model ID.
+   */
+  private function costRatesByModel(mixed $stored_rates): array {
+    if (!is_array($stored_rates)) {
+      return [];
+    }
+
+    $rates = [];
+    foreach ($stored_rates as $key => $rate) {
+      if (!is_array($rate)) {
+        continue;
+      }
+      $model = trim((string) ($rate['model'] ?? (is_string($key) ? $key : '')));
+      if ($model === '') {
+        continue;
+      }
+      $rates[$model] = [
+        'input' => $rate['input'] ?? '',
+        'output' => $rate['output'] ?? '',
       ];
     }
 

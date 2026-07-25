@@ -21,6 +21,9 @@ ai_whatsapp_automation.settings:
           sequence:
             type: mapping
             mapping:
+              model:
+                type: string
+                label: 'OpenAI model ID'
               input:
                 type: float
                 label: 'Input USD per 1 million tokens'

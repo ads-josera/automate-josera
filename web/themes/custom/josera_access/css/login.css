@@ -2,12 +2,14 @@ html:has(.josera-login),
 body:has(.josera-login) {
   min-height: 100%;
   margin: 0;
+  overflow: hidden;
   background: #11133d;
 }
 
 .josera-login {
   display: grid;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
   grid-template-columns: minmax(430px, 46%) 1fr;
   overflow: hidden;
   color: #fff;
@@ -18,7 +20,7 @@ body:has(.josera-login) {
   position: relative;
   z-index: 1;
   display: grid;
-  min-height: 100vh;
+  min-height: 0;
   place-items: center;
   padding: 64px clamp(36px, 7vw, 132px);
   background:
@@ -177,33 +179,16 @@ body:has(.josera-login) {
   background: linear-gradient(180deg, rgb(9 17 69 / 5%), rgb(7 12 48 / 38%));
 }
 
-.josera-login__visual-copy {
-  position: absolute;
-  z-index: 1;
-  top: 44px;
-  right: 52px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  text-align: right;
-  text-shadow: 0 2px 16px rgb(0 0 0 / 38%);
-}
-
-.josera-login__visual-copy span {
-  font-size: 1.05rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-}
-
-.josera-login__visual-copy small {
-  margin-top: 6px;
-  color: rgb(255 255 255 / 74%);
-  font-size: 0.72rem;
-  letter-spacing: 0.1em;
-}
-
 @media (max-width: 900px) {
+  html:has(.josera-login),
+  body:has(.josera-login) {
+    overflow: auto;
+  }
+
   .josera-login {
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
     grid-template-columns: 1fr;
   }
 
@@ -212,6 +197,8 @@ body:has(.josera-login) {
   }
 
   .josera-login__panel {
+    min-height: 100vh;
+    min-height: 100dvh;
     padding: 56px 30px;
   }
 

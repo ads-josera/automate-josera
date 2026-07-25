@@ -158,6 +158,61 @@ final class SettingsForm extends ConfigFormBase {
       '#field_suffix' => $this->t('seconds'),
       '#required' => TRUE,
     ];
+    $stored_cost_rates = is_array($config->get('openai.cost_rates')) ? $config->get('openai.cost_rates') : [];
+    $cost_models = array_values(array_unique(array_merge([
+      'gpt-5-mini',
+      'gpt-5.1',
+      'gpt-5',
+      'gpt-5-nano',
+      'gpt-4.1-mini',
+    ], array_keys($stored_cost_rates))));
+    $form['openai']['cost_rates'] = [
+      '#type' => 'table',
+      '#title' => $this->t('Estimated cost rates (USD per 1 million tokens)'),
+      '#header' => [
+        'model' => $this->t('Model'),
+        'input' => $this->t('Input'),
+        'output' => $this->t('Output'),
+      ],
+      '#description' => $this->t('Enter the current OpenAI prices for each model you use. Leave both values empty to exclude a model from cost estimates.'),
+    ];
+    foreach ($cost_models as $model) {
+      $key = 'model_' . substr(hash('sha256', $model), 0, 12);
+      $rate = is_array($stored_cost_rates[$model] ?? NULL) ? $stored_cost_rates[$model] : [];
+      $form['openai']['cost_rates'][$key]['model'] = [
+        '#type' => 'textfield',
+        '#default_value' => $model,
+        '#attributes' => [
+          'readonly' => 'readonly',
+        ],
+      ];
+      foreach (['input', 'output'] as $type) {
+        $form['openai']['cost_rates'][$key][$type] = [
+          '#type' => 'number',
+          '#default_value' => $rate[$type] ?? '',
+          '#min' => 0,
+          '#step' => '0.000001',
+          '#field_suffix' => 'USD',
+        ];
+      }
+    }
+    $form['openai']['custom_cost_rate'] = [
+      '#type' => 'fieldset',
+      '#title' => $this->t('Additional model'),
+    ];
+    $form['openai']['custom_cost_rate']['model'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Model ID'),
+      '#maxlength' => 128,
+    ];
+    foreach (['input', 'output'] as $type) {
+      $form['openai']['custom_cost_rate'][$type] = [
+        '#type' => 'number',
+        '#title' => $type === 'input' ? $this->t('Input USD / 1M') : $this->t('Output USD / 1M'),
+        '#min' => 0,
+        '#step' => '0.000001',
+      ];
+    }
 
     $form['twilio'] = [
       '#type' => 'details',
@@ -411,6 +466,11 @@ final class SettingsForm extends ConfigFormBase {
       $form_state->setErrorByName('openai][timeout', $this->t('Timeout must be between 1 and 120 seconds.'));
     }
 
+    foreach ($form_state->getValue(['openai', 'cost_rates']) ?: [] as $row) {
+      $this->validateCostRate($form_state, $row, 'openai][cost_rates');
+    }
+    $this->validateCostRate($form_state, $form_state->getValue(['openai', 'custom_cost_rate']) ?: [], 'openai][custom_cost_rate');
+
     $auto_close_ai_hours = (int) $form_state->getValue(['options', 'auto_close_ai_hours']);
     if ($auto_close_ai_hours < 0 || $auto_close_ai_hours > 8760) {
       $form_state->setErrorByName('options][auto_close_ai_hours', $this->t('Auto-close hours must be between 0 and 8760.'));
@@ -428,11 +488,13 @@ final class SettingsForm extends ConfigFormBase {
     $whatsapp_cloud = $form_state->getValue('whatsapp_cloud');
     $evolution = $form_state->getValue('evolution');
     $options = $form_state->getValue('options');
+    $cost_rates = $this->submittedCostRates($openai);
 
     $config
       ->set('openai.api_key', $this->resolveSecretValue($openai['api_key'], $config->get('openai.api_key')))
       ->set('openai.default_model', $openai['default_model'])
       ->set('openai.timeout', (int) $openai['timeout'])
+      ->set('openai.cost_rates', $cost_rates)
       ->set('twilio.account_sid', $twilio['account_sid'])
       ->set('twilio.auth_token', $this->resolveSecretValue($twilio['auth_token'], $config->get('twilio.auth_token')))
       ->set('twilio.whatsapp_number', $twilio['whatsapp_number'])
@@ -468,6 +530,49 @@ final class SettingsForm extends ConfigFormBase {
     }
 
     return $submitted_value;
+  }
+
+  /**
+   * Validates a submitted model cost-rate row.
+   */
+  private function validateCostRate(FormStateInterface $form_state, array $row, string $element_name): void {
+    $model = trim((string) ($row['model'] ?? ''));
+    $input = $row['input'] ?? '';
+    $output = $row['output'] ?? '';
+    if ($model === '' && $input === '' && $output === '') {
+      return;
+    }
+    if ($model === '' || $input === '' || $output === '') {
+      $form_state->setErrorByName($element_name, $this->t('Each cost rate requires a model ID, input rate, and output rate.'));
+      return;
+    }
+    if ((float) $input < 0 || (float) $output < 0) {
+      $form_state->setErrorByName($element_name, $this->t('Cost rates cannot be negative.'));
+    }
+  }
+
+  /**
+   * Normalizes submitted rates for configuration storage.
+   *
+   * @return array<string, array{input: float, output: float}>
+   *   Rates keyed by model ID.
+   */
+  private function submittedCostRates(array $openai): array {
+    $rates = [];
+    $rows = is_array($openai['cost_rates'] ?? NULL) ? $openai['cost_rates'] : [];
+    $rows[] = is_array($openai['custom_cost_rate'] ?? NULL) ? $openai['custom_cost_rate'] : [];
+    foreach ($rows as $row) {
+      $model = trim((string) ($row['model'] ?? ''));
+      if ($model === '' || ($row['input'] ?? '') === '' || ($row['output'] ?? '') === '') {
+        continue;
+      }
+      $rates[$model] = [
+        'input' => (float) $row['input'],
+        'output' => (float) $row['output'],
+      ];
+    }
+
+    return $rates;
   }
 
 }

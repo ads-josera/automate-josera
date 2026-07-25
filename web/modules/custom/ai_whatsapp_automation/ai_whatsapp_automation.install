@@ -542,6 +542,16 @@ function ai_whatsapp_automation_update_11017(): void {
 }
 
 /**
+ * Initializes configurable OpenAI cost rates.
+ */
+function ai_whatsapp_automation_update_11018(): void {
+  $config = \Drupal::configFactory()->getEditable('ai_whatsapp_automation.settings');
+  if ($config->get('openai.cost_rates') === NULL) {
+    $config->set('openai.cost_rates', [])->save();
+  }
+}
+
+/**
  * Returns the entity type IDs provided by this module.
  *
  * @return string[]

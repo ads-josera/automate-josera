@@ -15,6 +15,18 @@ ai_whatsapp_automation.settings:
         timeout:
           type: integer
           label: 'Timeout'
+        cost_rates:
+          type: sequence
+          label: 'Estimated cost rates by model'
+          sequence:
+            type: mapping
+            mapping:
+              input:
+                type: float
+                label: 'Input USD per 1 million tokens'
+              output:
+                type: float
+                label: 'Output USD per 1 million tokens'
     twilio:
       type: mapping
       label: 'Twilio settings'

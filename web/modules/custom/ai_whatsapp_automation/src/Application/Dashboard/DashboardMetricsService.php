@@ -107,12 +107,16 @@ final class DashboardMetricsService {
     $query = $this->database->select('ai_whatsapp_message', 'm');
     $query->join('ai_whatsapp_conversation', 'c', 'm.conversation = c.id');
     $query->leftJoin('ai_whatsapp_account', 'a', 'c.whatsapp_account = a.id');
-    $query->leftJoin('ai_whatsapp_bot', 'b', 'a.bot = b.id');
-    $query->fields('b', ['id', 'name']);
+    $query->leftJoin('ai_whatsapp_bot', 'direct_bot', 'c.bot = direct_bot.id');
+    $query->leftJoin('ai_whatsapp_bot', 'account_bot', 'a.bot = account_bot.id');
+    $query->addExpression('COALESCE(direct_bot.id, account_bot.id)', 'id');
+    $query->addExpression("COALESCE(direct_bot.name, account_bot.name, 'Unassigned')", 'name');
     $query->addExpression('COALESCE(SUM(m.cost), 0)', 'total_cost');
     $query->addExpression('COALESCE(SUM(m.tokens), 0)', 'total_tokens');
-    $query->groupBy('b.id');
-    $query->groupBy('b.name');
+    $query->groupBy('direct_bot.id');
+    $query->groupBy('direct_bot.name');
+    $query->groupBy('account_bot.id');
+    $query->groupBy('account_bot.name');
     $query->orderBy('total_cost', 'DESC');
     $query->range(0, 10);
 

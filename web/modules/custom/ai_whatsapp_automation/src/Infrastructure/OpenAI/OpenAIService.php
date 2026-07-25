@@ -106,10 +106,11 @@ final class OpenAIService implements OpenAIServiceInterface {
       'response_id' => (string) ($response_data['id'] ?? ''),
     ];
     $tokens = $this->registerTokens($usage, $context);
+    $configured_rates = $this->configuredCostRates($config, $selected_model);
     $cost = $this->registerCost(
       $selected_model,
       $tokens,
-      is_array($options['cost_rates'] ?? NULL) ? $options['cost_rates'] : [],
+      is_array($options['cost_rates'] ?? NULL) ? $options['cost_rates'] : $configured_rates,
       $context,
     );
 
@@ -216,6 +217,21 @@ final class OpenAIService implements OpenAIServiceInterface {
     }
 
     return $cost;
+  }
+
+  /**
+   * Loads configured input and output rates for the selected model.
+   *
+   * @return array<string, mixed>
+   *   Cost rates per one million tokens.
+   */
+  private function configuredCostRates($config, string $model): array {
+    $rates = $config->get('openai.cost_rates');
+    if (!is_array($rates) || !is_array($rates[$model] ?? NULL)) {
+      return [];
+    }
+
+    return $rates[$model];
   }
 
   /**

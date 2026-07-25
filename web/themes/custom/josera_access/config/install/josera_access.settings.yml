@@ -1,0 +1,8 @@
+favicon:
+  use_default: true
+features: { }
+logo:
+  use_default: false
+login_primary_color: '#20105d'
+login_accent_color: '#fb167c'
+login_logo: []

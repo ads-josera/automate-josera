@@ -1,0 +1,31 @@
+<main class="josera-login" style="--josera-primary: {{ josera_login.primary_color }}; --josera-accent: {{ josera_login.accent_color }};">
+  <section class="josera-login__panel" aria-labelledby="josera-login-title">
+    <div class="josera-login__content">
+      <div class="josera-login__brand">
+        {% if josera_login.logo_url %}
+          <img src="{{ josera_login.logo_url }}" alt="JG Mylard" class="josera-login__logo">
+        {% else %}
+          <span class="josera-login__wordmark">JG <strong>MYLARD</strong></span>
+          <span class="josera-login__slogan">Calidad y Servicio</span>
+        {% endif %}
+      </div>
+
+      <div class="josera-login__heading">
+        <p class="josera-login__eyebrow">PLATAFORMA</p>
+        <h1 id="josera-login-title">Automatización</h1>
+        <p>Acceso administrativo</p>
+      </div>
+
+      <div class="josera-login__form">
+        {{ page.content }}
+      </div>
+    </div>
+  </section>
+
+  <aside class="josera-login__visual" aria-hidden="true">
+    <div class="josera-login__visual-copy">
+      <span>JG MYLARD</span>
+      <small>AI WhatsApp Automation</small>
+    </div>
+  </aside>
+</main>

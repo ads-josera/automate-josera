@@ -581,6 +581,16 @@ function ai_whatsapp_automation_update_11019(): void {
 }
 
 /**
+ * Makes the branded login page the public entry point of the site.
+ */
+function ai_whatsapp_automation_update_11020(): void {
+  \Drupal::configFactory()
+    ->getEditable('system.site')
+    ->set('page.front', '/user/login')
+    ->save();
+}
+
+/**
  * Returns the entity type IDs provided by this module.
  *
  * @return string[]

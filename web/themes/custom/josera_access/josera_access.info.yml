@@ -1,0 +1,10 @@
+name: Josera Access
+type: theme
+description: Branded access theme for the Josera automation platform.
+package: Custom
+core_version_requirement: ^11
+base theme: false
+libraries:
+  - josera_access/login
+regions:
+  content: Content

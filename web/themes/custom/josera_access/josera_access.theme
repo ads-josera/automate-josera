@@ -1,0 +1,35 @@
+<?php
+
+declare(strict_types=1);
+
+use Drupal\file\Entity\File;
+
+/**
+ * Prepares branding data for the public login page.
+ */
+function josera_access_preprocess_page(array &$variables): void {
+  if (\Drupal::routeMatch()->getRouteName() !== 'user.login') {
+    return;
+  }
+
+  $logo_url = '';
+  $file_ids = theme_get_setting('login_logo', 'josera_access') ?: [];
+  $file_id = is_array($file_ids) ? reset($file_ids) : $file_ids;
+  if ($file_id && ($file = File::load($file_id))) {
+    $logo_url = \Drupal::service('file_url_generator')->generateAbsoluteString($file->getFileUri());
+  }
+
+  $variables['josera_login'] = [
+    'primary_color' => josera_access_color(theme_get_setting('login_primary_color', 'josera_access'), '#20105d'),
+    'accent_color' => josera_access_color(theme_get_setting('login_accent_color', 'josera_access'), '#fb167c'),
+    'logo_url' => $logo_url,
+  ];
+}
+
+/**
+ * Returns a valid hexadecimal color for the inline login theme variables.
+ */
+function josera_access_color(mixed $value, string $fallback): string {
+  $value = trim((string) $value);
+  return preg_match('/^#[0-9a-fA-F]{6}$/', $value) ? $value : $fallback;
+}

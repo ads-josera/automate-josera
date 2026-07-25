@@ -1,0 +1,16 @@
+josera_access.settings:
+  type: theme_settings
+  label: 'Josera Access settings'
+  mapping:
+    login_primary_color:
+      type: color_hex
+      label: 'Primary login color'
+    login_accent_color:
+      type: color_hex
+      label: 'Login accent color'
+    login_logo:
+      type: sequence
+      label: 'Login logo files'
+      sequence:
+        type: integer
+        label: 'File ID'

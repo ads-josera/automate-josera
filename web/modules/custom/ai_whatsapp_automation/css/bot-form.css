@@ -1,0 +1,112 @@
+.aiwa-bot-form {
+  max-width: 1120px;
+}
+
+.aiwa-bot-form > .aiwa-web-integration-form-link {
+  float: right;
+  margin: 0 0 18px 18px;
+}
+
+.aiwa-bot-form__section {
+  clear: both;
+  margin: 0 0 14px;
+  border: 1px solid #d7deea;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(16 24 40 / 5%);
+}
+
+.aiwa-bot-form__section > summary {
+  padding: 16px 48px 16px 18px;
+  color: #162a50;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.aiwa-bot-form__section > summary::marker {
+  color: #155eef;
+}
+
+.aiwa-bot-form__section > .details-wrapper {
+  padding: 0 18px 20px;
+  border-top: 1px solid #e7ecf4;
+}
+
+.aiwa-bot-form__section > .details-wrapper > .description {
+  max-width: 760px;
+  margin: 14px 0 18px;
+  color: #64748b;
+}
+
+.aiwa-bot-form__section .form-item {
+  max-width: 820px;
+}
+
+.aiwa-bot-form__section--profile .form-item-model,
+.aiwa-bot-form__section--profile .form-item-temperature,
+.aiwa-bot-form__section--profile .form-item-status,
+.aiwa-bot-form__section--web-widget .form-item-web-widget-primary-color,
+.aiwa-bot-form__section--web-widget .form-item-web-widget-secondary-color,
+.aiwa-bot-form__section--web-widget .form-item-web-widget-position,
+.aiwa-bot-form__section--web-widget .form-item-web-widget-icon,
+.aiwa-bot-form__section--web-widget .form-item-web-widget-size,
+.aiwa-bot-form__section--web-widget .form-item-web-widget-language {
+  display: inline-block;
+  width: min(100%, 240px);
+  margin-right: 18px;
+  vertical-align: top;
+}
+
+.aiwa-bot-form__section textarea {
+  min-height: 110px;
+}
+
+.aiwa-bot-form__section--instructions textarea {
+  min-height: 280px;
+}
+
+.aiwa-bot-form__section--handoff textarea,
+.aiwa-bot-form__section--web-widget textarea {
+  min-height: 96px;
+}
+
+.aiwa-bot-form .form-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin: 24px 0 0;
+  padding: 14px 18px;
+  border-top: 1px solid #d7deea;
+  background: rgb(255 255 255 / 96%);
+  box-shadow: 0 -4px 16px rgb(15 23 42 / 7%);
+}
+
+@media (max-width: 640px) {
+  .aiwa-bot-form > .aiwa-web-integration-form-link {
+    float: none;
+    display: inline-flex;
+    margin: 0 0 16px;
+  }
+
+  .aiwa-bot-form__section > summary {
+    padding: 14px 40px 14px 14px;
+  }
+
+  .aiwa-bot-form__section > .details-wrapper {
+    padding: 0 14px 16px;
+  }
+
+  .aiwa-bot-form__section--profile .form-item-model,
+  .aiwa-bot-form__section--profile .form-item-temperature,
+  .aiwa-bot-form__section--profile .form-item-status,
+  .aiwa-bot-form__section--web-widget .form-item-web-widget-primary-color,
+  .aiwa-bot-form__section--web-widget .form-item-web-widget-secondary-color,
+  .aiwa-bot-form__section--web-widget .form-item-web-widget-position,
+  .aiwa-bot-form__section--web-widget .form-item-web-widget-icon,
+  .aiwa-bot-form__section--web-widget .form-item-web-widget-size,
+  .aiwa-bot-form__section--web-widget .form-item-web-widget-language {
+    display: block;
+    width: auto;
+    margin-right: 0;
+  }
+}

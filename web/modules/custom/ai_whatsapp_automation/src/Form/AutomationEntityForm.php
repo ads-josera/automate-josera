@@ -20,19 +20,8 @@ final class AutomationEntityForm extends ContentEntityForm {
     $form = parent::buildForm($form, $form_state);
     $entity = $this->getEntity();
 
-    if ($entity->getEntityTypeId() === 'ai_whatsapp_bot' && !$entity->isNew()) {
-      $form['#attached']['library'][] = 'ai_whatsapp_automation/integration_admin';
-      $form['web_integration_action'] = [
-        '#type' => 'link',
-        '#title' => $this->t('Web integration'),
-        '#url' => Url::fromRoute('ai_whatsapp_automation.bot_web_integration', [
-          'ai_whatsapp_bot' => $entity->id(),
-        ]),
-        '#attributes' => [
-          'class' => ['button', 'button--primary', 'aiwa-web-integration-form-link'],
-        ],
-        '#weight' => -100,
-      ];
+    if ($entity->getEntityTypeId() === 'ai_whatsapp_bot') {
+      $this->organizeBotForm($form, $entity->isNew());
     }
 
     if ($entity->getEntityTypeId() === 'ai_whatsapp_bot' && isset($form['web_widget_logo_url'])) {
@@ -50,6 +39,100 @@ final class AutomationEntityForm extends ContentEntityForm {
     }
 
     return $form;
+  }
+
+  /**
+   * Organizes the bot form into focused, collapsible sections.
+   */
+  private function organizeBotForm(array &$form, bool $is_new): void {
+    $form['#attributes']['class'][] = 'aiwa-bot-form';
+    $form['#attached']['library'][] = 'ai_whatsapp_automation/bot_form';
+
+    $sections = [
+      'profile' => [
+        'title' => $this->t('Bot profile'),
+        'description' => $this->t('Identity, model, and knowledge source used for each conversation.'),
+        'open' => TRUE,
+        'fields' => ['name', 'description', 'status', 'model', 'temperature', 'knowledge_base'],
+      ],
+      'instructions' => [
+        'title' => $this->t('AI instructions'),
+        'description' => $this->t('Define how this assistant responds and what it should prioritize.'),
+        'open' => TRUE,
+        'fields' => ['system_prompt'],
+      ],
+      'handoff' => [
+        'title' => $this->t('Lead handoff'),
+        'description' => $this->t('Set when a qualified conversation becomes a lead and who receives the notification.'),
+        'open' => FALSE,
+        'fields' => [
+          'handoff_enabled',
+          'handoff_required_fields',
+          'handoff_minimum_fields',
+          'handoff_trigger_phrases',
+          'handoff_prompt_rules',
+          'lead_notification_template_sid',
+          'lead_notification_account',
+        ],
+      ],
+      'web_widget' => [
+        'title' => $this->t('Web widget'),
+        'description' => $this->t('Customize the public chat experience embedded on your website.'),
+        'open' => FALSE,
+        'fields' => [
+          'web_widget_enabled',
+          'web_widget_logo_file',
+          'web_widget_primary_color',
+          'web_widget_secondary_color',
+          'web_widget_assistant_name',
+          'web_widget_welcome_message',
+          'web_widget_position',
+          'web_widget_icon',
+          'web_widget_size',
+          'web_widget_language',
+          'web_widget_allowed_domains',
+        ],
+      ],
+      'web_security' => [
+        'title' => $this->t('Web widget advanced settings'),
+        'description' => $this->t('Public identifier and optional API protection for external integrations.'),
+        'open' => FALSE,
+        'fields' => ['web_widget_token', 'web_widget_api_key'],
+      ],
+    ];
+
+    foreach ($sections as $key => $section) {
+      $form[$key] = [
+        '#type' => 'details',
+        '#title' => $section['title'],
+        '#description' => $section['description'],
+        '#open' => $section['open'],
+        '#attributes' => [
+          'class' => ['aiwa-bot-form__section', 'aiwa-bot-form__section--' . str_replace('_', '-', $key)],
+        ],
+      ];
+      foreach ($section['fields'] as $field_name) {
+        if (isset($form[$field_name])) {
+          $form[$key][$field_name] = $form[$field_name];
+          unset($form[$field_name]);
+        }
+      }
+    }
+
+    if (!$is_new) {
+      $entity = $this->getEntity();
+      $form['web_integration_action'] = [
+        '#type' => 'link',
+        '#title' => $this->t('Open web integration'),
+        '#url' => Url::fromRoute('ai_whatsapp_automation.bot_web_integration', [
+          'ai_whatsapp_bot' => $entity->id(),
+        ]),
+        '#attributes' => [
+          'class' => ['button', 'button--primary', 'aiwa-web-integration-form-link'],
+        ],
+        '#weight' => -100,
+      ];
+    }
   }
 
   /**

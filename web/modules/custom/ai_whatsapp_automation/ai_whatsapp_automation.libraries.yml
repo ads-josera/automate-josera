@@ -17,6 +17,11 @@ integration_admin:
   dependencies:
     - core/drupal
 
+bot_form:
+  css:
+    theme:
+      css/bot-form.css: {}
+
 web_chat:
   css:
     theme:

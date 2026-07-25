@@ -14,6 +14,7 @@ body:has(.josera-login) {
   overflow: hidden;
   color: #fff;
   background: #11133d;
+  font-family: Inter, "Helvetica Neue", Arial, sans-serif;
 }
 
 .josera-login__panel {
@@ -36,8 +37,10 @@ body:has(.josera-login) {
   display: flex;
   min-height: 82px;
   flex-direction: column;
+  align-items: center;
   justify-content: center;
   margin-bottom: 84px;
+  text-align: center;
 }
 
 .josera-login__logo {
@@ -46,12 +49,13 @@ body:has(.josera-login) {
   max-width: 260px;
   max-height: 100px;
   object-fit: contain;
-  object-position: left center;
+  object-position: center;
 }
 
 .josera-login__wordmark {
-  font-family: Georgia, serif;
+  font-family: inherit;
   font-size: 2rem;
+  font-weight: 400;
   letter-spacing: 0.08em;
 }
 

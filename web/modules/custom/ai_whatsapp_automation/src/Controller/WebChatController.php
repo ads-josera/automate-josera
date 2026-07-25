@@ -54,19 +54,20 @@ final class WebChatController extends ControllerBase {
       'token' => $this->publicToken($bot),
       'language' => $config['language'],
     ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR);
-    $assets_base = rtrim($request->getSchemeAndHttpHost(), '/') . base_path() . 'modules/custom/ai_whatsapp_automation';
+    $css_url = $this->assetUrl($request, 'css/web-chat.css');
+    $js_url = $this->assetUrl($request, 'js/web-chat.js');
     $logo = $config['logoUrl'] !== ''
       ? '<img class="aiwa-chat__logo" src="' . $this->escape($config['logoUrl']) . '" alt="">'
       : '<span class="aiwa-chat__logo-fallback">AI</span>';
     $html = '<!doctype html><html lang="' . $this->escape($config['language']) . '"><head>'
       . '<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
-      . '<link rel="stylesheet" href="' . $this->escape($assets_base . '/css/web-chat.css') . '">'
+      . '<link rel="stylesheet" href="' . $this->escape($css_url) . '">'
       . '</head><body><div class="aiwa-chat-shell"><div class="aiwa-chat" style="--aiwa-primary:' . $this->safeColor($config['primaryColor']) . ';--aiwa-secondary:' . $this->safeColor($config['secondaryColor']) . ';">'
-      . '<div class="aiwa-chat__header">' . $logo . '<div class="aiwa-chat__title"><strong>' . $this->escape($config['name']) . '</strong><span class="aiwa-chat__presence">' . $this->escape($labels['status']) . '</span></div><button type="button" class="aiwa-chat__minimize" data-aiwa-minimize aria-label="' . $this->escape($labels['minimize']) . '"><span aria-hidden="true">&#215;</span></button></div>'
+      . '<div class="aiwa-chat__header">' . $logo . '<div class="aiwa-chat__title"><strong>' . $this->escape($config['name']) . '</strong><span class="aiwa-chat__presence">' . $this->escape($labels['status']) . '</span></div><button type="button" class="aiwa-chat__minimize" data-aiwa-minimize aria-label="' . $this->escape($labels['minimize']) . '"><span aria-hidden="true">&#8722;</span></button></div>'
       . '<div class="aiwa-chat__messages" data-aiwa-messages><div class="aiwa-message aiwa-message--ai">' . $this->escape($config['welcomeMessage']) . '</div></div>'
       . '<form class="aiwa-chat__form" data-aiwa-form><textarea data-aiwa-input rows="1" maxlength="1400" placeholder="' . $this->escape($labels['placeholder']) . '"></textarea><button type="submit" aria-label="' . $this->escape($labels['send']) . '"><span aria-hidden="true">&#8593;</span></button></form>'
       . '</div></div><script>window.drupalSettings=window.drupalSettings||{};window.drupalSettings.aiWhatsappAutomationWebChat=' . $settings . ';</script>'
-      . '<script src="' . $this->escape($assets_base . '/js/web-chat.js') . '"></script></body></html>';
+      . '<script src="' . $this->escape($js_url) . '"></script></body></html>';
 
     return new Response($html, Response::HTTP_OK, [
       'Content-Type' => 'text/html; charset=UTF-8',
@@ -211,6 +212,17 @@ final class WebChatController extends ControllerBase {
         'minimize' => 'Minimize chat',
       ],
     };
+  }
+
+  /**
+   * Returns a versioned public URL to avoid stale standalone-widget assets.
+   */
+  private function assetUrl(Request $request, string $asset): string {
+    $relative_path = 'modules/custom/ai_whatsapp_automation/' . ltrim($asset, '/');
+    $file_path = DRUPAL_ROOT . '/' . $relative_path;
+    $version = is_file($file_path) ? (string) filemtime($file_path) : '1';
+
+    return rtrim($request->getSchemeAndHttpHost(), '/') . base_path() . $relative_path . '?v=' . $version;
   }
 
   /**

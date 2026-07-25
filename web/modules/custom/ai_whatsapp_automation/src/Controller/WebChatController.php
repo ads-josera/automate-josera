@@ -45,6 +45,7 @@ final class WebChatController extends ControllerBase {
     }
 
     $config = $this->webChat->widgetConfig($bot);
+    $labels = $this->chatLabels($config['language']);
     $api_url = Url::fromRoute('ai_whatsapp_automation.web_chat_api', ['token' => $this->publicToken($bot)], ['absolute' => TRUE])->toString();
 
     $settings = json_encode([
@@ -61,9 +62,9 @@ final class WebChatController extends ControllerBase {
       . '<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
       . '<link rel="stylesheet" href="' . $this->escape($assets_base . '/css/web-chat.css') . '">'
       . '</head><body><div class="aiwa-chat-shell"><div class="aiwa-chat" style="--aiwa-primary:' . $this->safeColor($config['primaryColor']) . ';--aiwa-secondary:' . $this->safeColor($config['secondaryColor']) . ';">'
-      . '<div class="aiwa-chat__header">' . $logo . '<div class="aiwa-chat__title"><strong>' . $this->escape($config['name']) . '</strong><span class="aiwa-chat__presence">' . $this->escape((string) $this->t('Online assistant')) . '</span></div></div>'
+      . '<div class="aiwa-chat__header">' . $logo . '<div class="aiwa-chat__title"><strong>' . $this->escape($config['name']) . '</strong><span class="aiwa-chat__presence">' . $this->escape($labels['status']) . '</span></div></div>'
       . '<div class="aiwa-chat__messages" data-aiwa-messages><div class="aiwa-message aiwa-message--ai">' . $this->escape($config['welcomeMessage']) . '</div></div>'
-      . '<form class="aiwa-chat__form" data-aiwa-form><textarea data-aiwa-input rows="1" maxlength="1400" placeholder="' . $this->escape((string) $this->t('Write your message...')) . '"></textarea><button type="submit" aria-label="' . $this->escape((string) $this->t('Send')) . '"><span aria-hidden="true">&#8593;</span></button></form>'
+      . '<form class="aiwa-chat__form" data-aiwa-form><textarea data-aiwa-input rows="1" maxlength="1400" placeholder="' . $this->escape($labels['placeholder']) . '"></textarea><button type="submit" aria-label="' . $this->escape($labels['send']) . '"><span aria-hidden="true">&#8593;</span></button></form>'
       . '</div></div><script>window.drupalSettings=window.drupalSettings||{};window.drupalSettings.aiWhatsappAutomationWebChat=' . $settings . ';</script>'
       . '<script src="' . $this->escape($assets_base . '/js/web-chat.js') . '"></script></body></html>';
 
@@ -187,6 +188,27 @@ final class WebChatController extends ControllerBase {
    */
   private function safeColor(string $color): string {
     return preg_match('/^#[0-9A-Fa-f]{3,8}$/', $color) ? $color : '#155EEF';
+  }
+
+  /**
+   * Returns browser-facing labels for the configured widget language.
+   *
+   * @return array{status: string, placeholder: string, send: string}
+   *   Widget labels.
+   */
+  private function chatLabels(string $language): array {
+    return match (strtolower($language)) {
+      'es', 'es-mx' => [
+        'status' => 'Asistente en línea',
+        'placeholder' => 'Escribe tu mensaje...',
+        'send' => 'Enviar',
+      ],
+      default => [
+        'status' => 'Online assistant',
+        'placeholder' => 'Write your message...',
+        'send' => 'Send',
+      ],
+    };
   }
 
   /**

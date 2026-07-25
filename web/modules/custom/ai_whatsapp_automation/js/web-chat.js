@@ -9,6 +9,7 @@
       form.dataset.aiwaBound = 'true';
 
       var settings = (window.drupalSettings || {}).aiWhatsappAutomationWebChat || {};
+      var isSpanish = String(settings.language || '').toLowerCase().indexOf('es') === 0;
       var messages = context.querySelector('[data-aiwa-messages]');
       var input = context.querySelector('[data-aiwa-input]');
       var button = form.querySelector('button[type="submit"]');
@@ -34,7 +35,7 @@
         input.value = '';
         input.style.height = '';
         setLoading(button, true);
-        var typing = appendTypingIndicator(messages);
+        var typing = appendTypingIndicator(messages, isSpanish);
 
         fetch(settings.apiUrl, {
           method: 'POST',
@@ -58,7 +59,7 @@
           })
           .catch(function () {
             removeElement(typing);
-            appendMessage(messages, 'No pude responder en este momento. Intenta nuevamente.', 'system');
+            appendMessage(messages, isSpanish ? 'No pude responder en este momento. Intenta nuevamente.' : 'I could not respond right now. Please try again.', 'system');
           })
           .finally(function () {
             setLoading(button, false);
@@ -101,14 +102,14 @@
     scrollToLatest(container);
   }
 
-  function appendTypingIndicator(container) {
+  function appendTypingIndicator(container, isSpanish) {
     if (!container) {
       return null;
     }
 
     var item = document.createElement('div');
     item.className = 'aiwa-message aiwa-message--ai aiwa-message--typing';
-    item.setAttribute('aria-label', 'El asistente está escribiendo');
+    item.setAttribute('aria-label', isSpanish ? 'El asistente está escribiendo' : 'The assistant is typing');
     item.innerHTML = '<span></span><span></span><span></span>';
     container.appendChild(item);
     scrollToLatest(container);

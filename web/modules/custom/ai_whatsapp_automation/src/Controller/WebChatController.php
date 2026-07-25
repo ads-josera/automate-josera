@@ -61,9 +61,9 @@ final class WebChatController extends ControllerBase {
       . '<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
       . '<link rel="stylesheet" href="' . $this->escape($assets_base . '/css/web-chat.css') . '">'
       . '</head><body><div class="aiwa-chat-shell"><div class="aiwa-chat" style="--aiwa-primary:' . $this->safeColor($config['primaryColor']) . ';--aiwa-secondary:' . $this->safeColor($config['secondaryColor']) . ';">'
-      . '<div class="aiwa-chat__header">' . $logo . '<div class="aiwa-chat__title"><strong>' . $this->escape($config['name']) . '</strong><span>' . $this->escape((string) $this->t('Online assistant')) . '</span></div></div>'
+      . '<div class="aiwa-chat__header">' . $logo . '<div class="aiwa-chat__title"><strong>' . $this->escape($config['name']) . '</strong><span class="aiwa-chat__presence">' . $this->escape((string) $this->t('Online assistant')) . '</span></div></div>'
       . '<div class="aiwa-chat__messages" data-aiwa-messages><div class="aiwa-message aiwa-message--ai">' . $this->escape($config['welcomeMessage']) . '</div></div>'
-      . '<form class="aiwa-chat__form" data-aiwa-form><textarea data-aiwa-input rows="1" maxlength="1400" placeholder="' . $this->escape((string) $this->t('Write your message...')) . '"></textarea><button type="submit">' . $this->escape((string) $this->t('Send')) . '</button></form>'
+      . '<form class="aiwa-chat__form" data-aiwa-form><textarea data-aiwa-input rows="1" maxlength="1400" placeholder="' . $this->escape((string) $this->t('Write your message...')) . '"></textarea><button type="submit" aria-label="' . $this->escape((string) $this->t('Send')) . '"><span aria-hidden="true">&#8593;</span></button></form>'
       . '</div></div><script>window.drupalSettings=window.drupalSettings||{};window.drupalSettings.aiWhatsappAutomationWebChat=' . $settings . ';</script>'
       . '<script src="' . $this->escape($assets_base . '/js/web-chat.js') . '"></script></body></html>';
 

@@ -34,6 +34,7 @@
         input.value = '';
         input.style.height = '';
         setLoading(button, true);
+        var typing = appendTypingIndicator(messages);
 
         fetch(settings.apiUrl, {
           method: 'POST',
@@ -52,9 +53,11 @@
             });
           })
           .then(function (payload) {
+            removeElement(typing);
             appendMessage(messages, payload.message || '', 'ai');
           })
           .catch(function () {
+            removeElement(typing);
             appendMessage(messages, 'No pude responder en este momento. Intenta nuevamente.', 'system');
           })
           .finally(function () {
@@ -95,7 +98,32 @@
     item.className = 'aiwa-message aiwa-message--' + type;
     item.textContent = text;
     container.appendChild(item);
-    container.scrollTop = container.scrollHeight;
+    scrollToLatest(container);
+  }
+
+  function appendTypingIndicator(container) {
+    if (!container) {
+      return null;
+    }
+
+    var item = document.createElement('div');
+    item.className = 'aiwa-message aiwa-message--ai aiwa-message--typing';
+    item.setAttribute('aria-label', 'El asistente está escribiendo');
+    item.innerHTML = '<span></span><span></span><span></span>';
+    container.appendChild(item);
+    scrollToLatest(container);
+
+    return item;
+  }
+
+  function removeElement(element) {
+    if (element && element.parentNode) {
+      element.parentNode.removeChild(element);
+    }
+  }
+
+  function scrollToLatest(container) {
+    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
   }
 
   function setLoading(button, loading) {

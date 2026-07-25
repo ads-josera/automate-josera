@@ -248,7 +248,7 @@ final class WebChatController extends ControllerBase {
   var button = document.createElement('button');
   button.type = 'button';
   button.setAttribute('aria-label', config.name || 'Open chat');
-  button.textContent = config.icon === 'help' ? '?' : (config.icon === 'sparkles' ? '*' : 'Chat');
+  button.innerHTML = '<span aria-hidden="true" style="display:flex;align-items:center;justify-content:center;width:25px;height:19px;border:2px solid currentColor;border-radius:8px;position:relative;box-sizing:border-box"><i style="position:absolute;bottom:-5px;left:5px;width:7px;height:7px;border-left:2px solid currentColor;border-bottom:2px solid currentColor;transform:skewY(-34deg);background:inherit"></i><b style="display:block;width:3px;height:3px;border-radius:50%;background:currentColor;box-shadow:6px 0 0 currentColor,-6px 0 0 currentColor"></b></span>';
   button.style.width = '62px';
   button.style.height = '62px';
   button.style.borderRadius = '999px';

@@ -417,7 +417,7 @@ final class LeadHandoffService {
         'whatsapp_account_id' => $account->id(),
       ];
       $results[] = $provider === 'twilio' && $template_sid !== ''
-        ? $this->messageSender->sendTemplate($provider, $recipient, $template_sid, $this->notificationTemplateVariables($conversation, $lead, $ai_response))
+        ? $this->messageSender->sendTemplate($provider, $recipient, $template_sid, $this->notificationTemplateVariables($lead, $ai_response))
         : $this->messageSender->sendText($provider, $recipient, $message);
     }
 
@@ -452,18 +452,15 @@ final class LeadHandoffService {
    * Builds variables for the approved lead-notification template.
    *
    * @return array<string, string>
-   *   Values for placeholders {{1}} through {{6}}.
+   *   Values for placeholders {{1}} through {{5}}.
    */
-  private function notificationTemplateVariables(ContentEntityInterface $conversation, ContentEntityInterface $lead, string $ai_response): array {
-    $base_url = rtrim((string) ($GLOBALS['base_url'] ?? ''), '/');
-
+  private function notificationTemplateVariables(ContentEntityInterface $lead, string $ai_response): array {
     return [
       '1' => (string) $lead->id(),
       '2' => (string) $lead->label(),
       '3' => (string) ($lead->get('phone')->value ?: 'No capturado'),
       '4' => (string) ($lead->get('email')->value ?: 'No capturado'),
       '5' => mb_substr(trim($ai_response), 0, 500),
-      '6' => $base_url . '/admin/content/ai-whatsapp/conversations/' . $conversation->id(),
     ];
   }
 

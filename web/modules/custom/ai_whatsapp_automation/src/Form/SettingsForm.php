@@ -195,7 +195,7 @@ final class SettingsForm extends ConfigFormBase {
       '#title' => $this->t('Lead notification Content Template SID'),
       '#default_value' => $config->get('twilio.content_template_sid') ?: '',
       '#maxlength' => 64,
-      '#description' => $this->t('Optional approved Twilio WhatsApp template (HX...). It is used for lead notifications outside the 24-hour messaging window. Use variables {{1}} lead ID, {{2}} contact, {{3}} phone, {{4}} email, {{5}} bot summary, and {{6}} conversation URL.'),
+      '#description' => $this->t('Optional approved Twilio WhatsApp template (HX...). It is used for lead notifications outside the 24-hour messaging window. Use variables {{1}} lead ID, {{2}} contact, {{3}} phone, {{4}} email, and {{5}} bot summary.'),
     ];
     $form['twilio']['messaging_service_sid'] = [
       '#type' => 'textfield',

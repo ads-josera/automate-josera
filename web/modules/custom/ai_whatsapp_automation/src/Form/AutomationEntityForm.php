@@ -35,6 +35,12 @@ final class AutomationEntityForm extends ContentEntityForm {
       ];
     }
 
+    if ($entity->getEntityTypeId() === 'ai_whatsapp_bot' && isset($form['web_widget_logo_url'])) {
+      // Kept as a rendering fallback for existing bots, but new logos upload
+      // through the file field instead of requiring a public URL.
+      $form['web_widget_logo_url']['#access'] = FALSE;
+    }
+
     if ($entity->getEntityTypeId() === 'ai_whatsapp_account' && isset($form['twilio_auth_token']['widget'][0]['value'])) {
       $form['twilio_auth_token']['widget'][0]['value']['#type'] = 'password';
       $form['twilio_auth_token']['widget'][0]['value']['#default_value'] = '';

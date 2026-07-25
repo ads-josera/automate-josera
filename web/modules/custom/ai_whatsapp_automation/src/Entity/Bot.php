@@ -351,6 +351,23 @@ final class Bot extends ContentEntityBase {
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
+    $fields['web_widget_logo_file'] = BaseFieldDefinition::create('file')
+      ->setLabel(t('Web widget logo'))
+      ->setDescription(t('Upload a JPG, PNG, or SVG logo. A square 512 x 512 px image is recommended.'))
+      ->setSetting('file_directory', 'ai-whatsapp-widget-logos')
+      ->setSetting('file_extensions', 'jpg jpeg png svg')
+      ->setSetting('max_filesize', '2 MB')
+      ->setDisplayOptions('form', [
+        'type' => 'file_generic',
+        'weight' => 55,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'file_default',
+        'weight' => 55,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
     $fields['web_widget_assistant_name'] = BaseFieldDefinition::create('string')
       ->setLabel(t('Web widget assistant name'))
       ->setSetting('max_length', 128)

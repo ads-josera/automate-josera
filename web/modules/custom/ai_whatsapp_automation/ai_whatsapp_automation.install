@@ -521,6 +521,27 @@ function ai_whatsapp_automation_update_11016(): void {
 }
 
 /**
+ * Adds upload support for web widget logos.
+ */
+function ai_whatsapp_automation_update_11017(): void {
+  $definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+  if ($definition_update_manager->getFieldStorageDefinition('web_widget_logo_file', 'ai_whatsapp_bot') !== NULL) {
+    return;
+  }
+
+  $fields = \Drupal::service('entity_field.manager')
+    ->getFieldStorageDefinitions('ai_whatsapp_bot');
+  if (isset($fields['web_widget_logo_file'])) {
+    $definition_update_manager->installFieldStorageDefinition(
+      'web_widget_logo_file',
+      'ai_whatsapp_bot',
+      'ai_whatsapp_automation',
+      $fields['web_widget_logo_file']
+    );
+  }
+}
+
+/**
  * Returns the entity type IDs provided by this module.
  *
  * @return string[]

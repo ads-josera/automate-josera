@@ -8,6 +8,7 @@ use Drupal\ai_whatsapp_automation\Application\AI\ConversationEngineService;
 use Drupal\ai_whatsapp_automation\Application\Lead\LeadHandoffService;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\File\FileUrlGeneratorInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -29,6 +30,7 @@ final class WebChatService {
     private readonly EntityTypeManagerInterface $entityTypeManager,
     private readonly ConversationEngineService $conversationEngine,
     private readonly LeadHandoffService $leadHandoff,
+    private readonly FileUrlGeneratorInterface $fileUrlGenerator,
     LoggerChannelFactoryInterface $loggerFactory,
   ) {
     $this->logger = $loggerFactory->get('ai_whatsapp_automation');
@@ -175,7 +177,7 @@ final class WebChatService {
       'name' => $name,
       'primaryColor' => $this->getFieldValue($bot, 'web_widget_primary_color') ?: '#155EEF',
       'secondaryColor' => $this->getFieldValue($bot, 'web_widget_secondary_color') ?: '#111827',
-      'logoUrl' => $this->getFieldValue($bot, 'web_widget_logo_url'),
+      'logoUrl' => $this->logoUrl($bot),
       'welcomeMessage' => $this->getFieldValue($bot, 'web_widget_welcome_message') ?: 'Hola, ¿en qué puedo ayudarte?',
       'position' => $this->getFieldValue($bot, 'web_widget_position') ?: 'right',
       'icon' => $this->getFieldValue($bot, 'web_widget_icon') ?: 'chat',
@@ -288,6 +290,20 @@ final class WebChatService {
     $session_id = preg_replace('/[^A-Za-z0-9_-]/', '', $session_id) ?? '';
 
     return $session_id !== '' ? mb_substr($session_id, 0, 64) : bin2hex(random_bytes(16));
+  }
+
+  /**
+   * Returns the uploaded logo URL, with legacy URL support as a fallback.
+   */
+  private function logoUrl(ContentEntityInterface $bot): string {
+    if ($bot->hasField('web_widget_logo_file') && !$bot->get('web_widget_logo_file')->isEmpty()) {
+      $file = $bot->get('web_widget_logo_file')->entity;
+      if ($file !== NULL && method_exists($file, 'getFileUri')) {
+        return $this->fileUrlGenerator->generateAbsoluteString($file->getFileUri());
+      }
+    }
+
+    return $this->getFieldValue($bot, 'web_widget_logo_url');
   }
 
   /**

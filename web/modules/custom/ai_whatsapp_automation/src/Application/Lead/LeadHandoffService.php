@@ -100,19 +100,25 @@ final class LeadHandoffService {
    * Checks whether the recent conversation looks ready for human follow-up.
    */
   private function isLeadReady(ContentEntityInterface $conversation, string $ai_response, ?ContentEntityInterface $bot): bool {
+    $contact_text = mb_strtolower($this->recentContactText($conversation));
     $text = mb_strtolower($this->recentConversationText($conversation) . "\n" . $ai_response);
     $conversation_phone = $conversation->hasField('phone') ? trim((string) $conversation->get('phone')->value) : '';
+    $is_web_conversation = $conversation->hasField('provider') && $conversation->get('provider')->value === 'web';
 
-    $has_contact = $conversation_phone !== ''
-      || str_contains($text, '@')
-      || preg_match('/\b(?:tel[eé]fono|celular|whatsapp|contacto|correo|email)\b/u', $text)
-      || preg_match('/(?:\+?52\s?1?\s?)?\d{10,}/', $text);
-    $has_handoff_signal = $this->containsAnySignal($text, $this->handoffTriggerPhrases($bot));
+    $has_contact = (!$is_web_conversation && $conversation_phone !== '')
+      || str_contains($contact_text, '@')
+      || preg_match('/\b(?:tel[eé]fono|celular|whatsapp|contacto|correo|email)\b/u', $contact_text)
+      || preg_match('/(?:\+?52\s?1?\s?)?\d{10,}/', $contact_text);
+    $has_handoff_signal = $this->containsAnySignal(mb_strtolower($ai_response), $this->handoffTriggerPhrases($bot));
     // These are natural closing phrases used by the assistant once it has
     // captured the service data. They are intentionally independent from a
     // bot's optional custom trigger list.
-    $has_summary_signal = preg_match('/\b(?:datos recibidos|confirmo los datos|datos capturados|resumo|resumen|gracias por la informaci[oó]n|informaci[oó]n inicial|pr[oó]ximo paso|solicitud lista|preparar[aá] una propuesta)\b/u', $text);
-    $signal_count = $this->countSignalGroups($text, $this->handoffRequiredSignals($bot));
+    $has_summary_signal = preg_match('/\b(?:datos recibidos|confirmo los datos|datos capturados|resumo|resumen|gracias por la informaci[oó]n|informaci[oó]n inicial|pr[oó]ximo paso|solicitud lista|preparar[aá] una propuesta)\b/u', mb_strtolower($ai_response));
+    // Before the assistant confirms a summary, count only information the
+    // contact supplied. This prevents a bot's intake checklist from creating
+    // a lead merely because it listed the fields it still needs.
+    $signal_text = $has_summary_signal ? $text : $contact_text;
+    $signal_count = $this->countSignalGroups($signal_text, $this->handoffRequiredSignals($bot));
     $minimum_signals = $this->minimumSignals($bot);
 
     return (bool) ($has_contact && $signal_count >= $minimum_signals && ($has_handoff_signal || $has_summary_signal));
@@ -293,6 +299,33 @@ final class LeadHandoffService {
   }
 
   /**
+   * Loads only recent messages supplied by the contact.
+   */
+  private function recentContactText(ContentEntityInterface $conversation): string {
+    $ids = $this->entityTypeManager
+      ->getStorage('ai_whatsapp_message')
+      ->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('conversation', $conversation->id())
+      ->condition('sender', 'contact')
+      ->sort('id', 'DESC')
+      ->range(0, 12)
+      ->execute();
+
+    $messages = $this->entityTypeManager
+      ->getStorage('ai_whatsapp_message')
+      ->loadMultiple($ids);
+    $lines = [];
+    foreach (array_reverse($messages) as $message) {
+      if ($message instanceof ContentEntityInterface) {
+        $lines[] = (string) $message->get('content')->value;
+      }
+    }
+
+    return implode("\n", $lines);
+  }
+
+  /**
    * Checks whether this conversation already had a lead handoff.
    */
   private function hasHandoffAction(ContentEntityInterface $conversation): bool {
@@ -315,14 +348,19 @@ final class LeadHandoffService {
     $text = $this->recentConversationText($conversation) . "\n" . $ai_response;
     $email = $this->extractEmail($text);
     $name = $this->extractValue($text, ['contacto', 'nombre']) ?: 'WhatsApp lead ' . $conversation->id();
+    $is_web_conversation = $conversation->hasField('provider') && $conversation->get('provider')->value === 'web';
+    $phone = (string) $conversation->get('phone')->value;
+    if ($is_web_conversation) {
+      $phone = $this->extractPhone($text);
+    }
 
     $lead = $this->entityTypeManager
       ->getStorage('ai_whatsapp_lead')
       ->create([
         'name' => $name,
-        'phone' => (string) $conversation->get('phone')->value,
+        'phone' => $phone,
         'email' => $email,
-        'source' => 'whatsapp',
+        'source' => $is_web_conversation ? 'web' : 'whatsapp',
         'status' => 'qualified',
         'tags' => ['ai-handoff', 'quote-request'],
       ]);
@@ -422,7 +460,7 @@ final class LeadHandoffService {
     return [
       '1' => (string) $lead->id(),
       '2' => (string) $lead->label(),
-      '3' => (string) $conversation->get('phone')->value,
+      '3' => (string) ($lead->get('phone')->value ?: 'No capturado'),
       '4' => (string) ($lead->get('email')->value ?: 'No capturado'),
       '5' => mb_substr(trim($ai_response), 0, 500),
       '6' => $base_url . '/admin/content/ai-whatsapp/conversations/' . $conversation->id(),
@@ -441,7 +479,7 @@ final class LeadHandoffService {
       '',
       'Lead ID: ' . $lead->id(),
       'Contacto: ' . $lead->label(),
-      'Teléfono: ' . (string) $conversation->get('phone')->value,
+      'Teléfono: ' . ((string) $lead->get('phone')->value ?: 'No capturado'),
       'Correo: ' . ((string) $lead->get('email')->value ?: 'No capturado'),
       '',
       'Resumen del bot:',
@@ -555,6 +593,19 @@ final class LeadHandoffService {
     $value = $entity->get($field_name)->value;
 
     return is_scalar($value) ? (string) $value : '';
+  }
+
+  /**
+   * Extracts the first likely phone number from text.
+   */
+  private function extractPhone(string $text): string {
+    if (!preg_match('/(?:\+?\d[\d\s().-]{8,}\d)/u', $text, $matches)) {
+      return '';
+    }
+
+    $digits = preg_replace('/\D+/', '', $matches[0]) ?? '';
+
+    return $digits === '' ? '' : '+' . $digits;
   }
 
   /**

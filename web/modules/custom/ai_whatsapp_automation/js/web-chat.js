@@ -108,7 +108,12 @@
 
     var item = document.createElement('div');
     item.className = 'aiwa-message aiwa-message--' + type;
-    item.textContent = text;
+    if (type === 'ai') {
+      item.innerHTML = formatAssistantText(text);
+    }
+    else {
+      item.textContent = text;
+    }
     container.appendChild(item);
     scrollToLatest(container);
   }
@@ -136,6 +141,21 @@
 
   function scrollToLatest(container) {
     container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+  }
+
+  function formatAssistantText(text) {
+    return escapeHtml(text)
+      .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n/g, '<br>');
+  }
+
+  function escapeHtml(text) {
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
   function setLoading(button, loading) {

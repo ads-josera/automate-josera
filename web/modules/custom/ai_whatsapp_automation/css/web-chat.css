@@ -135,6 +135,11 @@ body {
   background: #fff;
 }
 
+.aiwa-message--ai strong {
+  color: #102d60;
+  font-weight: 750;
+}
+
 .aiwa-message--user {
   align-self: flex-end;
   border-bottom-right-radius: 5px;

@@ -539,7 +539,9 @@ final class SettingsForm extends ConfigFormBase {
     $model = trim((string) ($row['model'] ?? ''));
     $input = $row['input'] ?? '';
     $output = $row['output'] ?? '';
-    if ($model === '' && $input === '' && $output === '') {
+    // Predefined model rows always carry a model ID. Empty prices mean that
+    // the model is intentionally excluded from cost estimates.
+    if ($input === '' && $output === '') {
       return;
     }
     if ($model === '' || $input === '' || $output === '') {

@@ -13,6 +13,7 @@
       var messages = context.querySelector('[data-aiwa-messages]');
       var input = context.querySelector('[data-aiwa-input]');
       var button = form.querySelector('button[type="submit"]');
+      var minimizeButton = context.querySelector('[data-aiwa-minimize]');
       var storageKey = 'aiwa_web_chat_' + (settings.token || 'default');
       var sessionId = localStorage.getItem(storageKey);
 
@@ -22,6 +23,16 @@
       }
       if (button) {
         button.dataset.aiwaLabel = button.textContent;
+      }
+      if (minimizeButton) {
+        if (window.parent === window) {
+          minimizeButton.hidden = true;
+        }
+        else {
+          minimizeButton.addEventListener('click', function () {
+            window.parent.postMessage({ type: 'aiwa:minimize-chat' }, '*');
+          });
+        }
       }
 
       form.addEventListener('submit', function (event) {

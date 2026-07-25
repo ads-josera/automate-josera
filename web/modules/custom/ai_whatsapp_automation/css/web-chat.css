@@ -51,6 +51,7 @@ body {
 
 .aiwa-chat__title {
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .aiwa-chat__title strong,
@@ -82,6 +83,26 @@ body {
   box-shadow: 0 0 0 3px rgba(116, 224, 170, .15);
   content: '';
   vertical-align: 1px;
+}
+
+.aiwa-chat__minimize {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, .25);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, .1);
+  color: #fff;
+  cursor: pointer;
+  font: 400 23px/1 Arial, sans-serif;
+  transition: background-color 150ms ease, transform 150ms ease;
+}
+
+.aiwa-chat__minimize:hover {
+  background: rgba(255, 255, 255, .2);
+  transform: translateY(-1px);
 }
 
 .aiwa-chat__messages {
@@ -236,7 +257,8 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .aiwa-message,
   .aiwa-message--typing span,
-  .aiwa-chat__form button {
+  .aiwa-chat__form button,
+  .aiwa-chat__minimize {
     animation: none;
     transition: none;
   }

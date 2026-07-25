@@ -591,6 +591,19 @@ function ai_whatsapp_automation_update_11020(): void {
 }
 
 /**
+ * Enables the favicon upload control for the branded access theme.
+ */
+function ai_whatsapp_automation_update_11021(): void {
+  $config = \Drupal::configFactory()->getEditable('josera_access.settings');
+  $features = (array) $config->get('features');
+  $features['favicon'] = TRUE;
+  $config
+    ->set('features', $features)
+    ->set('favicon.use_default', FALSE)
+    ->save();
+}
+
+/**
  * Returns the entity type IDs provided by this module.
  *
  * @return string[]

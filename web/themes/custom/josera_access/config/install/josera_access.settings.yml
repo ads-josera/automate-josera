@@ -1,7 +1,8 @@
-favicon:
-  use_default: true
-features: { }
+features:
+  favicon: true
 logo:
+  use_default: false
+favicon:
   use_default: false
 login_primary_color: '#20105d'
 login_accent_color: '#fb167c'

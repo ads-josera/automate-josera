@@ -452,16 +452,25 @@ final class LeadHandoffService {
    * Builds variables for the approved lead-notification template.
    *
    * @return array<string, string>
-   *   Values for placeholders {{1}} through {{5}}.
+   *   Values for placeholders {{2}} through {{5}}.
    */
   private function notificationTemplateVariables(ContentEntityInterface $lead, string $ai_response): array {
     return [
-      '1' => (string) $lead->id(),
-      '2' => (string) $lead->label(),
-      '3' => (string) ($lead->get('phone')->value ?: 'No capturado'),
-      '4' => (string) ($lead->get('email')->value ?: 'No capturado'),
-      '5' => mb_substr(trim($ai_response), 0, 500),
+      '2' => $this->templateVariable((string) $lead->label(), 'Contacto no capturado'),
+      '3' => $this->templateVariable((string) ($lead->get('phone')->value ?: ''), 'No capturado'),
+      '4' => $this->templateVariable((string) ($lead->get('email')->value ?: ''), 'No capturado'),
+      '5' => $this->templateVariable($ai_response, 'Solicitud de seguimiento generada.'),
     ];
+  }
+
+  /**
+   * Normalizes a Twilio ContentVariables value to a single safe text line.
+   */
+  private function templateVariable(string $value, string $fallback): string {
+    $value = preg_replace('/\s+/u', ' ', trim($value)) ?? '';
+    $value = mb_substr($value, 0, 500);
+
+    return $value !== '' ? $value : $fallback;
   }
 
   /**

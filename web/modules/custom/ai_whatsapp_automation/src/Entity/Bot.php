@@ -575,6 +575,60 @@ final class Bot extends ContentEntityBase {
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
+    $fields['whatsapp_message_limit'] = BaseFieldDefinition::create('integer')
+      ->setLabel(t('WhatsApp messages per contact'))
+      ->setDescription(t('Maximum incoming WhatsApp messages allowed per contact during the configured time window. Use 0 for no limit.'))
+      ->setDefaultValue(20)
+      ->setSetting('unsigned', TRUE)
+      ->setDisplayOptions('form', [
+        'type' => 'number',
+        'weight' => 68,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['whatsapp_message_window_minutes'] = BaseFieldDefinition::create('integer')
+      ->setLabel(t('WhatsApp message limit window (minutes)'))
+      ->setDescription(t('Time window used for the per-contact WhatsApp message limit.'))
+      ->setDefaultValue(15)
+      ->setSetting('unsigned', TRUE)
+      ->setDisplayOptions('form', [
+        'type' => 'number',
+        'weight' => 69,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['whatsapp_daily_conversation_limit'] = BaseFieldDefinition::create('integer')
+      ->setLabel(t('New WhatsApp conversations per day'))
+      ->setDescription(t('Maximum new WhatsApp conversations allowed for this bot each day. Use 0 for no limit.'))
+      ->setDefaultValue(100)
+      ->setSetting('unsigned', TRUE)
+      ->setDisplayOptions('form', [
+        'type' => 'number',
+        'weight' => 70,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['whatsapp_daily_budget'] = BaseFieldDefinition::create('decimal')
+      ->setLabel(t('Daily WhatsApp budget (USD)'))
+      ->setDescription(t('Maximum estimated OpenAI cost for this bot\'s WhatsApp conversations per day. Use 0 for no limit. Cost rates must be configured for the selected model.'))
+      ->setDefaultValue('3.00')
+      ->setSettings([
+        'precision' => 10,
+        'scale' => 2,
+      ])
+      ->setDisplayOptions('form', [
+        'type' => 'number',
+        'weight' => 71,
+        'settings' => [
+          'step' => '0.01',
+        ],
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
     $fields['status'] = BaseFieldDefinition::create('list_string')
       ->setLabel(t('Status'))
       ->setRequired(TRUE)

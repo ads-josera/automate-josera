@@ -7,6 +7,7 @@ namespace Drupal\ai_whatsapp_automation\Application\Webhook;
 use Drupal\ai_whatsapp_automation\Application\AI\BotManagerService;
 use Drupal\ai_whatsapp_automation\Application\AI\ConversationEngineService;
 use Drupal\ai_whatsapp_automation\Application\Lead\LeadHandoffService;
+use Drupal\Core\Database\Connection;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
@@ -33,6 +34,7 @@ final class WebhookProcessorService {
     private readonly ProviderMessageSenderService $messageSender,
     private readonly LeadHandoffService $leadHandoff,
     private readonly StateInterface $state,
+    private readonly Connection $database,
     LoggerChannelFactoryInterface $loggerFactory,
   ) {
     $this->logger = $loggerFactory->get('ai_whatsapp_automation');
@@ -50,7 +52,16 @@ final class WebhookProcessorService {
   public function process(array $item): array {
     $provider = (string) ($item['provider'] ?? '');
     $message = is_array($item['message'] ?? NULL) ? $item['message'] : [];
-    $conversation = $this->loadOrCreateConversation($provider, $message);
+    if ($this->isDuplicateProviderMessage((string) ($message['provider_message_id'] ?? ''))) {
+      $this->logger->notice('Skipped duplicate @provider webhook message @message.', [
+        '@provider' => $provider,
+        '@message' => (string) $message['provider_message_id'],
+      ]);
+
+      return ['status' => 'ignored_duplicate'];
+    }
+    $is_new_conversation = FALSE;
+    $conversation = $this->loadOrCreateConversation($provider, $message, $is_new_conversation);
     $this->touchConversation($conversation);
 
     if ($this->isNotificationRecipient($conversation, $message)) {
@@ -88,6 +99,22 @@ final class WebhookProcessorService {
 
       return [
         'status' => 'saved_without_bot',
+        'conversation_id' => $conversation->id(),
+        'incoming_message_id' => $incoming->id(),
+      ];
+    }
+
+    $limit_reason = $this->whatsAppLimitReason($bot, $conversation, $is_new_conversation);
+    if ($limit_reason !== '') {
+      $incoming = $this->saveIncomingMessage($conversation, $message);
+      $this->logger->warning('Skipped AI processing for WhatsApp conversation @conversation because @reason.', [
+        '@conversation' => (string) $conversation->id(),
+        '@reason' => $limit_reason,
+      ]);
+
+      return [
+        'status' => 'saved_usage_limited',
+        'reason' => $limit_reason,
         'conversation_id' => $conversation->id(),
         'incoming_message_id' => $incoming->id(),
       ];
@@ -266,7 +293,7 @@ final class WebhookProcessorService {
    * @param array<string, mixed> $message
    *   Normalized message data.
    */
-  private function loadOrCreateConversation(string $provider, array $message): ContentEntityInterface {
+  private function loadOrCreateConversation(string $provider, array $message, bool &$is_new_conversation): ContentEntityInterface {
     $account = $this->botManager->getAccountForProviderMessage($provider, $message);
     $conversation_storage = $this->entityTypeManager->getStorage('ai_whatsapp_conversation');
 
@@ -294,6 +321,16 @@ final class WebhookProcessorService {
           $conversation->set('whatsapp_account', $account->id());
           $conversation->save();
         }
+        if (
+          $account instanceof ContentEntityInterface
+          && $conversation->hasField('bot')
+          && $conversation->get('bot')->isEmpty()
+          && $account->hasField('bot')
+          && !$account->get('bot')->isEmpty()
+        ) {
+          $conversation->set('bot', $account->get('bot')->target_id);
+          $conversation->save();
+        }
         return $conversation;
       }
     }
@@ -317,10 +354,92 @@ final class WebhookProcessorService {
       'provider' => $provider,
       'status' => 'AI_ACTIVE',
       'whatsapp_account' => $account instanceof ContentEntityInterface ? $account->id() : NULL,
+      'bot' => $account instanceof ContentEntityInterface && $account->hasField('bot') ? $account->get('bot')->target_id : NULL,
     ]);
     $conversation->save();
+    $is_new_conversation = TRUE;
 
     return $conversation;
+  }
+
+  /**
+   * Returns a limit reason when WhatsApp AI processing must be skipped.
+   */
+  private function whatsAppLimitReason(ContentEntityInterface $bot, ContentEntityInterface $conversation, bool $is_new_conversation): string {
+    $now = time();
+    $message_limit = $this->integerField($bot, 'whatsapp_message_limit', 20);
+    $window_minutes = $this->integerField($bot, 'whatsapp_message_window_minutes', 15);
+    if ($message_limit > 0 && $window_minutes > 0) {
+      $count = $this->entityTypeManager->getStorage('ai_whatsapp_message')->getQuery()
+        ->accessCheck(FALSE)
+        ->condition('conversation', $conversation->id())
+        ->condition('sender', 'contact')
+        ->condition('created', $now - ($window_minutes * 60), '>=')
+        ->count()
+        ->execute();
+      if ((int) $count >= $message_limit) {
+        return 'the contact message limit has been reached';
+      }
+    }
+
+    $day_start = (new \DateTimeImmutable('today'))->getTimestamp();
+    $daily_conversation_limit = $this->integerField($bot, 'whatsapp_daily_conversation_limit', 100);
+    if ($is_new_conversation && $daily_conversation_limit > 0) {
+      $count = $this->entityTypeManager->getStorage('ai_whatsapp_conversation')->getQuery()
+        ->accessCheck(FALSE)
+        ->condition('bot', $bot->id())
+        ->condition('channel', 'whatsapp')
+        ->condition('created', $day_start, '>=')
+        ->count()
+        ->execute();
+      if ((int) $count > $daily_conversation_limit) {
+        return 'the daily WhatsApp conversation limit has been reached';
+      }
+    }
+
+    $daily_budget = $this->decimalField($bot, 'whatsapp_daily_budget', 3.00);
+    if ($daily_budget > 0 && $this->dailyEstimatedCost((int) $bot->id(), $day_start) >= $daily_budget) {
+      return 'the daily WhatsApp budget has been reached';
+    }
+
+    return '';
+  }
+
+  /**
+   * Returns estimated OpenAI cost accrued by a bot's WhatsApp chats today.
+   */
+  private function dailyEstimatedCost(int $bot_id, int $day_start): float {
+    $query = $this->database->select('ai_whatsapp_message', 'message');
+    $query->join('ai_whatsapp_conversation', 'conversation', 'conversation.id = message.conversation_target_id');
+    $query->leftJoin('ai_whatsapp_account', 'account', 'account.id = conversation.whatsapp_account_target_id');
+    $query->addExpression('COALESCE(SUM(message.cost), 0)', 'total_cost');
+    $bot_group = $query->orConditionGroup()
+      ->condition('conversation.bot_target_id', $bot_id)
+      ->condition('account.bot_target_id', $bot_id);
+    $query->condition($bot_group);
+    $query->condition('conversation.provider', ['twilio', 'cloud_api', 'evolution'], 'IN');
+    $query->condition('message.sender', 'ai');
+    $query->condition('message.created', $day_start, '>=');
+
+    return (float) $query->execute()->fetchField();
+  }
+
+  /**
+   * Reads an integer bot field with a safe fallback default.
+   */
+  private function integerField(ContentEntityInterface $bot, string $field_name, int $default): int {
+    $value = $this->fieldValue($bot, $field_name);
+
+    return $value === '' ? $default : max(0, (int) $value);
+  }
+
+  /**
+   * Reads a decimal bot field with a safe fallback default.
+   */
+  private function decimalField(ContentEntityInterface $bot, string $field_name, float $default): float {
+    $value = $this->fieldValue($bot, $field_name);
+
+    return $value === '' ? $default : max(0, (float) $value);
   }
 
   /**
@@ -399,6 +518,42 @@ final class WebhookProcessorService {
     $incoming->save();
 
     return $incoming;
+  }
+
+  /**
+   * Checks whether an inbound provider message was already recorded.
+   */
+  private function isDuplicateProviderMessage(string $provider_message_id): bool {
+    $provider_message_id = trim($provider_message_id);
+    if ($provider_message_id === '') {
+      return FALSE;
+    }
+
+    $storage = $this->entityTypeManager->getStorage('ai_whatsapp_message');
+    $ids = $storage->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('provider_message_id', $provider_message_id)
+      ->range(0, 1)
+      ->execute();
+
+    if ($ids === []) {
+      return FALSE;
+    }
+
+    $incoming = $storage->load(reset($ids));
+    if (!$incoming instanceof ContentEntityInterface || $incoming->get('sender')->value !== 'contact') {
+      return TRUE;
+    }
+
+    $response_ids = $storage->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('conversation', $incoming->get('conversation')->target_id)
+      ->condition('sender', 'ai')
+      ->condition('created', $incoming->get('created')->value, '>=')
+      ->range(0, 1)
+      ->execute();
+
+    return $response_ids !== [];
   }
 
 }

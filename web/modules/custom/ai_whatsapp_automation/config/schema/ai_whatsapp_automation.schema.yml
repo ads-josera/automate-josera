@@ -65,6 +65,9 @@ ai_whatsapp_automation.settings:
         verify_token:
           type: string
           label: 'Verify token'
+        app_secret:
+          type: string
+          label: 'App Secret'
     evolution:
       type: mapping
       label: 'Evolution API settings'

@@ -663,6 +663,42 @@ function ai_whatsapp_automation_update_11024(): void {
 }
 
 /**
+ * Adds per-bot WhatsApp usage limits.
+ */
+function ai_whatsapp_automation_update_11025(): void {
+  $definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+  $field_manager = \Drupal::service('entity_field.manager');
+  $fields = $field_manager->getFieldStorageDefinitions('ai_whatsapp_bot');
+
+  foreach ([
+    'whatsapp_message_limit',
+    'whatsapp_message_window_minutes',
+    'whatsapp_daily_conversation_limit',
+    'whatsapp_daily_budget',
+  ] as $field_name) {
+    if ($definition_update_manager->getFieldStorageDefinition($field_name, 'ai_whatsapp_bot') !== NULL || !isset($fields[$field_name])) {
+      continue;
+    }
+    $definition_update_manager->installFieldStorageDefinition(
+      $field_name,
+      'ai_whatsapp_bot',
+      'ai_whatsapp_automation',
+      $fields[$field_name]
+    );
+  }
+}
+
+/**
+ * Initializes the Meta App Secret setting used to verify Cloud API webhooks.
+ */
+function ai_whatsapp_automation_update_11026(): void {
+  $config = \Drupal::configFactory()->getEditable('ai_whatsapp_automation.settings');
+  if ($config->get('whatsapp_cloud.app_secret') === NULL) {
+    $config->set('whatsapp_cloud.app_secret', '')->save();
+  }
+}
+
+/**
  * Returns the entity type IDs provided by this module.
  *
  * @return string[]

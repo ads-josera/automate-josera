@@ -111,6 +111,17 @@ final class AutomationEntityForm extends ContentEntityForm {
           'web_widget_daily_budget',
         ],
       ],
+      'whatsapp_limits' => [
+        'title' => $this->t('WhatsApp usage limits'),
+        'description' => $this->t('Control WhatsApp consumption for this bot. A value of 0 disables an individual limit.'),
+        'open' => FALSE,
+        'fields' => [
+          'whatsapp_message_limit',
+          'whatsapp_message_window_minutes',
+          'whatsapp_daily_conversation_limit',
+          'whatsapp_daily_budget',
+        ],
+      ],
     ];
 
     foreach ($sections as $key => $section) {

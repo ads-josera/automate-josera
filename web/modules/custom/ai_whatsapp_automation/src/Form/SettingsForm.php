@@ -301,6 +301,16 @@ final class SettingsForm extends ConfigFormBase {
       ],
       '#description' => $config->get('whatsapp_cloud.verify_token') ? $this->t('A verify token is already configured. Leave empty to keep the current value.') : $this->t('Enter the webhook verify token.'),
     ];
+    $form['whatsapp_cloud']['app_secret'] = [
+      '#type' => 'password',
+      '#title' => $this->t('App Secret'),
+      '#maxlength' => self::SECRET_MAX_LENGTH,
+      '#attributes' => [
+        'autocomplete' => 'new-password',
+        'spellcheck' => 'false',
+      ],
+      '#description' => $config->get('whatsapp_cloud.app_secret') ? $this->t('An App Secret is already configured. Leave empty to keep the current value.') : $this->t('Required to verify incoming Meta webhook signatures.'),
+    ];
 
     $form['evolution'] = [
       '#type' => 'details',
@@ -511,6 +521,7 @@ final class SettingsForm extends ConfigFormBase {
       ->set('whatsapp_cloud.phone_number_id', $whatsapp_cloud['phone_number_id'])
       ->set('whatsapp_cloud.business_account_id', $whatsapp_cloud['business_account_id'])
       ->set('whatsapp_cloud.verify_token', $this->resolveSecretValue($whatsapp_cloud['verify_token'], $config->get('whatsapp_cloud.verify_token')))
+      ->set('whatsapp_cloud.app_secret', $this->resolveSecretValue($whatsapp_cloud['app_secret'], $config->get('whatsapp_cloud.app_secret')))
       ->set('evolution.server_url', $evolution['server_url'])
       ->set('evolution.api_key', $this->resolveSecretValue($evolution['api_key'], $config->get('evolution.api_key')))
       ->set('evolution.instance_name', $evolution['instance_name'])

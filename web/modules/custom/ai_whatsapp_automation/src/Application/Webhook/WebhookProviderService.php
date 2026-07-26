@@ -31,7 +31,7 @@ final class WebhookProviderService {
   public function validate(string $provider, Request $request): bool {
     return match ($provider) {
       'twilio' => $this->validateTwilio($request),
-      'cloud_api' => TRUE,
+      'cloud_api' => $this->validateCloudApi($request),
       'evolution' => $this->validateEvolution($request),
       default => FALSE,
     };
@@ -97,6 +97,23 @@ final class WebhookProviderService {
     }
 
     return FALSE;
+  }
+
+  /**
+   * Validates Meta's X-Hub-Signature-256 webhook signature.
+   */
+  private function validateCloudApi(Request $request): bool {
+    $app_secret = (string) $this->configFactory
+      ->get('ai_whatsapp_automation.settings')
+      ->get('whatsapp_cloud.app_secret');
+    $signature = (string) $request->headers->get('X-Hub-Signature-256', '');
+    if ($app_secret === '' || !str_starts_with($signature, 'sha256=')) {
+      return FALSE;
+    }
+
+    $expected = 'sha256=' . hash_hmac('sha256', $request->getContent(), $app_secret);
+
+    return hash_equals($expected, $signature);
   }
 
   /**

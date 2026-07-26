@@ -20,6 +20,28 @@
   background: var(--aiwa-surface);
 }
 
+.ai-whatsapp-dashboard__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  margin: 0 0 1rem;
+  padding: 14px 16px;
+  border: 1px solid var(--aiwa-border);
+  border-radius: 6px;
+  background: var(--aiwa-surface);
+}
+
+.ai-whatsapp-dashboard__filters .form-item,
+.ai-whatsapp-dashboard__filters .form-actions {
+  margin: 0;
+}
+
+.ai-whatsapp-dashboard__filters .form-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .ai-whatsapp-dashboard__eyebrow {
   margin: 0 0 0.25rem;
   color: var(--aiwa-muted);
@@ -165,6 +187,15 @@
 }
 
 @media (max-width: 48rem) {
+  .ai-whatsapp-dashboard__filters {
+    display: block;
+  }
+
+  .ai-whatsapp-dashboard__filters .form-item,
+  .ai-whatsapp-dashboard__filters .form-actions {
+    margin: 0 0 12px;
+  }
+
   .ai-whatsapp-dashboard__overview,
   .ai-whatsapp-dashboard__kpi {
     padding: 0.875rem;

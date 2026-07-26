@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\ai_whatsapp_automation\Controller;
 
 use Drupal\ai_whatsapp_automation\Application\Dashboard\DashboardMetricsService;
+use Drupal\ai_whatsapp_automation\Form\DashboardFilterForm;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Link;
 use Drupal\Core\Url;
@@ -39,7 +40,8 @@ final class DashboardController extends ControllerBase {
    *   Render array.
    */
   public function dashboard(): array {
-    $metrics = $this->metricsService->getMetrics();
+    $period = $this->periodRange();
+    $metrics = $this->metricsService->getMetrics($period['range']);
     $summary = $metrics['summary'];
 
     return [
@@ -50,6 +52,7 @@ final class DashboardController extends ControllerBase {
           'ai_whatsapp_automation/dashboard',
         ],
       ],
+      'filters' => \Drupal::formBuilder()->getForm(DashboardFilterForm::class),
       'overview' => [
         '#type' => 'container',
         '#attributes' => ['class' => ['ai-whatsapp-dashboard__overview']],
@@ -63,7 +66,9 @@ final class DashboardController extends ControllerBase {
           '#type' => 'html_tag',
           '#tag' => 'p',
           '#attributes' => ['class' => ['ai-whatsapp-dashboard__lead']],
-          '#value' => $this->t('Live totals from conversations, messages, leads, tokens, and estimated OpenAI cost.'),
+          '#value' => $this->t('Metrics for @period, including conversations, messages, leads, tokens, and estimated OpenAI cost.', [
+            '@period' => $period['label'],
+          ]),
         ],
       ],
       'summary' => [
@@ -244,6 +249,55 @@ final class DashboardController extends ControllerBase {
       'evolution' => 'Evolution',
       default => $provider,
     };
+  }
+
+  /**
+   * Resolves the requested reporting period around a reference date.
+   *
+   * @return array{range: ?array{start: int, end: int}, label: string}
+   *   Timestamp range and human-readable period label.
+   */
+  private function periodRange(): array {
+    $request = $this->getRequest();
+    $period = (string) $request->query->get('period', 'month');
+    $date_value = (string) $request->query->get('date', date('Y-m-d'));
+    try {
+      $date = new \DateTimeImmutable($date_value ?: 'today');
+    }
+    catch (\Exception) {
+      $date = new \DateTimeImmutable('today');
+    }
+
+    if ($period === 'all') {
+      return [
+        'range' => NULL,
+        'label' => (string) $this->t('all time'),
+      ];
+    }
+
+    $start = match ($period) {
+      'day' => $date->setTime(0, 0),
+      'year' => $date->setDate((int) $date->format('Y'), 1, 1)->setTime(0, 0),
+      default => $date->modify('first day of this month')->setTime(0, 0),
+    };
+    $end = match ($period) {
+      'day' => $start->modify('+1 day'),
+      'year' => $start->modify('+1 year'),
+      default => $start->modify('+1 month'),
+    };
+    $label = match ($period) {
+      'day' => $start->format('M j, Y'),
+      'year' => $start->format('Y'),
+      default => $start->format('F Y'),
+    };
+
+    return [
+      'range' => [
+        'start' => $start->getTimestamp(),
+        'end' => $end->getTimestamp(),
+      ],
+      'label' => $label,
+    ];
   }
 
 }

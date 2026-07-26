@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\ai_whatsapp_automation\Application\Dashboard;
 
 use Drupal\Core\Database\Connection;
+use Drupal\Core\Database\Query\SelectInterface;
 
 /**
  * Provides optimized dashboard metrics.
@@ -25,28 +26,29 @@ final class DashboardMetricsService {
    * @return array<string, mixed>
    *   Dashboard metrics.
    */
-  public function getMetrics(): array {
+  public function getMetrics(?array $range = NULL): array {
     return [
       'summary' => [
-        'active_conversations' => $this->countActiveConversations(),
-        'closed_conversations' => $this->countByValue('ai_whatsapp_conversation', 'status', 'CLOSED'),
-        'sent_messages' => $this->countMessagesBySenders(['ai', 'operator']),
-        'received_messages' => $this->countMessagesBySenders(['contact']),
-        'generated_leads' => $this->countRows('ai_whatsapp_lead'),
-        'tokens_consumed' => $this->sumColumn('ai_whatsapp_message', 'tokens'),
-        'openai_cost' => $this->sumColumn('ai_whatsapp_message', 'cost'),
+        'active_conversations' => $this->countActiveConversations($range),
+        'closed_conversations' => $this->countByValue('ai_whatsapp_conversation', 'status', 'CLOSED', $range, 'changed'),
+        'sent_messages' => $this->countMessagesBySenders(['ai', 'operator'], $range),
+        'received_messages' => $this->countMessagesBySenders(['contact'], $range),
+        'generated_leads' => $this->countRows('ai_whatsapp_lead', $range),
+        'tokens_consumed' => $this->sumColumn('ai_whatsapp_message', 'tokens', $range),
+        'openai_cost' => $this->sumColumn('ai_whatsapp_message', 'cost', $range),
       ],
-      'cost_by_bot' => $this->getCostByBot(),
-      'cost_by_conversation' => $this->getCostByConversation(),
+      'cost_by_bot' => $this->getCostByBot($range),
+      'cost_by_conversation' => $this->getCostByConversation($range),
     ];
   }
 
   /**
    * Counts active conversations.
    */
-  private function countActiveConversations(): int {
+  private function countActiveConversations(?array $range): int {
     $query = $this->database->select('ai_whatsapp_conversation', 'c');
     $query->condition('c.status', ['AI_ACTIVE', 'HUMAN_ASSIGNED'], 'IN');
+    $this->applyRange($query, 'c.changed', $range);
     $query->addExpression('COUNT(*)');
 
     return (int) $query->execute()->fetchField();
@@ -55,8 +57,9 @@ final class DashboardMetricsService {
   /**
    * Counts rows in a table.
    */
-  private function countRows(string $table): int {
+  private function countRows(string $table, ?array $range = NULL): int {
     $query = $this->database->select($table, 't');
+    $this->applyRange($query, 't.created', $range);
     $query->addExpression('COUNT(*)');
 
     return (int) $query->execute()->fetchField();
@@ -65,9 +68,10 @@ final class DashboardMetricsService {
   /**
    * Counts rows by a field value.
    */
-  private function countByValue(string $table, string $field, string $value): int {
+  private function countByValue(string $table, string $field, string $value, ?array $range = NULL, string $range_field = 'created'): int {
     $query = $this->database->select($table, 't');
     $query->condition('t.' . $field, $value);
+    $this->applyRange($query, 't.' . $range_field, $range);
     $query->addExpression('COUNT(*)');
 
     return (int) $query->execute()->fetchField();
@@ -79,9 +83,10 @@ final class DashboardMetricsService {
    * @param string[] $senders
    *   Sender values.
    */
-  private function countMessagesBySenders(array $senders): int {
+  private function countMessagesBySenders(array $senders, ?array $range): int {
     $query = $this->database->select('ai_whatsapp_message', 'm');
     $query->condition('m.sender', $senders, 'IN');
+    $this->applyRange($query, 'm.created', $range);
     $query->addExpression('COUNT(*)');
 
     return (int) $query->execute()->fetchField();
@@ -90,8 +95,9 @@ final class DashboardMetricsService {
   /**
    * Sums a numeric column.
    */
-  private function sumColumn(string $table, string $column): float {
+  private function sumColumn(string $table, string $column, ?array $range): float {
     $query = $this->database->select($table, 't');
+    $this->applyRange($query, 't.created', $range);
     $query->addExpression('COALESCE(SUM(t.' . $column . '), 0)');
 
     return (float) $query->execute()->fetchField();
@@ -103,7 +109,7 @@ final class DashboardMetricsService {
    * @return array<int, array<string, mixed>>
    *   Cost rows.
    */
-  private function getCostByBot(): array {
+  private function getCostByBot(?array $range): array {
     $query = $this->database->select('ai_whatsapp_message', 'm');
     $query->join('ai_whatsapp_conversation', 'c', 'm.conversation = c.id');
     $query->leftJoin('ai_whatsapp_account', 'a', 'c.whatsapp_account = a.id');
@@ -113,6 +119,7 @@ final class DashboardMetricsService {
     $query->addExpression("COALESCE(direct_bot.name, account_bot.name, 'Unassigned')", 'name');
     $query->addExpression('COALESCE(SUM(m.cost), 0)', 'total_cost');
     $query->addExpression('COALESCE(SUM(m.tokens), 0)', 'total_tokens');
+    $this->applyRange($query, 'm.created', $range);
     $query->groupBy('direct_bot.id');
     $query->groupBy('direct_bot.name');
     $query->groupBy('account_bot.id');
@@ -146,13 +153,14 @@ final class DashboardMetricsService {
    * @return array<int, array<string, mixed>>
    *   Cost rows.
    */
-  private function getCostByConversation(): array {
+  private function getCostByConversation(?array $range): array {
     $query = $this->database->select('ai_whatsapp_message', 'm');
     $query->join('ai_whatsapp_conversation', 'c', 'm.conversation = c.id');
     $query->fields('c', ['id', 'phone', 'name', 'provider', 'status', 'changed']);
     $query->addExpression('COALESCE(SUM(m.cost), 0)', 'total_cost');
     $query->addExpression('COALESCE(SUM(m.tokens), 0)', 'total_tokens');
     $query->addExpression('COUNT(m.id)', 'message_count');
+    $this->applyRange($query, 'm.created', $range);
     $query->groupBy('c.id');
     $query->groupBy('c.phone');
     $query->groupBy('c.name');
@@ -175,6 +183,17 @@ final class DashboardMetricsService {
         'message_count' => (int) $row->message_count,
       ];
     }, $query->execute()->fetchAll());
+  }
+
+  /**
+   * Applies an inclusive/exclusive timestamp range to a database query.
+   */
+  private function applyRange(SelectInterface $query, string $column, ?array $range): void {
+    if ($range === NULL) {
+      return;
+    }
+    $query->condition($column, $range['start'], '>=');
+    $query->condition($column, $range['end'], '<');
   }
 
 }

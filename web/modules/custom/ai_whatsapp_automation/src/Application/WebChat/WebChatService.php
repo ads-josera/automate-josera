@@ -290,9 +290,9 @@ final class WebChatService {
    */
   private function dailyEstimatedCost(int $bot_id, int $day_start): float {
     $query = $this->database->select('ai_whatsapp_message', 'message');
-    $query->join('ai_whatsapp_conversation', 'conversation', 'conversation.id = message.conversation_target_id');
+    $query->join('ai_whatsapp_conversation', 'conversation', 'conversation.id = message.conversation');
     $query->addExpression('COALESCE(SUM(message.cost), 0)', 'total_cost');
-    $query->condition('conversation.bot_target_id', $bot_id);
+    $query->condition('conversation.bot', $bot_id);
     $query->condition('conversation.provider', 'web');
     $query->condition('message.sender', 'ai');
     $query->condition('message.created', $day_start, '>=');

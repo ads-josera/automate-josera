@@ -410,12 +410,12 @@ final class WebhookProcessorService {
    */
   private function dailyEstimatedCost(int $bot_id, int $day_start): float {
     $query = $this->database->select('ai_whatsapp_message', 'message');
-    $query->join('ai_whatsapp_conversation', 'conversation', 'conversation.id = message.conversation_target_id');
-    $query->leftJoin('ai_whatsapp_account', 'account', 'account.id = conversation.whatsapp_account_target_id');
+    $query->join('ai_whatsapp_conversation', 'conversation', 'conversation.id = message.conversation');
+    $query->leftJoin('ai_whatsapp_account', 'account', 'account.id = conversation.whatsapp_account');
     $query->addExpression('COALESCE(SUM(message.cost), 0)', 'total_cost');
     $bot_group = $query->orConditionGroup()
-      ->condition('conversation.bot_target_id', $bot_id)
-      ->condition('account.bot_target_id', $bot_id);
+      ->condition('conversation.bot', $bot_id)
+      ->condition('account.bot', $bot_id);
     $query->condition($bot_group);
     $query->condition('conversation.provider', ['twilio', 'cloud_api', 'evolution'], 'IN');
     $query->condition('message.sender', 'ai');

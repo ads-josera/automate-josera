@@ -44,7 +44,6 @@ final class DashboardFilterForm extends FormBase {
       '#type' => 'date',
       '#title' => $this->t('Reference date'),
       '#default_value' => (string) $request->query->get('date', date('Y-m-d')),
-      '#description' => $this->t('The selected day, its month, or its year is used according to the view.'),
     ];
     $form['actions'] = ['#type' => 'actions'];
     $form['actions']['submit'] = [

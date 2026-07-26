@@ -407,7 +407,7 @@ final class LeadHandoffService {
 
     $account_phone = $this->getFieldValue($account, 'phone_number');
     $provider = $this->getFieldValue($account, 'provider');
-    $template_sid = $this->notificationTemplateSid($account, $bot);
+    $template = $this->notificationTemplate($account, $bot);
     $results = [];
 
     foreach ($numbers as $number) {
@@ -416,8 +416,8 @@ final class LeadHandoffService {
         'account_phone' => $account_phone,
         'whatsapp_account_id' => $account->id(),
       ];
-      $results[] = $provider === 'twilio' && $template_sid !== ''
-        ? $this->messageSender->sendTemplate($provider, $recipient, $template_sid, $this->notificationTemplateVariables($lead, $ai_response))
+      $results[] = $provider === 'twilio' && $template['sid'] !== ''
+        ? $this->messageSender->sendTemplate($provider, $recipient, $template['sid'], $this->notificationTemplateVariables($conversation, $lead, $ai_response, $bot, $template['variables']))
         : $this->messageSender->sendText($provider, $recipient, $message);
     }
 
@@ -430,37 +430,103 @@ final class LeadHandoffService {
   }
 
   /**
-   * Resolves the lead template by account, bot, then global default.
+   * Resolves the lead template and its mapping by account, bot, then global.
+   *
+   * @return array{sid: string, variables: string}
+   *   Template content SID and its optional variable mapping.
    */
-  private function notificationTemplateSid(?ContentEntityInterface $account, ?ContentEntityInterface $bot): string {
+  private function notificationTemplate(?ContentEntityInterface $account, ?ContentEntityInterface $bot): array {
     $account_template = $this->getFieldValue($account, 'lead_notification_template_sid');
     if ($account_template !== '') {
-      return $account_template;
+      return [
+        'sid' => $account_template,
+        'variables' => $this->getFieldValue($account, 'lead_notification_template_variables'),
+      ];
     }
 
     $bot_template = $this->getFieldValue($bot, 'lead_notification_template_sid');
     if ($bot_template !== '') {
-      return $bot_template;
+      return [
+        'sid' => $bot_template,
+        'variables' => $this->getFieldValue($bot, 'lead_notification_template_variables'),
+      ];
     }
 
-    return trim((string) $this->configFactory
-      ->get('ai_whatsapp_automation.settings')
-      ->get('twilio.content_template_sid'));
+    return [
+      'sid' => trim((string) $this->configFactory
+        ->get('ai_whatsapp_automation.settings')
+        ->get('twilio.content_template_sid')),
+      'variables' => '',
+    ];
   }
 
   /**
    * Builds variables for the approved lead-notification template.
    *
    * @return array<string, string>
-   *   Values for placeholders {{2}} through {{5}}.
+   *   Values keyed by the placeholders configured for the selected template.
    */
-  private function notificationTemplateVariables(ContentEntityInterface $lead, string $ai_response): array {
-    return [
-      '2' => $this->templateVariable((string) $lead->label(), 'Contacto no capturado'),
-      '3' => $this->templateVariable((string) ($lead->get('phone')->value ?: ''), 'No capturado'),
-      '4' => $this->templateVariable((string) ($lead->get('email')->value ?: ''), 'No capturado'),
-      '5' => $this->templateVariable($ai_response, 'Solicitud de seguimiento generada.'),
+  private function notificationTemplateVariables(ContentEntityInterface $conversation, ContentEntityInterface $lead, string $ai_response, ?ContentEntityInterface $bot, string $mapping): array {
+    $base_url = rtrim((string) ($GLOBALS['base_url'] ?? ''), '/');
+    $values = [
+      'lead_id' => $this->templateVariable((string) $lead->id(), 'Sin folio'),
+      'contact' => $this->templateVariable((string) $lead->label(), 'Contacto no capturado'),
+      'phone' => $this->templateVariable((string) ($lead->get('phone')->value ?: ''), 'No capturado'),
+      'email' => $this->templateVariable((string) ($lead->get('email')->value ?: ''), 'No capturado'),
+      'summary' => $this->templateVariable($ai_response, 'Solicitud de seguimiento generada.'),
+      'bot_name' => $this->templateVariable($bot?->label() ?? '', 'Bot no identificado'),
+      'source' => $this->templateVariable($this->getFieldValue($conversation, 'provider'), 'whatsapp'),
+      'conversation_url' => $this->templateVariable($base_url . '/admin/content/ai-whatsapp/conversations/' . $conversation->id(), 'No disponible'),
     ];
+
+    $variables = [];
+    foreach ($this->templateVariableMapping($mapping) as $placeholder => $value_key) {
+      $variables[$placeholder] = $values[$value_key];
+    }
+
+    return $variables;
+  }
+
+  /**
+   * Parses a template variable map or returns the standard lead map.
+   *
+   * @return array<string, string>
+   *   Placeholder numbers keyed to available lead values.
+   */
+  private function templateVariableMapping(string $mapping): array {
+    $default = [
+      '1' => 'lead_id',
+      '2' => 'contact',
+      '3' => 'phone',
+      '4' => 'email',
+      '5' => 'summary',
+    ];
+    $mapping = trim($mapping);
+    if ($mapping === '') {
+      return $default;
+    }
+
+    $allowed = array_fill_keys([
+      'lead_id',
+      'contact',
+      'phone',
+      'email',
+      'summary',
+      'bot_name',
+      'source',
+      'conversation_url',
+    ], TRUE);
+    $parsed = [];
+    foreach (preg_split('/\R/u', $mapping) ?: [] as $line) {
+      if (!preg_match('/^\s*(\d+)\s*=\s*([a-z_]+)\s*$/', $line, $matches)) {
+        continue;
+      }
+      if (isset($allowed[$matches[2]])) {
+        $parsed[$matches[1]] = $matches[2];
+      }
+    }
+
+    return $parsed !== [] ? $parsed : $default;
   }
 
   /**

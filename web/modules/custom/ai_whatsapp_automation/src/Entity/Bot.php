@@ -256,6 +256,20 @@ final class Bot extends ContentEntityBase {
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
+    $fields['lead_notification_template_variables'] = BaseFieldDefinition::create('string_long')
+      ->setLabel(t('Lead notification template variables'))
+      ->setDescription(t('Optional mapping for this template, one per line. Example: 1=lead_id, 2=contact, 3=phone, 4=email, 5=summary. Available values: lead_id, contact, phone, email, summary, bot_name, source, conversation_url. Leave empty for the standard mapping.'))
+      ->setDisplayOptions('form', [
+        'type' => 'string_textarea',
+        'weight' => 51,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'basic_string',
+        'weight' => 51,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
     $fields['lead_notification_account'] = BaseFieldDefinition::create('entity_reference')
       ->setLabel(t('Lead notification WhatsApp account'))
       ->setDescription(t('Optional WhatsApp account used to notify administrators about this bot\'s leads, including leads from the web widget. When empty, the system uses the only active account assigned to this bot.'))

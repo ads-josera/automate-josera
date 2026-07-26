@@ -349,6 +349,20 @@ final class WhatsAppAccount extends ContentEntityBase {
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
+    $fields['lead_notification_template_variables'] = BaseFieldDefinition::create('string_long')
+      ->setLabel(t('Lead notification template variables'))
+      ->setDescription(t('Optional mapping for this account template, one per line. Example: 1=lead_id, 2=contact, 3=phone, 4=email, 5=summary. Available values: lead_id, contact, phone, email, summary, bot_name, source, conversation_url. Leave empty for the standard mapping.'))
+      ->setDisplayOptions('form', [
+        'type' => 'string_textarea',
+        'weight' => 60,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'basic_string',
+        'weight' => 60,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
     $fields['configuration'] = BaseFieldDefinition::create('map')
       ->setLabel(t('Configuration'))
       ->setDisplayOptions('view', [

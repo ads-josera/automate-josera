@@ -72,6 +72,7 @@ final class AutomationEntityForm extends ContentEntityForm {
           'handoff_trigger_phrases',
           'handoff_prompt_rules',
           'lead_notification_template_sid',
+          'lead_notification_template_variables',
           'lead_notification_account',
         ],
       ],

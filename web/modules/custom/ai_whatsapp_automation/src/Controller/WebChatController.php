@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\ai_whatsapp_automation\Controller;
 
 use Drupal\ai_whatsapp_automation\Application\WebChat\WebChatService;
+use Drupal\ai_whatsapp_automation\Exception\WebChatLimitException;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Url;
@@ -139,6 +140,9 @@ final class WebChatController extends ControllerBase {
 
     try {
       $response = $this->webChat->processMessage($bot, (string) ($payload['session_id'] ?? ''), $message);
+    }
+    catch (WebChatLimitException $exception) {
+      return $this->jsonWithCors(['error' => $exception->getMessage()], $bot, $request, Response::HTTP_TOO_MANY_REQUESTS);
     }
     catch (\Throwable $exception) {
       $this->getLogger('ai_whatsapp_automation')->error('Web chat request failed: @message', [

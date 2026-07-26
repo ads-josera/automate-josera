@@ -38,6 +38,7 @@ services:
       - '@ai_whatsapp_automation.conversation_engine'
       - '@ai_whatsapp_automation.lead_handoff'
       - '@file_url_generator'
+      - '@database'
       - '@logger.factory'
 
   ai_whatsapp_automation.web_chat_frame_response_subscriber:

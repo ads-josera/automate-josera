@@ -6,10 +6,12 @@ namespace Drupal\ai_whatsapp_automation\Application\WebChat;
 
 use Drupal\ai_whatsapp_automation\Application\AI\ConversationEngineService;
 use Drupal\ai_whatsapp_automation\Application\Lead\LeadHandoffService;
+use Drupal\ai_whatsapp_automation\Exception\WebChatLimitException;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\File\FileUrlGeneratorInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
+use Drupal\Core\Database\Connection;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -31,6 +33,7 @@ final class WebChatService {
     private readonly ConversationEngineService $conversationEngine,
     private readonly LeadHandoffService $leadHandoff,
     private readonly FileUrlGeneratorInterface $fileUrlGenerator,
+    private readonly Connection $database,
     LoggerChannelFactoryInterface $loggerFactory,
   ) {
     $this->logger = $loggerFactory->get('ai_whatsapp_automation');
@@ -75,7 +78,12 @@ final class WebChatService {
    */
   public function processMessage(ContentEntityInterface $bot, string $session_id, string $message): array {
     $session_id = $this->sanitizeSessionId($session_id);
-    $conversation = $this->loadOrCreateConversation($bot, $session_id);
+    $conversation = $this->loadConversation($bot, $session_id);
+    $is_new_conversation = !$conversation instanceof ContentEntityInterface;
+    $this->assertUsageAllowed($bot, $conversation, $is_new_conversation);
+    if (!$conversation instanceof ContentEntityInterface) {
+      $conversation = $this->createConversation($bot, $session_id);
+    }
     $result = $this->conversationEngine->processIncomingMessage($conversation, trim($message), [
       'sender' => 'contact',
       'provider_message_id' => 'web-' . $session_id . '-' . time(),
@@ -189,7 +197,7 @@ final class WebChatService {
   /**
    * Loads or creates a web conversation.
    */
-  private function loadOrCreateConversation(ContentEntityInterface $bot, string $session_id): ContentEntityInterface {
+  private function loadConversation(ContentEntityInterface $bot, string $session_id): ?ContentEntityInterface {
     $storage = $this->entityTypeManager->getStorage('ai_whatsapp_conversation');
     $phone = 'web:' . $bot->id() . ':' . $session_id;
 
@@ -202,12 +210,21 @@ final class WebChatService {
       ->range(0, 1)
       ->execute();
 
-    if ($ids !== []) {
-      $conversation = $storage->load(reset($ids));
-      if ($conversation instanceof ContentEntityInterface) {
-        return $conversation;
-      }
+    if ($ids === []) {
+      return NULL;
     }
+
+    $conversation = $storage->load(reset($ids));
+
+    return $conversation instanceof ContentEntityInterface ? $conversation : NULL;
+  }
+
+  /**
+   * Creates a new web conversation after usage validation.
+   */
+  private function createConversation(ContentEntityInterface $bot, string $session_id): ContentEntityInterface {
+    $storage = $this->entityTypeManager->getStorage('ai_whatsapp_conversation');
+    $phone = 'web:' . $bot->id() . ':' . $session_id;
 
     $conversation = $storage->create([
       'phone' => $phone,
@@ -225,6 +242,80 @@ final class WebChatService {
     ]);
 
     return $conversation;
+  }
+
+  /**
+   * Enforces per-bot web chat consumption limits before calling OpenAI.
+   */
+  private function assertUsageAllowed(ContentEntityInterface $bot, ?ContentEntityInterface $conversation, bool $is_new_conversation): void {
+    $now = time();
+    $message_limit = $this->integerField($bot, 'web_widget_message_limit', 8);
+    $window_minutes = $this->integerField($bot, 'web_widget_message_window_minutes', 15);
+    if ($conversation instanceof ContentEntityInterface && $message_limit > 0 && $window_minutes > 0) {
+      $count = $this->entityTypeManager->getStorage('ai_whatsapp_message')->getQuery()
+        ->accessCheck(FALSE)
+        ->condition('conversation', $conversation->id())
+        ->condition('sender', 'contact')
+        ->condition('created', $now - ($window_minutes * 60), '>=')
+        ->count()
+        ->execute();
+      if ((int) $count >= $message_limit) {
+        throw new WebChatLimitException('Has alcanzado el límite temporal de mensajes. Intenta nuevamente en unos minutos.');
+      }
+    }
+
+    $day_start = (new \DateTimeImmutable('today'))->getTimestamp();
+    $daily_conversation_limit = $this->integerField($bot, 'web_widget_daily_conversation_limit', 50);
+    if ($is_new_conversation && $daily_conversation_limit > 0) {
+      $count = $this->entityTypeManager->getStorage('ai_whatsapp_conversation')->getQuery()
+        ->accessCheck(FALSE)
+        ->condition('bot', $bot->id())
+        ->condition('provider', 'web')
+        ->condition('created', $day_start, '>=')
+        ->count()
+        ->execute();
+      if ((int) $count >= $daily_conversation_limit) {
+        throw new WebChatLimitException('El chat ha alcanzado su capacidad de atención por hoy. Intenta nuevamente mañana.');
+      }
+    }
+
+    $daily_budget = $this->decimalField($bot, 'web_widget_daily_budget', 1.50);
+    if ($daily_budget > 0 && $this->dailyEstimatedCost((int) $bot->id(), $day_start) >= $daily_budget) {
+      throw new WebChatLimitException('El chat ha alcanzado su límite de atención por hoy. Intenta nuevamente mañana.');
+    }
+  }
+
+  /**
+   * Returns the estimated OpenAI cost accrued by this bot's web chat today.
+   */
+  private function dailyEstimatedCost(int $bot_id, int $day_start): float {
+    $query = $this->database->select('ai_whatsapp_message', 'message');
+    $query->join('ai_whatsapp_conversation', 'conversation', 'conversation.id = message.conversation_target_id');
+    $query->addExpression('COALESCE(SUM(message.cost), 0)', 'total_cost');
+    $query->condition('conversation.bot_target_id', $bot_id);
+    $query->condition('conversation.provider', 'web');
+    $query->condition('message.sender', 'ai');
+    $query->condition('message.created', $day_start, '>=');
+
+    return (float) $query->execute()->fetchField();
+  }
+
+  /**
+   * Reads an integer bot field with a fallback default.
+   */
+  private function integerField(ContentEntityInterface $bot, string $field_name, int $default): int {
+    $value = $this->getFieldValue($bot, $field_name);
+
+    return $value === '' ? $default : max(0, (int) $value);
+  }
+
+  /**
+   * Reads a decimal bot field with a fallback default.
+   */
+  private function decimalField(ContentEntityInterface $bot, string $field_name, float $default): float {
+    $value = $this->getFieldValue($bot, $field_name);
+
+    return $value === '' ? $default : max(0, (float) $value);
   }
 
   /**

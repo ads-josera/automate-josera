@@ -100,6 +100,17 @@ final class AutomationEntityForm extends ContentEntityForm {
         'open' => FALSE,
         'fields' => ['web_widget_token', 'web_widget_api_key'],
       ],
+      'web_limits' => [
+        'title' => $this->t('Web widget usage limits'),
+        'description' => $this->t('Control public chat consumption for this bot. A value of 0 disables an individual limit.'),
+        'open' => FALSE,
+        'fields' => [
+          'web_widget_message_limit',
+          'web_widget_message_window_minutes',
+          'web_widget_daily_conversation_limit',
+          'web_widget_daily_budget',
+        ],
+      ],
     ];
 
     foreach ($sections as $key => $section) {

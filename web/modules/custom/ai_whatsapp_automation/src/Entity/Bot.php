@@ -521,6 +521,60 @@ final class Bot extends ContentEntityBase {
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
+    $fields['web_widget_message_limit'] = BaseFieldDefinition::create('integer')
+      ->setLabel(t('Messages per visitor'))
+      ->setDescription(t('Maximum web chat messages allowed per visitor during the configured time window. Use 0 for no limit.'))
+      ->setDefaultValue(8)
+      ->setSetting('unsigned', TRUE)
+      ->setDisplayOptions('form', [
+        'type' => 'number',
+        'weight' => 64,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['web_widget_message_window_minutes'] = BaseFieldDefinition::create('integer')
+      ->setLabel(t('Message limit window (minutes)'))
+      ->setDescription(t('Time window used for the per-visitor message limit.'))
+      ->setDefaultValue(15)
+      ->setSetting('unsigned', TRUE)
+      ->setDisplayOptions('form', [
+        'type' => 'number',
+        'weight' => 65,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['web_widget_daily_conversation_limit'] = BaseFieldDefinition::create('integer')
+      ->setLabel(t('New web conversations per day'))
+      ->setDescription(t('Maximum new web chat conversations allowed for this bot each day. Use 0 for no limit.'))
+      ->setDefaultValue(50)
+      ->setSetting('unsigned', TRUE)
+      ->setDisplayOptions('form', [
+        'type' => 'number',
+        'weight' => 66,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['web_widget_daily_budget'] = BaseFieldDefinition::create('decimal')
+      ->setLabel(t('Daily web chat budget (USD)'))
+      ->setDescription(t('Maximum estimated OpenAI cost for this bot\'s web chat per day. Use 0 for no limit. Cost rates must be configured for the selected model.'))
+      ->setDefaultValue('1.50')
+      ->setSettings([
+        'precision' => 10,
+        'scale' => 2,
+      ])
+      ->setDisplayOptions('form', [
+        'type' => 'number',
+        'weight' => 67,
+        'settings' => [
+          'step' => '0.01',
+        ],
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
     $fields['status'] = BaseFieldDefinition::create('list_string')
       ->setLabel(t('Status'))
       ->setRequired(TRUE)

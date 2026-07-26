@@ -637,6 +637,32 @@ function ai_whatsapp_automation_update_11023(): void {
 }
 
 /**
+ * Adds per-bot public web chat usage limits.
+ */
+function ai_whatsapp_automation_update_11024(): void {
+  $definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+  $field_manager = \Drupal::service('entity_field.manager');
+  $fields = $field_manager->getFieldStorageDefinitions('ai_whatsapp_bot');
+
+  foreach ([
+    'web_widget_message_limit',
+    'web_widget_message_window_minutes',
+    'web_widget_daily_conversation_limit',
+    'web_widget_daily_budget',
+  ] as $field_name) {
+    if ($definition_update_manager->getFieldStorageDefinition($field_name, 'ai_whatsapp_bot') !== NULL || !isset($fields[$field_name])) {
+      continue;
+    }
+    $definition_update_manager->installFieldStorageDefinition(
+      $field_name,
+      'ai_whatsapp_bot',
+      'ai_whatsapp_automation',
+      $fields[$field_name]
+    );
+  }
+}
+
+/**
  * Returns the entity type IDs provided by this module.
  *
  * @return string[]

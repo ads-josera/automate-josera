@@ -6,6 +6,8 @@ namespace Drupal\ai_whatsapp_automation\Controller;
 
 use Drupal\ai_whatsapp_automation\Application\Dashboard\DashboardMetricsService;
 use Drupal\Core\Controller\ControllerBase;
+use Drupal\Core\Link;
+use Drupal\Core\Url;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -85,15 +87,15 @@ final class DashboardController extends ControllerBase {
             '#type' => 'html_tag',
             '#tag' => 'h2',
             '#attributes' => ['class' => ['ai-whatsapp-dashboard__panel-title']],
-            '#value' => $this->t('OpenAI cost by bot'),
+            '#value' => $this->t('Cost by bot'),
           ],
           'table' => [
             '#type' => 'table',
             '#attributes' => ['class' => ['ai-whatsapp-dashboard__table']],
             '#header' => [
               $this->t('Bot'),
-              $this->t('Tokens'),
-              $this->t('Cost'),
+              $this->t('AI tokens'),
+              $this->t('Estimated cost'),
             ],
             '#rows' => $this->buildCostByBotRows($metrics['cost_by_bot']),
             '#empty' => $this->t('No bot cost data available.'),
@@ -106,7 +108,7 @@ final class DashboardController extends ControllerBase {
             '#type' => 'html_tag',
             '#tag' => 'h2',
             '#attributes' => ['class' => ['ai-whatsapp-dashboard__panel-title']],
-            '#value' => $this->t('OpenAI cost by conversation'),
+            '#value' => $this->t('Highest-cost conversations'),
           ],
           'table' => [
             '#type' => 'table',
@@ -114,8 +116,8 @@ final class DashboardController extends ControllerBase {
             '#header' => [
               $this->t('Conversation'),
               $this->t('Messages'),
-              $this->t('Tokens'),
-              $this->t('Cost'),
+              $this->t('AI tokens'),
+              $this->t('Estimated cost'),
             ],
             '#rows' => $this->buildCostByConversationRows($metrics['cost_by_conversation']),
             '#empty' => $this->t('No conversation cost data available.'),
@@ -156,15 +158,22 @@ final class DashboardController extends ControllerBase {
    * @param array<int, array<string, mixed>> $rows
    *   Metric rows.
    *
-   * @return array<int, array<int, string>>
+   * @return array<int, array<int, array<string, mixed>>>
    *   Table rows.
    */
   private function buildCostByBotRows(array $rows): array {
     return array_map(function (array $row): array {
       return [
-        $row['name'] !== '' ? (string) $row['name'] : (string) $this->t('Unassigned'),
-        number_format((int) $row['total_tokens']),
-        '$' . number_format((float) $row['total_cost'], 6),
+        [
+          'data' => [
+            '#type' => 'container',
+            '#attributes' => ['class' => ['ai-whatsapp-dashboard__bot']],
+            'name' => ['#plain_text' => $row['name'] !== '' ? (string) $row['name'] : (string) $this->t('Unassigned')],
+            'hint' => ['#markup' => '<span>' . $this->t('All tracked conversations') . '</span>'],
+          ],
+        ],
+        ['data' => ['#markup' => $this->formatTokens((int) $row['total_tokens'])]],
+        ['data' => ['#markup' => $this->formatCost((float) $row['total_cost'])]],
       ];
     }, $rows);
   }
@@ -175,18 +184,66 @@ final class DashboardController extends ControllerBase {
    * @param array<int, array<string, mixed>> $rows
    *   Metric rows.
    *
-   * @return array<int, array<int, string>>
+   * @return array<int, array<int, array<string, mixed>>>
    *   Table rows.
    */
   private function buildCostByConversationRows(array $rows): array {
-    return array_map(static function (array $row): array {
+    return array_map(function (array $row): array {
+      $is_web = $row['provider'] === 'web';
+      $label = $is_web
+        ? (string) $this->t('Web visitor')
+        : ($row['name'] !== '' ? (string) $row['name'] : (string) $row['phone']);
+      $source = $is_web
+        ? (string) $this->t('Web chat')
+        : (string) $this->t('WhatsApp') . ' · ' . $this->providerLabel((string) $row['provider']);
+      $link = Link::fromTextAndUrl($label, Url::fromRoute('entity.ai_whatsapp_conversation.canonical', [
+        'ai_whatsapp_conversation' => $row['id'],
+      ]))->toRenderable();
+
       return [
-        '#' . $row['id'] . ' ' . $row['phone'],
-        number_format((int) $row['message_count']),
-        number_format((int) $row['total_tokens']),
-        '$' . number_format((float) $row['total_cost'], 6),
+        [
+          'data' => [
+            '#type' => 'container',
+            '#attributes' => ['class' => ['ai-whatsapp-dashboard__conversation']],
+            'link' => $link,
+            'meta' => ['#markup' => '<span>' . $source . ' · #' . (int) $row['id'] . '</span>'],
+          ],
+        ],
+        ['data' => ['#markup' => (string) (int) $row['message_count']]],
+        ['data' => ['#markup' => $this->formatTokens((int) $row['total_tokens'])]],
+        ['data' => ['#markup' => $this->formatCost((float) $row['total_cost'])]],
       ];
     }, $rows);
+  }
+
+  /**
+   * Formats token counts for fast scanning.
+   */
+  private function formatTokens(int $tokens): string {
+    if ($tokens >= 1000) {
+      return number_format($tokens / 1000, 1) . 'k';
+    }
+
+    return number_format($tokens);
+  }
+
+  /**
+   * Formats small costs without visually noisy trailing digits.
+   */
+  private function formatCost(float $cost): string {
+    return '$' . number_format($cost, $cost < 0.01 ? 4 : 2);
+  }
+
+  /**
+   * Returns a human-readable provider label.
+   */
+  private function providerLabel(string $provider): string {
+    return match ($provider) {
+      'twilio' => 'Twilio',
+      'cloud_api' => 'Cloud API',
+      'evolution' => 'Evolution',
+      default => $provider,
+    };
   }
 
 }

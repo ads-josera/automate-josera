@@ -120,14 +120,24 @@ final class DashboardMetricsService {
     $query->orderBy('total_cost', 'DESC');
     $query->range(0, 10);
 
-    return array_map(static function (object $row): array {
-      return [
-        'id' => $row->id === NULL ? NULL : (int) $row->id,
-        'name' => (string) ($row->name ?? 'Unassigned'),
-        'total_cost' => (float) $row->total_cost,
-        'total_tokens' => (int) $row->total_tokens,
-      ];
-    }, $query->execute()->fetchAll());
+    $grouped = [];
+    foreach ($query->execute()->fetchAll() as $row) {
+      $name = (string) ($row->name ?? 'Unassigned');
+      if (!isset($grouped[$name])) {
+        $grouped[$name] = [
+          'id' => $row->id === NULL ? NULL : (int) $row->id,
+          'name' => $name,
+          'total_cost' => 0.0,
+          'total_tokens' => 0,
+        ];
+      }
+      $grouped[$name]['total_cost'] += (float) $row->total_cost;
+      $grouped[$name]['total_tokens'] += (int) $row->total_tokens;
+    }
+
+    usort($grouped, static fn (array $left, array $right): int => $right['total_cost'] <=> $left['total_cost']);
+
+    return array_values($grouped);
   }
 
   /**
@@ -139,12 +149,16 @@ final class DashboardMetricsService {
   private function getCostByConversation(): array {
     $query = $this->database->select('ai_whatsapp_message', 'm');
     $query->join('ai_whatsapp_conversation', 'c', 'm.conversation = c.id');
-    $query->fields('c', ['id', 'phone']);
+    $query->fields('c', ['id', 'phone', 'name', 'provider', 'status', 'changed']);
     $query->addExpression('COALESCE(SUM(m.cost), 0)', 'total_cost');
     $query->addExpression('COALESCE(SUM(m.tokens), 0)', 'total_tokens');
     $query->addExpression('COUNT(m.id)', 'message_count');
     $query->groupBy('c.id');
     $query->groupBy('c.phone');
+    $query->groupBy('c.name');
+    $query->groupBy('c.provider');
+    $query->groupBy('c.status');
+    $query->groupBy('c.changed');
     $query->orderBy('total_cost', 'DESC');
     $query->range(0, 10);
 
@@ -152,6 +166,10 @@ final class DashboardMetricsService {
       return [
         'id' => (int) $row->id,
         'phone' => (string) $row->phone,
+        'name' => (string) $row->name,
+        'provider' => (string) $row->provider,
+        'status' => (string) $row->status,
+        'changed' => (int) $row->changed,
         'total_cost' => (float) $row->total_cost,
         'total_tokens' => (int) $row->total_tokens,
         'message_count' => (int) $row->message_count,

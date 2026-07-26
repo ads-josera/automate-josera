@@ -32,7 +32,7 @@
   max-width: 52rem;
   margin: 0;
   color: var(--aiwa-text);
-  font-size: 1rem;
+  font-size: 0.9375rem;
   line-height: 1.5;
 }
 
@@ -76,14 +76,14 @@
   min-height: 2rem;
   margin: 0 0 0.5rem;
   color: var(--aiwa-muted);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 700;
   line-height: 1.25;
 }
 
 .ai-whatsapp-dashboard__kpi-value {
   overflow-wrap: anywhere;
-  font-size: 1.75rem;
+  font-size: 1.55rem;
   font-weight: 700;
   line-height: 1.15;
 }
@@ -105,25 +105,26 @@
   padding: 0.875rem 1rem;
   border-bottom: 1px solid var(--aiwa-border);
   background: var(--aiwa-surface-muted);
-  font-size: 1rem;
+  font-size: 0.9375rem;
   font-weight: 700;
 }
 
 .ai-whatsapp-dashboard__table {
   width: 100%;
   margin: 0;
+  font-size: 0.875rem;
 }
 
 .ai-whatsapp-dashboard__table th {
   color: var(--aiwa-muted);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
 }
 
 .ai-whatsapp-dashboard__table td,
 .ai-whatsapp-dashboard__table th {
-  padding: 0.75rem 1rem;
+  padding: 0.6875rem 1rem;
   vertical-align: middle;
 }
 
@@ -151,7 +152,7 @@
   display: block;
   margin-top: 3px;
   color: var(--aiwa-muted);
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
 }
 
 .ai-whatsapp-dashboard__conversation a {
@@ -170,7 +171,7 @@
   }
 
   .ai-whatsapp-dashboard__kpi-value {
-    font-size: 1.5rem;
+    font-size: 1.35rem;
   }
 
   .ai-whatsapp-dashboard__rankings {

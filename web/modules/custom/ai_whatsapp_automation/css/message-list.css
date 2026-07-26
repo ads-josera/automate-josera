@@ -1,0 +1,78 @@
+.aiwa-message-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 14px;
+  margin: 0 0 20px;
+  padding: 16px;
+  border: 1px solid #d7deea;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.aiwa-message-filters .form-item {
+  min-width: 180px;
+  margin: 0;
+}
+
+.aiwa-message-filters .form-item-q {
+  flex: 1 1 320px;
+}
+
+.aiwa-message-filters .form-actions {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+}
+
+.aiwa-message-list__conversation-id {
+  margin-top: 3px;
+  color: #667085;
+  font-size: 0.78rem;
+}
+
+.aiwa-message-list__sender {
+  display: inline-flex;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.aiwa-message-list__sender--contact {
+  color: #075e54;
+  background: #dff7ed;
+}
+
+.aiwa-message-list__sender--ai {
+  color: #1d4ed8;
+  background: #e7efff;
+}
+
+.aiwa-message-list__sender--operator {
+  color: #9a3412;
+  background: #ffedd5;
+}
+
+.aiwa-message-list__sender--system {
+  color: #475467;
+  background: #edf1f5;
+}
+
+.aiwa-message-list__preview {
+  max-width: 720px;
+  color: #344054;
+  line-height: 1.45;
+}
+
+@media (max-width: 700px) {
+  .aiwa-message-filters {
+    display: block;
+  }
+
+  .aiwa-message-filters .form-item,
+  .aiwa-message-filters .form-actions {
+    margin: 0 0 12px;
+  }
+}

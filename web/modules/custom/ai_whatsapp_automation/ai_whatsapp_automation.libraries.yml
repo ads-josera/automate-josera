@@ -22,6 +22,11 @@ bot_form:
     theme:
       css/bot-form.css: {}
 
+message_list:
+  css:
+    theme:
+      css/message-list.css: {}
+
 web_chat:
   css:
     theme:

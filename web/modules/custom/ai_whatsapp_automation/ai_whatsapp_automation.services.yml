@@ -67,6 +67,7 @@ services:
       - '@ai_whatsapp_automation.conversation_engine'
       - '@ai_whatsapp_automation.provider_message_sender'
       - '@ai_whatsapp_automation.lead_handoff'
+      - '@state'
       - '@logger.factory'
 
   ai_whatsapp_automation.provider_message_sender:

@@ -103,3 +103,6 @@ ai_whatsapp_automation.settings:
         lead_notification_numbers:
           type: string
           label: 'Lead notification WhatsApp numbers'
+        notification_recipient_reply_text:
+          type: string
+          label: 'Notification recipient auto-reply text'

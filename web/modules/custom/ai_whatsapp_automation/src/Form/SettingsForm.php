@@ -386,6 +386,13 @@ final class SettingsForm extends ConfigFormBase {
       '#rows' => 3,
       '#description' => $this->t('One WhatsApp number per line, including country code. Example: +5215512345678.'),
     ];
+    $form['options']['notification_recipient_reply_text'] = [
+      '#type' => 'textarea',
+      '#title' => $this->t('Notification recipient auto-reply'),
+      '#default_value' => $config->get('options.notification_recipient_reply_text') ?: '',
+      '#rows' => 2,
+      '#description' => $this->t('Recipients listed above cannot use the bot. This optional message is sent at most once every 24 hours when they reply. Leave empty to block AI without sending a reply.'),
+    ];
 
     return parent::buildForm($form, $form_state);
   }
@@ -514,6 +521,7 @@ final class SettingsForm extends ConfigFormBase {
       ->set('options.auto_close_ai_hours', (int) $options['auto_close_ai_hours'])
       ->set('options.enable_lead_notifications', (bool) $options['enable_lead_notifications'])
       ->set('options.lead_notification_numbers', $options['lead_notification_numbers'])
+      ->set('options.notification_recipient_reply_text', $options['notification_recipient_reply_text'])
       ->save();
 
     parent::submitForm($form, $form_state);

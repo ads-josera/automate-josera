@@ -26,3 +26,4 @@ options:
   auto_close_ai_hours: 24
   enable_lead_notifications: false
   lead_notification_numbers: ''
+  notification_recipient_reply_text: 'Este número es exclusivo para notificaciones del sistema. No responde mensajes ni solicitudes.'

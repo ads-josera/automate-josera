@@ -627,6 +627,16 @@ function ai_whatsapp_automation_update_11022(): void {
 }
 
 /**
+ * Initializes the automatic reply for lead notification recipients.
+ */
+function ai_whatsapp_automation_update_11023(): void {
+  $config = \Drupal::configFactory()->getEditable('ai_whatsapp_automation.settings');
+  if ($config->get('options.notification_recipient_reply_text') === NULL) {
+    $config->set('options.notification_recipient_reply_text', 'Este número es exclusivo para notificaciones del sistema. No responde mensajes ni solicitudes.')->save();
+  }
+}
+
+/**
  * Returns the entity type IDs provided by this module.
  *
  * @return string[]

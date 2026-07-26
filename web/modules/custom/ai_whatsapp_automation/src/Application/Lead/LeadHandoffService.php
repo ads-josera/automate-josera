@@ -473,7 +473,7 @@ final class LeadHandoffService {
       'contact' => $this->templateVariable((string) $lead->label(), 'Contacto no capturado'),
       'phone' => $this->templateVariable((string) ($lead->get('phone')->value ?: ''), 'No capturado'),
       'email' => $this->templateVariable((string) ($lead->get('email')->value ?: ''), 'No capturado'),
-      'summary' => $this->templateVariable($ai_response, 'Solicitud de seguimiento generada.'),
+      'summary' => $this->templateSummary($ai_response),
       'bot_name' => $this->templateVariable($bot?->label() ?? '', 'Bot no identificado'),
       'source' => $this->templateVariable($this->getFieldValue($conversation, 'provider'), 'whatsapp'),
       'conversation_url' => $this->templateVariable($base_url . '/admin/content/ai-whatsapp/conversations/' . $conversation->id(), 'No disponible'),
@@ -537,6 +537,19 @@ final class LeadHandoffService {
     $value = mb_substr($value, 0, 500);
 
     return $value !== '' ? $value : $fallback;
+  }
+
+  /**
+   * Creates a plain-text, operator-friendly summary for a Twilio template.
+   */
+  private function templateSummary(string $summary): string {
+    $summary = preg_replace('/[\x{1F000}-\x{1FAFF}\x{2600}-\x{27BF}\x{FE0F}\x{200D}]/u', '', $summary) ?? '';
+    $summary = str_replace(['**', '__', '`'], '', $summary);
+    $summary = str_replace(['•', '▪', '◦'], '|', $summary);
+    $summary = preg_replace('/\R+/u', ' | ', $summary) ?? '';
+    $summary = preg_replace('/\s*\|\s*/u', ' | ', $summary) ?? '';
+
+    return $this->templateVariable($summary, 'Solicitud de seguimiento generada.');
   }
 
   /**

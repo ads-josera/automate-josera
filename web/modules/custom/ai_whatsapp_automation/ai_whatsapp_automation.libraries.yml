@@ -27,6 +27,11 @@ message_list:
     theme:
       css/message-list.css: {}
 
+conversation_list:
+  css:
+    theme:
+      css/conversation-list.css: {}
+
 web_chat:
   css:
     theme:

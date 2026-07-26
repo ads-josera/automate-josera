@@ -209,20 +209,34 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
       'system' => $this->t('Sistema'),
     ];
 
-    $row['conversation'] = $conversation instanceof EntityInterface
-      ? Link::fromTextAndUrl($contact, $conversation->toUrl('canonical'))->toRenderable()
-      : ['#plain_text' => (string) $contact];
+    $row['conversation'] = [
+      'data' => [
+        '#type' => 'container',
+        '#attributes' => ['class' => ['aiwa-message-list__conversation']],
+        'link' => $conversation instanceof EntityInterface
+          ? Link::fromTextAndUrl($contact, $conversation->toUrl('canonical'))->toRenderable()
+          : ['#plain_text' => (string) $contact],
+      ],
+    ];
     if ($conversation_id !== NULL) {
-      $row['conversation']['#suffix'] = '<div class="aiwa-message-list__conversation-id">#' . $conversation_id . '</div>';
+      $row['conversation']['data']['id'] = [
+        '#markup' => '<div class="aiwa-message-list__conversation-id">#' . $conversation_id . '</div>',
+      ];
     }
     $row['sender'] = [
-      '#markup' => '<span class="aiwa-message-list__sender aiwa-message-list__sender--' . Html::getClass($sender) . '">' . Html::escape((string) ($sender_labels[$sender] ?? $sender)) . '</span>',
+      'data' => [
+        '#markup' => '<span class="aiwa-message-list__sender aiwa-message-list__sender--' . Html::getClass($sender) . '">' . Html::escape((string) ($sender_labels[$sender] ?? $sender)) . '</span>',
+      ],
     ];
     $row['content'] = [
-      '#markup' => '<div class="aiwa-message-list__preview">' . Html::escape($preview) . '</div>',
+      'data' => [
+        '#markup' => '<div class="aiwa-message-list__preview">' . Html::escape($preview) . '</div>',
+      ],
     ];
     $row['created'] = [
-      '#plain_text' => \Drupal::service('date.formatter')->format((int) $this->getFieldValue($entity, 'created'), 'short'),
+      'data' => [
+        '#plain_text' => \Drupal::service('date.formatter')->format((int) $this->getFieldValue($entity, 'created'), 'short'),
+      ],
     ];
 
     return $row;

@@ -60,6 +60,7 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
     if ($this->entityTypeId !== 'ai_whatsapp_message') {
       return $build;
     }
+    $build['table']['#attributes']['class'][] = 'aiwa-message-list';
 
     return [
       '#attached' => [
@@ -235,7 +236,7 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
     ];
     $row['created'] = [
       'data' => [
-        '#plain_text' => \Drupal::service('date.formatter')->format((int) $this->getFieldValue($entity, 'created'), 'short'),
+        '#markup' => '<span class="aiwa-message-list__date">' . Html::escape(\Drupal::service('date.formatter')->format((int) $this->getFieldValue($entity, 'created'), 'short')) . '</span>',
       ],
     ];
 

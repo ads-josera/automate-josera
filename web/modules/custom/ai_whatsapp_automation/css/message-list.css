@@ -31,11 +31,28 @@
   font-size: 0.78rem;
 }
 
+.aiwa-message-list {
+  font-size: 0.9rem;
+}
+
+.aiwa-message-list th {
+  font-size: 0.88rem;
+}
+
+.aiwa-message-list td {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.aiwa-message-list__conversation a {
+  font-size: 0.94rem;
+}
+
 .aiwa-message-list__sender {
   display: inline-flex;
   padding: 4px 8px;
   border-radius: 999px;
-  font-size: 0.82rem;
+  font-size: 0.74rem;
   font-weight: 700;
   line-height: 1.1;
 }
@@ -63,7 +80,18 @@
 .aiwa-message-list__preview {
   max-width: 720px;
   color: #344054;
+  font-size: 0.88rem;
   line-height: 1.45;
+}
+
+.aiwa-message-list__date {
+  color: #475467;
+  font-size: 0.84rem;
+  white-space: nowrap;
+}
+
+.aiwa-message-list .dropbutton__item > a {
+  font-size: 0.84rem;
 }
 
 @media (max-width: 700px) {

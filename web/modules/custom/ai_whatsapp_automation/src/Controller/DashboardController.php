@@ -10,6 +10,7 @@ use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Link;
 use Drupal\Core\Url;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
  * Renders the AI WhatsApp metrics dashboard.
@@ -21,6 +22,7 @@ final class DashboardController extends ControllerBase {
    */
   public function __construct(
     private readonly DashboardMetricsService $metricsService,
+    private readonly RequestStack $requestStack,
   ) {
   }
 
@@ -30,6 +32,7 @@ final class DashboardController extends ControllerBase {
   public static function create(ContainerInterface $container): self {
     return new self(
       $container->get('ai_whatsapp_automation.dashboard_metrics'),
+      $container->get('request_stack'),
     );
   }
 
@@ -258,9 +261,9 @@ final class DashboardController extends ControllerBase {
    *   Timestamp range and human-readable period label.
    */
   private function periodRange(): array {
-    $request = $this->getRequest();
-    $period = (string) $request->query->get('period', 'month');
-    $date_value = (string) $request->query->get('date', date('Y-m-d'));
+    $request = $this->requestStack->getCurrentRequest();
+    $period = (string) $request?->query->get('period', 'month');
+    $date_value = (string) $request?->query->get('date', date('Y-m-d'));
     try {
       $date = new \DateTimeImmutable($date_value ?: 'today');
     }

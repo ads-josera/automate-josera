@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\ai_whatsapp_automation\Controller;
 
 use Drupal\Core\Controller\ControllerBase;
+use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Link;
@@ -23,6 +24,7 @@ final class ConversationController extends ControllerBase {
    */
   public function __construct(
     private readonly EntityTypeManagerInterface $entityManager,
+    private readonly DateFormatterInterface $dateFormatter,
   ) {
   }
 
@@ -30,7 +32,10 @@ final class ConversationController extends ControllerBase {
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container): static {
-    return new static($container->get('entity_type.manager'));
+    return new static(
+      $container->get('entity_type.manager'),
+      $container->get('date.formatter'),
+    );
   }
 
   /**
@@ -113,7 +118,7 @@ final class ConversationController extends ControllerBase {
       $sender = $this->fieldValue($message, 'sender');
       $content = nl2br(htmlspecialchars($this->fieldValue($message, 'content'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
       $items[] = [
-        '#markup' => '<article class="aiwa-conversation-detail__message aiwa-conversation-detail__message--' . $this->statusClass($sender) . '"><div class="aiwa-conversation-detail__message-meta">' . $this->senderLabel($sender) . ' · ' . $this->dateFormatter()->format((int) $this->fieldValue($message, 'created'), 'short') . '</div><div class="aiwa-conversation-detail__message-body">' . $content . '</div></article>',
+        '#markup' => '<article class="aiwa-conversation-detail__message aiwa-conversation-detail__message--' . $this->statusClass($sender) . '"><div class="aiwa-conversation-detail__message-meta">' . $this->senderLabel($sender) . ' · ' . $this->dateFormatter->format((int) $this->fieldValue($message, 'created'), 'short') . '</div><div class="aiwa-conversation-detail__message-body">' . $content . '</div></article>',
       ];
     }
 

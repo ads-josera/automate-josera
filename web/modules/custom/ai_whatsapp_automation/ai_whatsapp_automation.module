@@ -51,3 +51,10 @@ function ai_whatsapp_automation_form_tfa_setup_alter(array &$form): void {
   $form['#attached']['library'][] = 'ai_whatsapp_automation/tfa_setup';
   $form['#attributes']['class'][] = 'ai-whatsapp-tfa-setup';
 }
+
+/**
+ * Uses the administration theme for the multi-step TFA enrollment flow.
+ */
+function ai_whatsapp_automation_custom_theme(): ?string {
+  return \Drupal::routeMatch()->getRouteName() === 'tfa.validation.setup' ? 'claro' : NULL;
+}

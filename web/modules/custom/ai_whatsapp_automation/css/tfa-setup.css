@@ -1,0 +1,115 @@
+html:has(.ai-whatsapp-tfa-setup),
+body:has(.ai-whatsapp-tfa-setup) {
+  min-height: 100%;
+  background: #f4f6fb;
+}
+
+.ai-whatsapp-tfa-setup {
+  box-sizing: border-box;
+  width: min(100% - 32px, 640px);
+  margin: 56px auto;
+  padding: 32px;
+  color: #202b3f;
+  border: 1px solid #dce3ef;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 18px 40px rgb(24 43 79 / 10%);
+  font-family: Inter, "Helvetica Neue", Arial, sans-serif;
+}
+
+.ai-whatsapp-tfa-setup .form-item {
+  margin: 0 0 20px;
+}
+
+.ai-whatsapp-tfa-setup label {
+  display: block;
+  margin-bottom: 8px;
+  color: #263550;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.ai-whatsapp-tfa-setup input[type="text"],
+.ai-whatsapp-tfa-setup input[type="password"] {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 13px;
+  color: #1f2a3d;
+  border: 1px solid #b9c5d7;
+  border-radius: 6px;
+  background: #fff;
+  font: inherit;
+}
+
+.ai-whatsapp-tfa-setup input:focus {
+  border-color: #155eef;
+  outline: 3px solid rgb(21 94 239 / 16%);
+  outline-offset: 1px;
+}
+
+.ai-whatsapp-tfa-setup .description {
+  margin-top: 7px;
+  color: #5f6f86;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.ai-whatsapp-tfa-setup .form-actions,
+.ai-whatsapp-tfa-setup .form-item + .form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 26px;
+}
+
+.ai-whatsapp-tfa-setup .button,
+.ai-whatsapp-tfa-setup input[type="submit"] {
+  min-height: 44px;
+  padding: 10px 18px;
+  cursor: pointer;
+  color: #fff;
+  border: 0;
+  border-radius: 6px;
+  background: #155eef;
+  box-shadow: 0 8px 18px rgb(21 94 239 / 20%);
+  font: inherit;
+  font-weight: 700;
+}
+
+.ai-whatsapp-tfa-setup .button:hover,
+.ai-whatsapp-tfa-setup input[type="submit"]:hover {
+  background: #0d4fd8;
+}
+
+.ai-whatsapp-tfa-setup .button:not(.button--primary),
+.ai-whatsapp-tfa-setup input[type="submit"]:not(.button--primary) {
+  color: #33435d;
+  border: 1px solid #b9c5d7;
+  background: #fff;
+  box-shadow: none;
+}
+
+.ai-whatsapp-tfa-setup .tfa-qr-code {
+  box-sizing: border-box;
+  width: 220px !important;
+  max-width: 100%;
+  margin: 22px 0;
+  padding: 10px;
+  border: 1px solid #dce3ef;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.ai-whatsapp-tfa-setup .tfa-qr-code img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+@media (max-width: 600px) {
+  .ai-whatsapp-tfa-setup {
+    width: min(100% - 24px, 640px);
+    margin: 24px auto;
+    padding: 24px;
+  }
+}

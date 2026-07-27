@@ -32,6 +32,11 @@ conversation_list:
     theme:
       css/conversation-list.css: {}
 
+tfa_setup:
+  css:
+    theme:
+      css/tfa-setup.css: {}
+
 web_chat:
   css:
     theme:

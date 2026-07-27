@@ -43,3 +43,11 @@ function ai_whatsapp_automation_close_stale_conversations(): void {
     '@hours' => (string) $ttl_hours,
   ]);
 }
+
+/**
+ * Styles the TFA enrollment form when the access theme is active.
+ */
+function ai_whatsapp_automation_form_tfa_setup_alter(array &$form): void {
+  $form['#attached']['library'][] = 'ai_whatsapp_automation/tfa_setup';
+  $form['#attributes']['class'][] = 'ai-whatsapp-tfa-setup';
+}

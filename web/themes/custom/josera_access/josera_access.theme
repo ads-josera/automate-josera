@@ -8,7 +8,8 @@ use Drupal\file\Entity\File;
  * Prepares branding data for the public login page.
  */
 function josera_access_preprocess_page(array &$variables): void {
-  if (\Drupal::routeMatch()->getRouteName() !== 'user.login') {
+  $route_name = \Drupal::routeMatch()->getRouteName();
+  if (!in_array($route_name, ['user.login', 'tfa.entry'], TRUE)) {
     return;
   }
 
@@ -24,6 +25,15 @@ function josera_access_preprocess_page(array &$variables): void {
     'accent_color' => josera_access_color(theme_get_setting('login_accent_color', 'josera_access'), '#fb167c'),
     'logo_url' => $logo_url,
   ];
+}
+
+/**
+ * Adds the branded page template to the post-password TFA entry screen.
+ */
+function josera_access_theme_suggestions_page_alter(array &$suggestions): void {
+  if (\Drupal::routeMatch()->getRouteName() === 'tfa.entry') {
+    $suggestions[] = 'page__tfa_entry';
+  }
 }
 
 /**

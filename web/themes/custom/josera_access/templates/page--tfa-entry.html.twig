@@ -1,0 +1,26 @@
+<main class="josera-login" style="--josera-primary: {{ josera_login.primary_color }}; --josera-accent: {{ josera_login.accent_color }};">
+  <section class="josera-login__panel" aria-labelledby="josera-tfa-title">
+    <div class="josera-login__content">
+      <div class="josera-login__brand">
+        {% if josera_login.logo_url %}
+          <img src="{{ josera_login.logo_url }}" alt="JG Mylard" class="josera-login__logo">
+        {% else %}
+          <span class="josera-login__wordmark">JG <strong>MYLARD</strong></span>
+          <span class="josera-login__slogan">Calidad y Servicio</span>
+        {% endif %}
+      </div>
+
+      <div class="josera-login__heading">
+        <p class="josera-login__eyebrow">ACCESO SEGURO</p>
+        <h1 id="josera-tfa-title">Verificación</h1>
+        <p>Ingresa el código de tu aplicación autenticadora.</p>
+      </div>
+
+      <div class="josera-login__form">
+        {{ page.content }}
+      </div>
+    </div>
+  </section>
+
+  <aside class="josera-login__visual" aria-hidden="true"></aside>
+</main>

@@ -48,6 +48,20 @@ function ai_whatsapp_automation_close_stale_conversations(): void {
  * Styles the TFA enrollment form when the access theme is active.
  */
 function ai_whatsapp_automation_form_tfa_setup_alter(array &$form): void {
+  ai_whatsapp_automation_attach_tfa_styles($form);
+}
+
+/**
+ * Styles the TFA verification form shown after a user signs in.
+ */
+function ai_whatsapp_automation_form_tfa_entry_form_alter(array &$form): void {
+  ai_whatsapp_automation_attach_tfa_styles($form);
+}
+
+/**
+ * Attaches the shared visual treatment for TFA forms.
+ */
+function ai_whatsapp_automation_attach_tfa_styles(array &$form): void {
   $form['#attached']['library'][] = 'ai_whatsapp_automation/tfa_setup';
   $form['#attributes']['class'][] = 'ai-whatsapp-tfa-setup';
 }
@@ -56,5 +70,5 @@ function ai_whatsapp_automation_form_tfa_setup_alter(array &$form): void {
  * Uses the administration theme for the multi-step TFA enrollment flow.
  */
 function ai_whatsapp_automation_custom_theme(): ?string {
-  return \Drupal::routeMatch()->getRouteName() === 'tfa.validation.setup' ? 'claro' : NULL;
+  return in_array(\Drupal::routeMatch()->getRouteName(), ['tfa.validation.setup', 'tfa.entry'], TRUE) ? 'claro' : NULL;
 }

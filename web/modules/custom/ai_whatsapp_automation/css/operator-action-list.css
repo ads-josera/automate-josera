@@ -1,0 +1,75 @@
+.aiwa-operator-action-list {
+  font-size: 0.9rem;
+}
+
+.aiwa-operator-action-list th {
+  font-size: 0.88rem;
+}
+
+.aiwa-operator-action-list td {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  vertical-align: top;
+}
+
+.aiwa-operator-action-list__conversation a {
+  font-size: 0.94rem;
+  font-weight: 700;
+}
+
+.aiwa-operator-action-list__meta,
+.aiwa-operator-action-list__date {
+  color: #667085;
+  font-size: 0.78rem;
+}
+
+.aiwa-operator-action-list__action {
+  display: inline-flex;
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: #344054;
+  background: #edf1f5;
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.aiwa-operator-action-list__action--lead-handoff,
+.aiwa-operator-action-list__action--operator-assigned {
+  color: #047857;
+  background: #dff7ec;
+}
+
+.aiwa-operator-action-list__action--manual-reply-sent,
+.aiwa-operator-action-list__action--ai-reactivated {
+  color: #1d4ed8;
+  background: #e7efff;
+}
+
+.aiwa-operator-action-list__action--ai-stopped,
+.aiwa-operator-action-list__action--conversation-closed {
+  color: #b54708;
+  background: #fff0d5;
+}
+
+.aiwa-operator-action-list__user {
+  color: #344054;
+  font-size: 0.86rem;
+}
+
+.aiwa-operator-action-list__note {
+  max-width: 360px;
+  color: #475467;
+  font-size: 0.84rem;
+  overflow-wrap: anywhere;
+}
+
+.aiwa-operator-action-list .dropbutton__item > a {
+  font-size: 0.84rem;
+}
+
+@media (max-width: 700px) {
+  .aiwa-operator-action-list__date {
+    white-space: normal;
+  }
+}

@@ -42,6 +42,11 @@ lead_list:
     theme:
       css/lead-list.css: {}
 
+operator_action_list:
+  css:
+    theme:
+      css/operator-action-list.css: {}
+
 tfa_setup:
   css:
     theme:

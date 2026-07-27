@@ -46,6 +46,15 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
         'created' => $this->t('Creado'),
       ] + parent::buildHeader();
     }
+    if ($this->entityTypeId === 'ai_whatsapp_operator_action') {
+      return [
+        'conversation' => $this->t('Conversación'),
+        'action' => $this->t('Acción'),
+        'user' => $this->t('Responsable'),
+        'note' => $this->t('Detalle'),
+        'created' => $this->t('Fecha'),
+      ] + parent::buildHeader();
+    }
 
     $header['label'] = $this->t('Label');
     $header['status'] = $this->t('Status');
@@ -66,6 +75,9 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
     }
     if ($this->entityTypeId === 'ai_whatsapp_lead') {
       return $this->buildLeadRow($entity) + parent::buildRow($entity);
+    }
+    if ($this->entityTypeId === 'ai_whatsapp_operator_action') {
+      return $this->buildOperatorActionRow($entity) + parent::buildRow($entity);
     }
 
     $row['label'] = $entity->toLink();
@@ -109,6 +121,15 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
         'leads' => $build,
       ];
     }
+    if ($this->entityTypeId === 'ai_whatsapp_operator_action') {
+      $build['table']['#attributes']['class'][] = 'aiwa-operator-action-list';
+      return [
+        '#attached' => [
+          'library' => ['ai_whatsapp_automation/operator_action_list'],
+        ],
+        'actions' => $build,
+      ];
+    }
 
     return $build;
   }
@@ -118,6 +139,16 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
    */
   protected function getEntityListQuery(): QueryInterface {
     if ($this->entityTypeId === 'ai_whatsapp_lead') {
+      $query = $this->getStorage()->getQuery()
+        ->accessCheck(TRUE)
+        ->sort('created', 'DESC');
+      if ($this->limit) {
+        $query->pager($this->limit);
+      }
+
+      return $query;
+    }
+    if ($this->entityTypeId === 'ai_whatsapp_operator_action') {
       $query = $this->getStorage()->getQuery()
         ->accessCheck(TRUE)
         ->sort('created', 'DESC');
@@ -220,6 +251,19 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
           'url' => $conversation->toUrl('canonical'),
         ];
       }
+      return $operations;
+    }
+
+    if ($entity->getEntityTypeId() === 'ai_whatsapp_operator_action') {
+      $conversation = $entity->hasField('conversation') ? $entity->get('conversation')->entity : NULL;
+      if ($conversation instanceof EntityInterface) {
+        $operations['conversation'] = [
+          'title' => $this->t('Ver conversación'),
+          'weight' => 5,
+          'url' => $conversation->toUrl('canonical'),
+        ];
+      }
+
       return $operations;
     }
 
@@ -461,6 +505,65 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
     $row['created'] = [
       'data' => [
         '#markup' => '<span class="aiwa-lead-list__date">' . Html::escape(\Drupal::service('date.formatter')->format((int) $this->getFieldValue($entity, 'created'), 'short')) . '</span>',
+      ],
+    ];
+
+    return $row;
+  }
+
+  /**
+   * Builds a readable audit row for an operator action.
+   */
+  private function buildOperatorActionRow(EntityInterface $entity): array {
+    $conversation = $entity->hasField('conversation') ? $entity->get('conversation')->entity : NULL;
+    $contact = $conversation instanceof EntityInterface
+      ? ($this->getFieldValue($conversation, 'name') ?: $this->getFieldValue($conversation, 'phone'))
+      : $this->t('Conversación eliminada');
+    $operator = $entity->hasField('user') ? $entity->get('user')->entity : NULL;
+    $action = $this->getFieldValue($entity, 'action');
+    $note = preg_replace('/\s+/u', ' ', $this->getFieldValue($entity, 'note')) ?? '';
+    $note = $note !== '' ? mb_strimwidth($note, 0, 140, '...') : (string) $this->t('Sin detalle adicional');
+    $action_labels = [
+      'AI_STOPPED' => $this->t('IA pausada'),
+      'OPERATOR_ASSIGNED' => $this->t('Operador asignado'),
+      'MANUAL_REPLY_SENT' => $this->t('Respuesta manual enviada'),
+      'AI_REACTIVATED' => $this->t('IA reactivada'),
+      'CONVERSATION_CLOSED' => $this->t('Conversación cerrada'),
+      'LEAD_HANDOFF' => $this->t('Lead enviado a atención humana'),
+    ];
+
+    $row['conversation'] = [
+      'data' => [
+        '#type' => 'container',
+        '#attributes' => ['class' => ['aiwa-operator-action-list__conversation']],
+        'link' => $conversation instanceof EntityInterface
+          ? Link::fromTextAndUrl($contact, $conversation->toUrl('canonical'))->toRenderable()
+          : ['#plain_text' => (string) $contact],
+      ],
+    ];
+    if ($conversation instanceof EntityInterface) {
+      $row['conversation']['data']['id'] = [
+        '#markup' => '<div class="aiwa-operator-action-list__meta">#' . $conversation->id() . '</div>',
+      ];
+    }
+    $row['action'] = [
+      'data' => [
+        '#markup' => '<span class="aiwa-operator-action-list__action aiwa-operator-action-list__action--' . Html::getClass($action) . '">' . Html::escape((string) ($action_labels[$action] ?? $action)) . '</span>',
+      ],
+    ];
+    $row['user'] = [
+      'data' => [
+        '#markup' => '<span class="aiwa-operator-action-list__user">' . Html::escape($operator instanceof EntityInterface ? $operator->label() : (string) $this->t('Sistema')) . '</span>',
+      ],
+    ];
+    $row['note'] = [
+      'data' => [
+        '#markup' => '<div class="aiwa-operator-action-list__note">' . Html::escape($note) . '</div>',
+      ],
+    ];
+    $row['created'] = [
+      'data' => [
+        '#markup' => '<span class="aiwa-operator-action-list__date">' . Html::escape(\Drupal::service('date.formatter')->format((int) $this->getFieldValue($entity, 'created'), 'short')) . '</span>',
       ],
     ];
 

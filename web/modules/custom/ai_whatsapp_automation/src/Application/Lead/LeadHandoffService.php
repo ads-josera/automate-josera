@@ -711,6 +711,7 @@ final class LeadHandoffService {
    *   Labels to match.
    */
   private function extractValue(string $text, array $labels): string {
+    $text = preg_replace('/[*_`]+/u', '', $text) ?? $text;
     foreach ($labels as $label) {
       if (preg_match('/' . preg_quote($label, '/') . '\s*:\s*([^\n\r]+)/iu', $text, $matches)) {
         return $this->cleanExtractedValue($matches[1]);

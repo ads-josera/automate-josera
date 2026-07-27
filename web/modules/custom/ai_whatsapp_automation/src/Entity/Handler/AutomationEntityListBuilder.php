@@ -411,12 +411,12 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
    * Builds a concise and useful row for the lead inbox.
    */
   private function buildLeadRow(EntityInterface $entity): array {
-    $name = trim(preg_replace('/[*_`]+/u', '', $this->getFieldValue($entity, 'name')) ?? '');
-    if ($name === '' || !preg_match('/[\\p{L}\\p{N}]/u', $name)) {
-      $name = (string) $this->t('Lead sin nombre');
-    }
     $phone = $this->getFieldValue($entity, 'phone');
     $email = $this->getFieldValue($entity, 'email');
+    $name = trim(preg_replace('/[*_`]+/u', '', $this->getFieldValue($entity, 'name')) ?? '');
+    if ($name === '' || !preg_match('/[\\p{L}\\p{N}]/u', $name)) {
+      $name = $email ?: ($phone ?: (string) $this->t('Contacto pendiente'));
+    }
     $source = $this->getFieldValue($entity, 'source');
     $status = $this->getFieldValue($entity, 'status');
     $source_labels = [

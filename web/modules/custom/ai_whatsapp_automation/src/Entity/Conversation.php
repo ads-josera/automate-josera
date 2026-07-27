@@ -6,13 +6,13 @@ namespace Drupal\ai_whatsapp_automation\Entity;
 
 use Drupal\ai_whatsapp_automation\Entity\Handler\AutomationEntityAccessControlHandler;
 use Drupal\ai_whatsapp_automation\Entity\Handler\AutomationEntityListBuilder;
+use Drupal\ai_whatsapp_automation\Entity\Handler\ConversationViewBuilder;
 use Drupal\ai_whatsapp_automation\Entity\Storage\AutomationEntityStorage;
 use Drupal\ai_whatsapp_automation\Form\AutomationEntityForm;
 use Drupal\Core\Entity\Attribute\ContentEntityType;
 use Drupal\Core\Entity\ContentEntityBase;
 use Drupal\Core\Entity\ContentEntityDeleteForm;
 use Drupal\Core\Entity\EntityTypeInterface;
-use Drupal\Core\Entity\EntityViewBuilder;
 use Drupal\Core\Entity\Routing\DefaultHtmlRouteProvider;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
@@ -35,7 +35,7 @@ use Drupal\views\EntityViewsData;
   handlers: [
     'storage' => AutomationEntityStorage::class,
     'list_builder' => AutomationEntityListBuilder::class,
-    'view_builder' => EntityViewBuilder::class,
+    'view_builder' => ConversationViewBuilder::class,
     'access' => AutomationEntityAccessControlHandler::class,
     'form' => [
       'default' => AutomationEntityForm::class,

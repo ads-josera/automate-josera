@@ -32,6 +32,11 @@ conversation_list:
     theme:
       css/conversation-list.css: {}
 
+conversation_detail:
+  css:
+    theme:
+      css/conversation-detail.css: {}
+
 lead_list:
   css:
     theme:

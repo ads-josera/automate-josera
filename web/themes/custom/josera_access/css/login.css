@@ -131,6 +131,11 @@ body:has(.josera-login) {
   font: inherit;
 }
 
+.josera-login__form .form-item input[type="text"],
+.josera-login__form .form-item input[type="password"] {
+  margin-bottom: 12px;
+}
+
 .josera-login__form input:focus {
   border-color: var(--josera-accent);
   box-shadow: 0 0 0 3px rgb(255 255 255 / 20%);
@@ -156,7 +161,7 @@ body:has(.josera-login) {
 }
 
 .josera-login__form fieldset .description {
-  margin: 0 0 10px;
+  margin: 0 0 12px;
 }
 
 .josera-login__form input[type="submit"] {
@@ -185,6 +190,17 @@ body:has(.josera-login) {
 .josera-login__form .password-suggestions,
 .josera-login__form a {
   color: rgb(255 255 255 / 82%);
+}
+
+.josera-login__form .description,
+.josera-login__form fieldset,
+.josera-login__form fieldset a {
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.josera-login__form .form-item .description {
+  margin-top: 0;
 }
 
 .josera-login__form a:hover {

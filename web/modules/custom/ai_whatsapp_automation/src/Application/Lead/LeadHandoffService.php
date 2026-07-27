@@ -713,11 +713,21 @@ final class LeadHandoffService {
   private function extractValue(string $text, array $labels): string {
     foreach ($labels as $label) {
       if (preg_match('/' . preg_quote($label, '/') . '\s*:\s*([^\n\r]+)/iu', $text, $matches)) {
-        return trim($matches[1]);
+        return $this->cleanExtractedValue($matches[1]);
       }
     }
 
     return '';
+  }
+
+  /**
+   * Removes Markdown artifacts from a value captured in a chat response.
+   */
+  private function cleanExtractedValue(string $value): string {
+    $value = preg_replace('/[*_`]+/u', '', $value) ?? '';
+    $value = preg_replace('/\\s+/u', ' ', $value) ?? '';
+
+    return trim($value, " \\t\\n\\r\\0\\x0B:-");
   }
 
 }

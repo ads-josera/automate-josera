@@ -38,6 +38,14 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
         'changed' => $this->t('Última actividad'),
       ] + parent::buildHeader();
     }
+    if ($this->entityTypeId === 'ai_whatsapp_lead') {
+      return [
+        'contact' => $this->t('Contacto'),
+        'source' => $this->t('Origen'),
+        'status' => $this->t('Estado'),
+        'created' => $this->t('Creado'),
+      ] + parent::buildHeader();
+    }
 
     $header['label'] = $this->t('Label');
     $header['status'] = $this->t('Status');
@@ -55,6 +63,9 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
     }
     if ($this->entityTypeId === 'ai_whatsapp_conversation') {
       return $this->buildConversationRow($entity) + parent::buildRow($entity);
+    }
+    if ($this->entityTypeId === 'ai_whatsapp_lead') {
+      return $this->buildLeadRow($entity) + parent::buildRow($entity);
     }
 
     $row['label'] = $entity->toLink();
@@ -89,6 +100,15 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
         'conversations' => $build,
       ];
     }
+    if ($this->entityTypeId === 'ai_whatsapp_lead') {
+      $build['table']['#attributes']['class'][] = 'aiwa-lead-list';
+      return [
+        '#attached' => [
+          'library' => ['ai_whatsapp_automation/lead_list'],
+        ],
+        'leads' => $build,
+      ];
+    }
 
     return $build;
   }
@@ -97,6 +117,16 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
    * {@inheritdoc}
    */
   protected function getEntityListQuery(): QueryInterface {
+    if ($this->entityTypeId === 'ai_whatsapp_lead') {
+      $query = $this->getStorage()->getQuery()
+        ->accessCheck(TRUE)
+        ->sort('created', 'DESC');
+      if ($this->limit) {
+        $query->pager($this->limit);
+      }
+
+      return $query;
+    }
     if ($this->entityTypeId !== 'ai_whatsapp_message') {
       if ($this->entityTypeId !== 'ai_whatsapp_conversation') {
         return parent::getEntityListQuery();
@@ -190,6 +220,34 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
           'url' => $conversation->toUrl('canonical'),
         ];
       }
+      return $operations;
+    }
+
+    if ($entity->getEntityTypeId() === 'ai_whatsapp_lead') {
+      $phone = $this->getFieldValue($entity, 'phone');
+      if ($phone !== '') {
+        $conversation_ids = \Drupal::entityTypeManager()
+          ->getStorage('ai_whatsapp_conversation')
+          ->getQuery()
+          ->accessCheck(TRUE)
+          ->condition('phone', $phone)
+          ->sort('changed', 'DESC')
+          ->range(0, 1)
+          ->execute();
+        if ($conversation_ids !== []) {
+          $conversation = \Drupal::entityTypeManager()
+            ->getStorage('ai_whatsapp_conversation')
+            ->load(reset($conversation_ids));
+          if ($conversation instanceof EntityInterface) {
+            $operations['conversation'] = [
+              'title' => $this->t('Ver conversación'),
+              'weight' => 5,
+              'url' => $conversation->toUrl('canonical'),
+            ];
+          }
+        }
+      }
+
       return $operations;
     }
 
@@ -343,6 +401,66 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
     $row['changed'] = [
       'data' => [
         '#markup' => '<span class="aiwa-conversation-list__date">' . Html::escape(\Drupal::service('date.formatter')->format((int) $this->getFieldValue($entity, 'changed'), 'short')) . '</span>',
+      ],
+    ];
+
+    return $row;
+  }
+
+  /**
+   * Builds a concise and useful row for the lead inbox.
+   */
+  private function buildLeadRow(EntityInterface $entity): array {
+    $name = trim(preg_replace('/[*_`]+/u', '', $this->getFieldValue($entity, 'name')) ?? '');
+    if ($name === '' || !preg_match('/[\\p{L}\\p{N}]/u', $name)) {
+      $name = (string) $this->t('Lead sin nombre');
+    }
+    $phone = $this->getFieldValue($entity, 'phone');
+    $email = $this->getFieldValue($entity, 'email');
+    $source = $this->getFieldValue($entity, 'source');
+    $status = $this->getFieldValue($entity, 'status');
+    $source_labels = [
+      'whatsapp' => $this->t('WhatsApp'),
+      'web' => $this->t('Chat web'),
+    ];
+    $status_labels = [
+      'new' => $this->t('Nuevo'),
+      'contacted' => $this->t('Contactado'),
+      'qualified' => $this->t('Calificado'),
+      'disqualified' => $this->t('Descartado'),
+      'converted' => $this->t('Convertido'),
+    ];
+
+    $row['contact'] = [
+      'data' => [
+        '#type' => 'container',
+        '#attributes' => ['class' => ['aiwa-lead-list__contact']],
+        'link' => Link::fromTextAndUrl($name, $entity->toUrl('canonical'))->toRenderable(),
+      ],
+    ];
+    if ($phone !== '') {
+      $row['contact']['data']['phone'] = [
+        '#markup' => '<div class="aiwa-lead-list__meta">' . Html::escape($phone) . '</div>',
+      ];
+    }
+    if ($email !== '') {
+      $row['contact']['data']['email'] = [
+        '#markup' => '<div class="aiwa-lead-list__meta">' . Html::escape($email) . '</div>',
+      ];
+    }
+    $row['source'] = [
+      'data' => [
+        '#markup' => '<span class="aiwa-lead-list__source">' . Html::escape((string) ($source_labels[$source] ?? $source ?: $this->t('No definido'))) . '</span>',
+      ],
+    ];
+    $row['status'] = [
+      'data' => [
+        '#markup' => '<span class="aiwa-lead-list__status aiwa-lead-list__status--' . Html::getClass($status) . '">' . Html::escape((string) ($status_labels[$status] ?? $status)) . '</span>',
+      ],
+    ];
+    $row['created'] = [
+      'data' => [
+        '#markup' => '<span class="aiwa-lead-list__date">' . Html::escape(\Drupal::service('date.formatter')->format((int) $this->getFieldValue($entity, 'created'), 'short')) . '</span>',
       ],
     ];
 

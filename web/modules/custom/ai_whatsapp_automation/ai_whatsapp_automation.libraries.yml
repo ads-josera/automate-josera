@@ -32,6 +32,11 @@ conversation_list:
     theme:
       css/conversation-list.css: {}
 
+lead_list:
+  css:
+    theme:
+      css/lead-list.css: {}
+
 tfa_setup:
   css:
     theme:

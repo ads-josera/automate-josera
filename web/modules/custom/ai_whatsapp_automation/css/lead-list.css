@@ -1,0 +1,81 @@
+.aiwa-lead-list {
+  font-size: 0.9rem;
+}
+
+.aiwa-lead-list th {
+  font-size: 0.88rem;
+}
+
+.aiwa-lead-list td {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  vertical-align: top;
+}
+
+.aiwa-lead-list__contact a {
+  font-size: 0.94rem;
+  font-weight: 700;
+}
+
+.aiwa-lead-list__meta {
+  margin-top: 3px;
+  color: #667085;
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.aiwa-lead-list__source,
+.aiwa-lead-list__status {
+  display: inline-flex;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.aiwa-lead-list__source {
+  color: #475467;
+  background: #edf1f5;
+}
+
+.aiwa-lead-list__status--new {
+  color: #1d4ed8;
+  background: #e7efff;
+}
+
+.aiwa-lead-list__status--contacted {
+  color: #9a3412;
+  background: #ffedd5;
+}
+
+.aiwa-lead-list__status--qualified {
+  color: #047857;
+  background: #dff7ec;
+}
+
+.aiwa-lead-list__status--disqualified {
+  color: #475467;
+  background: #edf1f5;
+}
+
+.aiwa-lead-list__status--converted {
+  color: #6d28d9;
+  background: #f0e8ff;
+}
+
+.aiwa-lead-list__date {
+  color: #475467;
+  font-size: 0.84rem;
+  white-space: nowrap;
+}
+
+.aiwa-lead-list .dropbutton__item > a {
+  font-size: 0.84rem;
+}
+
+@media (max-width: 700px) {
+  .aiwa-lead-list__date {
+    white-space: normal;
+  }
+}

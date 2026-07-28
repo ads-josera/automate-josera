@@ -175,6 +175,9 @@ final class SettingsForm extends ConfigFormBase {
         'output' => $this->t('Output'),
       ],
       '#description' => $this->t('Enter the current OpenAI prices for each model you use. Leave both values empty to exclude a model from cost estimates.'),
+      '#attributes' => [
+        'class' => ['aiwa-cost-rates'],
+      ],
     ];
     foreach ($cost_models as $model) {
       $key = 'model_' . substr(hash('sha256', $model), 0, 12);
@@ -199,6 +202,9 @@ final class SettingsForm extends ConfigFormBase {
     $form['openai']['custom_cost_rate'] = [
       '#type' => 'fieldset',
       '#title' => $this->t('Additional model'),
+      '#attributes' => [
+        'class' => ['aiwa-custom-cost-rate'],
+      ],
     ];
     $form['openai']['custom_cost_rate']['model'] = [
       '#type' => 'textfield',

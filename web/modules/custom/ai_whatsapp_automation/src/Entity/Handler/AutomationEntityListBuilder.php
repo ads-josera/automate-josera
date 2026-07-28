@@ -55,6 +55,15 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
         'created' => $this->t('Fecha'),
       ] + parent::buildHeader();
     }
+    if ($this->entityTypeId === 'ai_whatsapp_knowledge_chunk') {
+      return [
+        'document' => $this->t('Documento'),
+        'chunk' => $this->t('Fragmento'),
+        'content' => $this->t('Vista previa'),
+        'model' => $this->t('Modelo'),
+        'created' => $this->t('Creado'),
+      ] + parent::buildHeader();
+    }
 
     $header['label'] = $this->t('Label');
     $header['status'] = $this->t('Status');
@@ -78,6 +87,9 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
     }
     if ($this->entityTypeId === 'ai_whatsapp_operator_action') {
       return $this->buildOperatorActionRow($entity) + parent::buildRow($entity);
+    }
+    if ($this->entityTypeId === 'ai_whatsapp_knowledge_chunk') {
+      return $this->buildKnowledgeChunkRow($entity) + parent::buildRow($entity);
     }
 
     $row['label'] = $entity->toLink();
@@ -130,6 +142,15 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
         'actions' => $build,
       ];
     }
+    if ($this->entityTypeId === 'ai_whatsapp_knowledge_chunk') {
+      $build['table']['#attributes']['class'][] = 'aiwa-knowledge-chunk-list';
+      return [
+        '#attached' => [
+          'library' => ['ai_whatsapp_automation/knowledge_chunk_list'],
+        ],
+        'chunks' => $build,
+      ];
+    }
 
     return $build;
   }
@@ -149,6 +170,16 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
       return $query;
     }
     if ($this->entityTypeId === 'ai_whatsapp_operator_action') {
+      $query = $this->getStorage()->getQuery()
+        ->accessCheck(TRUE)
+        ->sort('created', 'DESC');
+      if ($this->limit) {
+        $query->pager($this->limit);
+      }
+
+      return $query;
+    }
+    if ($this->entityTypeId === 'ai_whatsapp_knowledge_chunk') {
       $query = $this->getStorage()->getQuery()
         ->accessCheck(TRUE)
         ->sort('created', 'DESC');
@@ -564,6 +595,55 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
     $row['created'] = [
       'data' => [
         '#markup' => '<span class="aiwa-operator-action-list__date">' . Html::escape(\Drupal::service('date.formatter')->format((int) $this->getFieldValue($entity, 'created'), 'short')) . '</span>',
+      ],
+    ];
+
+    return $row;
+  }
+
+  /**
+   * Builds a readable row for an indexed knowledge fragment.
+   */
+  private function buildKnowledgeChunkRow(EntityInterface $entity): array {
+    $document = $entity->hasField('document') ? $entity->get('document')->entity : NULL;
+    $knowledge_base = $entity->hasField('knowledge_base') ? $entity->get('knowledge_base')->entity : NULL;
+    $content = preg_replace('/\s+/u', ' ', $this->getFieldValue($entity, 'content')) ?? '';
+    $content = mb_strimwidth($content, 0, 230, '...');
+    $chunk_index = $this->getFieldValue($entity, 'chunk_index');
+    $document_label = $document instanceof EntityInterface ? $document->label() : $this->t('Documento no disponible');
+
+    $row['document'] = [
+      'data' => [
+        '#type' => 'container',
+        '#attributes' => ['class' => ['aiwa-knowledge-chunk-list__document']],
+        'link' => $document instanceof EntityInterface
+          ? Link::fromTextAndUrl($document_label, $document->toUrl('canonical'))->toRenderable()
+          : ['#plain_text' => (string) $document_label],
+      ],
+    ];
+    if ($knowledge_base instanceof EntityInterface) {
+      $row['document']['data']['base'] = [
+        '#markup' => '<div class="aiwa-knowledge-chunk-list__meta">' . Html::escape($knowledge_base->label()) . '</div>',
+      ];
+    }
+    $row['chunk'] = [
+      'data' => [
+        '#markup' => '<span class="aiwa-knowledge-chunk-list__index">#' . Html::escape($chunk_index) . '</span>',
+      ],
+    ];
+    $row['content'] = [
+      'data' => [
+        '#markup' => '<div class="aiwa-knowledge-chunk-list__preview">' . Html::escape($content) . '</div>',
+      ],
+    ];
+    $row['model'] = [
+      'data' => [
+        '#markup' => '<span class="aiwa-knowledge-chunk-list__model">' . Html::escape($this->getFieldValue($entity, 'embedding_model') ?: (string) $this->t('No definido')) . '</span>',
+      ],
+    ];
+    $row['created'] = [
+      'data' => [
+        '#markup' => '<span class="aiwa-knowledge-chunk-list__date">' . Html::escape(\Drupal::service('date.formatter')->format((int) $this->getFieldValue($entity, 'created'), 'short')) . '</span>',
       ],
     ];
 

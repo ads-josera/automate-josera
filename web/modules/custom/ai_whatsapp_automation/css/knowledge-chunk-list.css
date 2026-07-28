@@ -1,0 +1,54 @@
+.aiwa-knowledge-chunk-list {
+  font-size: 0.9rem;
+}
+
+.aiwa-knowledge-chunk-list th {
+  font-size: 0.88rem;
+}
+
+.aiwa-knowledge-chunk-list td {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  vertical-align: top;
+}
+
+.aiwa-knowledge-chunk-list__document a {
+  font-size: 0.94rem;
+  font-weight: 700;
+}
+
+.aiwa-knowledge-chunk-list__meta,
+.aiwa-knowledge-chunk-list__date {
+  color: #667085;
+  font-size: 0.78rem;
+}
+
+.aiwa-knowledge-chunk-list__index,
+.aiwa-knowledge-chunk-list__model {
+  display: inline-flex;
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: #475467;
+  background: #edf1f5;
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.aiwa-knowledge-chunk-list__preview {
+  max-width: 620px;
+  color: #344054;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.aiwa-knowledge-chunk-list .dropbutton__item > a {
+  font-size: 0.84rem;
+}
+
+@media (max-width: 700px) {
+  .aiwa-knowledge-chunk-list__date {
+    white-space: normal;
+  }
+}

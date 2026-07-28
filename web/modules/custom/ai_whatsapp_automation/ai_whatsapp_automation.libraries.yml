@@ -47,6 +47,11 @@ operator_action_list:
     theme:
       css/operator-action-list.css: {}
 
+knowledge_chunk_list:
+  css:
+    theme:
+      css/knowledge-chunk-list.css: {}
+
 tfa_setup:
   css:
     theme:

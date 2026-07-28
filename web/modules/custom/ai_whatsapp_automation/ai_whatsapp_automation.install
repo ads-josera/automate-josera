@@ -699,6 +699,27 @@ function ai_whatsapp_automation_update_11026(): void {
 }
 
 /**
+ * Adds a bot-specific reply for lead-notification recipients.
+ */
+function ai_whatsapp_automation_update_11027(): void {
+  $definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+  if ($definition_update_manager->getFieldStorageDefinition('notification_recipient_reply_text', 'ai_whatsapp_bot') !== NULL) {
+    return;
+  }
+
+  $fields = \Drupal::service('entity_field.manager')
+    ->getFieldStorageDefinitions('ai_whatsapp_bot');
+  if (isset($fields['notification_recipient_reply_text'])) {
+    $definition_update_manager->installFieldStorageDefinition(
+      'notification_recipient_reply_text',
+      'ai_whatsapp_bot',
+      'ai_whatsapp_automation',
+      $fields['notification_recipient_reply_text']
+    );
+  }
+}
+
+/**
  * Returns the entity type IDs provided by this module.
  *
  * @return string[]

@@ -398,10 +398,10 @@ final class SettingsForm extends ConfigFormBase {
     ];
     $form['options']['notification_recipient_reply_text'] = [
       '#type' => 'textarea',
-      '#title' => $this->t('Notification recipient auto-reply'),
+      '#title' => $this->t('Default notification recipient auto-reply'),
       '#default_value' => $config->get('options.notification_recipient_reply_text') ?: '',
       '#rows' => 2,
-      '#description' => $this->t('Recipients listed above cannot use the bot. This optional message is sent at most once every 24 hours when they reply. Leave empty to block AI without sending a reply.'),
+      '#description' => $this->t('Fallback used only when the bot does not define its own reply. Recipients listed above cannot use the bot. This optional message is sent at most once every 24 hours when they reply. Leave empty to block AI without sending a reply.'),
     ];
 
     return parent::buildForm($form, $form_state);

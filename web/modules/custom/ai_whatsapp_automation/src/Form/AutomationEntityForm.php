@@ -74,6 +74,7 @@ final class AutomationEntityForm extends ContentEntityForm {
           'lead_notification_template_sid',
           'lead_notification_template_variables',
           'lead_notification_account',
+          'notification_recipient_reply_text',
         ],
       ],
       'web_widget' => [

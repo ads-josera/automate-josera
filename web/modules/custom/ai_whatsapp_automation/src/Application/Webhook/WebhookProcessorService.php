@@ -159,7 +159,7 @@ final class WebhookProcessorService {
     }
 
     $delivery = ['status' => 'skipped_rate_limited'];
-    $reply = trim((string) $this->setting('options.notification_recipient_reply_text'));
+    $reply = $this->notificationRecipientReply($conversation);
     if ($reply !== '' && $this->canSendNotificationRecipientReply($conversation, $message)) {
       $outbound_message = $message + [
         'whatsapp_account_id' => $conversation->hasField('whatsapp_account') ? $conversation->get('whatsapp_account')->target_id : NULL,
@@ -255,6 +255,21 @@ final class WebhookProcessorService {
     }
 
     return array_values(array_filter(array_map('trim', preg_split('/[\r\n,]+/', $raw) ?: [])));
+  }
+
+  /**
+   * Returns the bot-specific notification-recipient reply or global fallback.
+   */
+  private function notificationRecipientReply(ContentEntityInterface $conversation): string {
+    $bot = $this->botManager->getBotForConversation($conversation);
+    if ($bot instanceof ContentEntityInterface) {
+      $reply = trim($this->fieldValue($bot, 'notification_recipient_reply_text'));
+      if ($reply !== '') {
+        return $reply;
+      }
+    }
+
+    return trim((string) $this->setting('options.notification_recipient_reply_text'));
   }
 
   /**

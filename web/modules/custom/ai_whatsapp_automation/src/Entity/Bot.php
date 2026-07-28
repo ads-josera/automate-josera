@@ -286,6 +286,20 @@ final class Bot extends ContentEntityBase {
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
+    $fields['notification_recipient_reply_text'] = BaseFieldDefinition::create('string_long')
+      ->setLabel(t('Notification recipient auto-reply'))
+      ->setDescription(t('Message sent when one of this bot\'s lead-notification recipients writes to the WhatsApp number. Leave empty to use the global fallback.'))
+      ->setDisplayOptions('form', [
+        'type' => 'string_textarea',
+        'weight' => 52,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'basic_string',
+        'weight' => 52,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
     $fields['web_widget_enabled'] = BaseFieldDefinition::create('boolean')
       ->setLabel(t('Enable web widget'))
       ->setDescription(t('Allow this bot to be embedded as a public web chat widget.'))

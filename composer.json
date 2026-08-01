@@ -15,6 +15,7 @@
         }
     ],
     "require": {
+        "aws/aws-sdk-php": "^3.390",
         "composer/installers": "^2.3",
         "drupal/admin_toolbar": "^3.6",
         "drupal/coffee": "^2.0",

@@ -1,0 +1,5 @@
+administer ses api mailer:
+  title: 'Administer SES API Mailer'
+  description: 'Configure, enable, disable, and test Amazon SES API email delivery.'
+  restrict access: true
+

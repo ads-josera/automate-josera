@@ -1,0 +1,6 @@
+name: SES API Mailer
+type: module
+description: Sends Drupal email through the Amazon SES HTTPS API without relying on outbound SMTP.
+package: Mail
+core_version_requirement: ^10 || ^11
+

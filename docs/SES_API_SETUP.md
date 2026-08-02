@@ -145,6 +145,46 @@ $PHP84 vendor/drush/drush/drush.php cr
 
 No subir `settings.php` a Git ni incluirlo en el `rsync`.
 
+## 5.1 Usar El Modulo Reutilizable SES API Mailer
+
+Este proyecto incluye el modulo reutilizable `ses_api_mailer`. Puede
+instalarse en otros proyectos Drupal que tengan la dependencia Composer
+`aws/aws-sdk-php`.
+
+Para un nuevo sitio Drupal, agregar este bloque seguro a `settings.php`:
+
+```php
+$settings['ses_api_mailer'] = [
+  'region' => 'us-east-1',
+  'access_key_id' => 'REPLACE_WITH_AWS_ACCESS_KEY_ID',
+  'secret_access_key' => 'REPLACE_WITH_AWS_SECRET_ACCESS_KEY',
+  'from_address' => 'noreply@example.com',
+  'from_name' => 'Site notifications',
+];
+```
+
+Despues habilitar el modulo y visitar
+`/admin/config/system/ses-api-mailer`. El formulario envia una prueba y puede
+activar o desactivar SES como mailer predeterminado de Drupal. Al desactivarlo,
+restaura el mailer anterior.
+
+Para migrar este proyecto actual al modulo generico, hacer lo siguiente una
+vez desplegado el modulo:
+
+1. Copiar las credenciales SES existentes a `$settings['ses_api_mailer']`.
+2. Eliminar de `settings.php` la linea fija:
+
+   ```php
+   $config['system.mail']['interface']['default'] = 'amazon_ses_api';
+   ```
+
+3. Habilitar **SES API Mailer** en `/admin/modules`.
+4. Abrir `/admin/config/system/ses-api-mailer`, enviar una prueba y activar
+   **Use Amazon SES API for Drupal email**.
+
+La linea fija debe retirarse porque la configuracion sobreescrita desde
+`settings.php` no se puede activar ni desactivar mediante un formulario.
+
 ## 6. Configurar produccion sin exponer secretos
 
 Editar manualmente el archivo de produccion:

@@ -1,0 +1,7 @@
+ses_api_mailer.settings:
+  title: 'Amazon SES API mailer'
+  description: 'Deliver Drupal email through the Amazon SES HTTPS API.'
+  route_name: ses_api_mailer.settings
+  parent: system.admin_config_system
+  weight: 30
+

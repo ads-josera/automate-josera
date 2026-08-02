@@ -1,0 +1,8 @@
+ses_api_mailer.settings:
+  type: config_object
+  label: 'SES API Mailer settings'
+  mapping:
+    previous_mailer:
+      type: string
+      label: 'Mailer used before SES API Mailer was enabled'
+

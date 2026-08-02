@@ -1,0 +1,8 @@
+ses_api_mailer.settings:
+  path: '/admin/config/system/ses-api-mailer'
+  defaults:
+    _form: '\Drupal\ses_api_mailer\Form\SesApiMailerSettingsForm'
+    _title: 'Amazon SES API mailer'
+  requirements:
+    _permission: 'administer ses api mailer'
+

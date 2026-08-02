@@ -165,8 +165,15 @@ final class AmazonSesApiMail implements MailInterface, ContainerFactoryPluginInt
    * Parses a Drupal recipient header into Symfony addresses.
    */
   private function addresses(string $value): array {
+    if ($value === '') {
+      return [];
+    }
+
     $addresses = [];
     foreach (str_getcsv($value, escape: '\\') as $address) {
+      if (!is_string($address)) {
+        continue;
+      }
       $address = trim($address);
       if ($address !== '') {
         $addresses[] = Address::create($address);

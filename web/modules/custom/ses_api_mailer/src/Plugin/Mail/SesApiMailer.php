@@ -7,11 +7,14 @@ namespace Drupal\ses_api_mailer\Plugin\Mail;
 use Aws\Exception\AwsException;
 use Aws\Ses\SesClient;
 use Drupal\Component\Render\MarkupInterface;
+use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Lock\LockBackendInterface;
 use Drupal\Core\Mail\Attribute\Mail;
 use Drupal\Core\Mail\MailFormatHelper;
 use Drupal\Core\Mail\MailInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Site\Settings;
+use Drupal\Core\State\StateInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -35,6 +38,9 @@ final class SesApiMailer implements MailInterface, ContainerFactoryPluginInterfa
    */
   public function __construct(
     private readonly LoggerInterface $logger,
+    private readonly ConfigFactoryInterface $configFactory,
+    private readonly StateInterface $state,
+    private readonly LockBackendInterface $lock,
   ) {
   }
 
@@ -42,7 +48,12 @@ final class SesApiMailer implements MailInterface, ContainerFactoryPluginInterfa
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition): self {
-    return new self($container->get('logger.channel.mail'));
+    return new self(
+      $container->get('logger.channel.mail'),
+      $container->get('config.factory'),
+      $container->get('state'),
+      $container->get('lock'),
+    );
   }
 
   /**
@@ -69,6 +80,17 @@ final class SesApiMailer implements MailInterface, ContainerFactoryPluginInterfa
       return FALSE;
     }
 
+    $recipients = $this->recipients($message);
+    if ($recipients === []) {
+      $this->logger->error('Amazon SES mail delivery failed: no recipients were supplied.');
+      return FALSE;
+    }
+
+    $reserved_recipients = count($recipients);
+    if (!$this->reserveDailyCapacity($reserved_recipients)) {
+      return FALSE;
+    }
+
     try {
       $email = $this->buildEmail($message, $settings);
       $client = new SesClient([
@@ -82,7 +104,7 @@ final class SesApiMailer implements MailInterface, ContainerFactoryPluginInterfa
 
       $result = $client->sendRawEmail([
         'Source' => $settings['from_address'],
-        'Destinations' => $this->recipients($message),
+        'Destinations' => $recipients,
         'RawMessage' => ['Data' => $email->toString()],
       ]);
 
@@ -92,17 +114,97 @@ final class SesApiMailer implements MailInterface, ContainerFactoryPluginInterfa
       return TRUE;
     }
     catch (AwsException $exception) {
+      $this->releaseDailyCapacity($reserved_recipients);
       $this->logger->error('Amazon SES rejected mail delivery: @message', [
         '@message' => $exception->getAwsErrorMessage() ?: $exception->getMessage(),
       ]);
     }
     catch (\Throwable $exception) {
+      $this->releaseDailyCapacity($reserved_recipients);
       $this->logger->error('Amazon SES mail delivery failed: @message', [
         '@message' => $exception->getMessage(),
       ]);
     }
 
     return FALSE;
+  }
+
+  /**
+   * Reserves daily recipient capacity before requesting SES delivery.
+   */
+  private function reserveDailyCapacity(int $recipients): bool {
+    $limit = $this->dailySendLimit();
+    if ($limit === 0) {
+      return TRUE;
+    }
+
+    $lock_name = 'ses_api_mailer.daily_send_limit.' . $this->currentDay();
+    if (!$this->lock->acquire($lock_name, 5.0)) {
+      $this->logger->error('Amazon SES mail delivery was not attempted because the daily send counter is busy.');
+      return FALSE;
+    }
+
+    try {
+      $key = $this->dailyCounterKey();
+      $sent = (int) $this->state->get($key, 0);
+      if ($sent + $recipients > $limit) {
+        $this->logger->warning('Amazon SES daily recipient limit reached (@sent of @limit). Mail was not sent.', [
+          '@sent' => $sent,
+          '@limit' => $limit,
+        ]);
+        return FALSE;
+      }
+      $this->state->set($key, $sent + $recipients);
+      return TRUE;
+    }
+    finally {
+      $this->lock->release($lock_name);
+    }
+  }
+
+  /**
+   * Returns unused capacity when SES rejects a request.
+   */
+  private function releaseDailyCapacity(int $recipients): void {
+    if ($this->dailySendLimit() === 0) {
+      return;
+    }
+
+    $lock_name = 'ses_api_mailer.daily_send_limit.' . $this->currentDay();
+    if (!$this->lock->acquire($lock_name, 5.0)) {
+      return;
+    }
+
+    try {
+      $key = $this->dailyCounterKey();
+      $sent = (int) $this->state->get($key, 0);
+      $this->state->set($key, max(0, $sent - $recipients));
+    }
+    finally {
+      $this->lock->release($lock_name);
+    }
+  }
+
+  /**
+   * Gets the daily recipient limit, where zero means unlimited.
+   */
+  private function dailySendLimit(): int {
+    return max(0, (int) ($this->configFactory->get('ses_api_mailer.settings')->get('daily_send_limit') ?? 50));
+  }
+
+  /**
+   * Gets the current date in the site's timezone.
+   */
+  private function currentDay(): string {
+    $timezone = (string) ($this->configFactory->get('system.date')->get('timezone.default') ?: date_default_timezone_get());
+    return (new \DateTimeImmutable('now', new \DateTimeZone($timezone)))->format('Y-m-d');
+  }
+
+  /**
+   * Gets the state key for the current day's accepted recipients.
+   */
+  private function dailyCounterKey(): string {
+    return 'ses_api_mailer.daily_send_count.' . $this->currentDay();
   }
 
   /**
@@ -232,4 +334,3 @@ final class SesApiMailer implements MailInterface, ContainerFactoryPluginInterfa
   }
 
 }
-

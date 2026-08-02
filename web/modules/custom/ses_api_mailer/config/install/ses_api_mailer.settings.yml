@@ -1,2 +1,2 @@
 previous_mailer: php_mail
-
+daily_send_limit: 50

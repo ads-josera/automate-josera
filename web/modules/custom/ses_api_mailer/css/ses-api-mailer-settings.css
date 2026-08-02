@@ -162,6 +162,34 @@
   margin-bottom: 18px;
 }
 
+.ses-api-mailer-limit-summary {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.ses-api-mailer-limit-summary > div {
+  background: #f7f9fc;
+  border: 1px solid #d8e0ea;
+  border-radius: 6px;
+  display: flex;
+  flex: 1 1 180px;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+}
+
+.ses-api-mailer-limit-summary span {
+  color: #596579;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ses-api-mailer-limit-summary strong {
+  color: #15233d;
+  font-size: 24px;
+}
+
 @media (max-width: 640px) {
   .ses-api-mailer-form details > :not(summary) {
     margin-inline: 16px;
@@ -170,5 +198,8 @@
   .ses-api-mailer-status__facts {
     grid-template-columns: 1fr;
   }
-}
 
+  .ses-api-mailer-limit-summary {
+    flex-direction: column;
+  }
+}

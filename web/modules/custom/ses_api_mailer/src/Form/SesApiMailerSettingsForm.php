@@ -10,6 +10,7 @@ use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Mail\MailManagerInterface;
 use Drupal\Core\Site\Settings;
+use Drupal\Core\State\StateInterface;
 use Drupal\Component\Utility\Html;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -25,6 +26,7 @@ final class SesApiMailerSettingsForm extends ConfigFormBase {
     ConfigFactoryInterface $config_factory,
     TypedConfigManagerInterface $typed_config_manager,
     private readonly MailManagerInterface $mailManager,
+    private readonly StateInterface $state,
   ) {
     parent::__construct($config_factory, $typed_config_manager);
   }
@@ -37,6 +39,7 @@ final class SesApiMailerSettingsForm extends ConfigFormBase {
       $container->get('config.factory'),
       $container->get('config.typed'),
       $container->get('plugin.manager.mail'),
+      $container->get('state'),
     );
   }
 
@@ -116,6 +119,26 @@ final class SesApiMailerSettingsForm extends ConfigFormBase {
       ];
     }
 
+    $daily_limit = max(0, (int) ($this->config('ses_api_mailer.settings')->get('daily_send_limit') ?? 50));
+    $sent_today = $this->dailySentCount();
+    $remaining = $daily_limit === 0 ? $this->t('Sin límite') : max(0, $daily_limit - $sent_today);
+    $form['limit'] = [
+      '#type' => 'details',
+      '#title' => $this->t('Límite diario de envío'),
+      '#open' => TRUE,
+    ];
+    $form['limit']['summary'] = [
+      '#markup' => '<div class="ses-api-mailer-limit-summary"><div><span>' . $this->t('Enviados hoy') . '</span><strong>' . $sent_today . '</strong></div><div><span>' . $this->t('Disponibles hoy') . '</span><strong>' . $remaining . '</strong></div></div>',
+    ];
+    $form['limit']['daily_send_limit'] = [
+      '#type' => 'number',
+      '#title' => $this->t('Máximo de destinatarios por día'),
+      '#default_value' => $daily_limit,
+      '#min' => 0,
+      '#step' => 1,
+      '#description' => $this->t('El valor inicial es 50. El límite se aplica a todos los correos de Drupal enviados por SES. Usa 0 para desactivarlo. Un correo a varios destinatarios cuenta una vez por cada destinatario.'),
+    ];
+
     $form['credentials'] = [
       '#type' => 'details',
       '#title' => $this->t('Credenciales seguras'),
@@ -166,6 +189,7 @@ final class SesApiMailerSettingsForm extends ConfigFormBase {
    */
   public function submitForm(array &$form, FormStateInterface $form_state): void {
     $settings = $this->configFactory->getEditable('ses_api_mailer.settings');
+    $settings->set('daily_send_limit', max(0, (int) $form_state->getValue('daily_send_limit')));
     $system_mail = $this->configFactory->getEditable('system.mail');
     $current = (string) ($system_mail->get('interface.default') ?: 'php_mail');
     $enable = (bool) $form_state->getValue('enabled');
@@ -180,6 +204,7 @@ final class SesApiMailerSettingsForm extends ConfigFormBase {
       $system_mail->set('interface.default', $previous)->save();
       $this->messenger()->addStatus($this->t('The previous default mailer (@mailer) was restored.', ['@mailer' => $previous]));
     }
+    $settings->save();
   }
 
   /**
@@ -230,6 +255,15 @@ final class SesApiMailerSettingsForm extends ConfigFormBase {
 
     $legacy = Settings::get('ai_whatsapp_automation_ses', []);
     return is_array($legacy) ? $legacy : [];
+  }
+
+  /**
+   * Gets today's number of SES recipients accepted by this module.
+   */
+  private function dailySentCount(): int {
+    $timezone = (string) ($this->config('system.date')->get('timezone.default') ?: date_default_timezone_get());
+    $day = (new \DateTimeImmutable('now', new \DateTimeZone($timezone)))->format('Y-m-d');
+    return (int) $this->state->get('ses_api_mailer.daily_send_count.' . $day, 0);
   }
 
 }

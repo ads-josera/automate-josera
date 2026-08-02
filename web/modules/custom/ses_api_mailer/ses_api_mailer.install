@@ -1,0 +1,16 @@
+<?php
+
+/**
+ * @file
+ * Update hooks for SES API Mailer.
+ */
+
+/**
+ * Adds the default daily recipient limit for existing installations.
+ */
+function ses_api_mailer_update_10001(): void {
+  $config = \Drupal::configFactory()->getEditable('ses_api_mailer.settings');
+  if ($config->get('daily_send_limit') === NULL) {
+    $config->set('daily_send_limit', 50)->save();
+  }
+}

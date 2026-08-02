@@ -25,6 +25,13 @@ $settings['ses_api_mailer'] = [
 Disabling the setting restores the default mailer that was active before SES
 API Mailer was enabled.
 
+## Daily sending limit
+
+SES API Mailer limits delivery to 50 recipients per day by default. This
+protects Drupal forms and automated notifications from unexpected volume. Edit
+the value at `/admin/config/system/ses-api-mailer` when a higher limit is
+needed. Set it to `0` only when an unlimited daily volume is intentional.
+
 ## Migrating an existing custom SES integration
 
 If a site was previously using this project's `amazon_ses_api` plugin, move

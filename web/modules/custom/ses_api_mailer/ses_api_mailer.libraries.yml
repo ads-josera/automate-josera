@@ -1,0 +1,5 @@
+settings:
+  css:
+    theme:
+      css/ses-api-mailer-settings.css: {}
+

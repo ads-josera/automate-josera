@@ -60,55 +60,93 @@ final class SesApiMailerSettingsForm extends ConfigFormBase {
   public function buildForm(array $form, FormStateInterface $form_state): array {
     $system_mail = $this->config('system.mail');
     $current_mailer = (string) ($system_mail->get('interface.default') ?: 'php_mail');
-    $configured = $this->hasSecureSettings();
+    $secure_settings = $this->secureSettings();
+    $configured = $this->hasSecureSettings($secure_settings);
+    $uses_reusable_mailer = $current_mailer === 'ses_api_mailer';
+    $uses_legacy_mailer = $current_mailer === 'amazon_ses_api';
+
+    $form['#attached']['library'][] = 'ses_api_mailer/settings';
+    $form['#attributes']['class'][] = 'ses-api-mailer-form';
 
     $form['status'] = [
       '#type' => 'details',
-      '#title' => $this->t('Delivery status'),
+      '#title' => $this->t('Estado del envío'),
       '#open' => TRUE,
     ];
+    if ($uses_reusable_mailer) {
+      $status_title = $this->t('Amazon SES API está activo');
+      $status_message = $this->t('Este módulo controla los correos salientes de Drupal.');
+      $status_class = '';
+    }
+    elseif ($uses_legacy_mailer) {
+      $status_title = $this->t('Amazon SES API está activo mediante la integración anterior');
+      $status_message = $this->t('Los correos ya salen por SES. Completa la migración solo si deseas administrar la activación desde este módulo.');
+      $status_class = ' ses-api-mailer-status__headline--legacy';
+    }
+    else {
+      $status_title = $this->t('Amazon SES API está preparado, pero no activo');
+      $status_message = $this->t('Puedes enviar una prueba y activar este módulo como mailer predeterminado.');
+      $status_class = ' ses-api-mailer-status__headline--inactive';
+    }
+
+    $credentials_badge = $configured
+      ? '<span class="ses-api-mailer-status__badge ses-api-mailer-status__badge--ready">' . $this->t('Configuradas') . '</span>'
+      : '<span class="ses-api-mailer-status__badge ses-api-mailer-status__badge--warning">' . $this->t('Pendientes') . '</span>';
     $form['status']['summary'] = [
-      '#markup' => '<p><strong>' . $this->t('Current default mailer:') . '</strong> ' . Html::escape($current_mailer) . '</p>'
-        . '<p><strong>' . $this->t('SES credentials in settings.php:') . '</strong> '
-        . ($configured ? $this->t('Configured') : $this->t('Missing')) . '</p>',
+      '#markup' => '<div class="ses-api-mailer-status">'
+        . '<div class="ses-api-mailer-status__headline' . $status_class . '">'
+        . '<span class="ses-api-mailer-status__icon">✓</span><div><strong class="ses-api-mailer-status__title">' . $status_title . '</strong>'
+        . '<span class="ses-api-mailer-status__message">' . $status_message . '</span></div></div>'
+        . '<div class="ses-api-mailer-status__facts">'
+        . '<div class="ses-api-mailer-status__fact"><span class="ses-api-mailer-status__label">' . $this->t('Mailer actual') . '</span><span class="ses-api-mailer-status__value">' . Html::escape($current_mailer) . '</span></div>'
+        . '<div class="ses-api-mailer-status__fact"><span class="ses-api-mailer-status__label">' . $this->t('Credenciales en settings.php') . '</span><span class="ses-api-mailer-status__value">' . $credentials_badge . '</span></div>'
+        . '</div></div>',
     ];
     $form['status']['enabled'] = [
       '#type' => 'checkbox',
-      '#title' => $this->t('Use Amazon SES API for Drupal email'),
-      '#default_value' => $current_mailer === 'ses_api_mailer',
-      '#description' => $this->t('When enabled, this module becomes Drupal\'s default mailer. Disabling restores the mailer that was active before it was enabled.'),
+      '#title' => $this->t('Usar este módulo para los correos de Drupal'),
+      '#default_value' => $uses_reusable_mailer,
+      '#description' => $this->t('Al activarlo, este módulo se convierte en el mailer predeterminado. Al desactivarlo se restaura el mailer anterior.'),
+      '#disabled' => $uses_legacy_mailer,
     ];
+    if ($uses_legacy_mailer) {
+      $form['status']['migration'] = [
+        '#markup' => '<div class="ses-api-mailer-migration"><strong>' . $this->t('Control pendiente de migración.') . '</strong> '
+          . $this->t('La prueba confirma que SES funciona. Para usar el interruptor de esta pantalla, agrega la configuración `ses_api_mailer` a settings.php y retira el override fijo `amazon_ses_api`; la guía del proyecto incluye los pasos.') . '</div>',
+      ];
+    }
 
     $form['credentials'] = [
       '#type' => 'details',
-      '#title' => $this->t('Secure credentials'),
+      '#title' => $this->t('Credenciales seguras'),
       '#open' => TRUE,
     ];
     $form['credentials']['instructions'] = [
-      '#markup' => '<p>' . $this->t('Credentials are intentionally not stored here. Add this block to the environment\'s settings.php, replacing the placeholders with an IAM access key that can send through SES:') . '</p>'
-        . '<pre><code>$settings[\'ses_api_mailer\'] = [\n'
-        . '  \'region\' => \'us-east-1\',\n'
-        . '  \'access_key_id\' => \'ACCESS_KEY_ID\',\n'
-        . '  \'secret_access_key\' => \'SECRET_ACCESS_KEY\',\n'
-        . '  \'from_address\' => \'noreply@example.com\',\n'
-        . '  \'from_name\' => \'Site notifications\',\n'
-        . '];</code></pre><p>'
-        . $this->t('Keep settings.php outside Git and use different credentials per environment.') . '</p>',
+      '#markup' => '<p>' . $this->t('Las credenciales no se guardan en la base de datos. Deben permanecer en settings.php y fuera de Git.') . '</p>'
+        . '<pre class="ses-api-mailer-code"><code>$settings[\'ses_api_mailer\'] = [' . "\n"
+        . '  \'region\' => \'us-east-1\',' . "\n"
+        . '  \'access_key_id\' => \'ACCESS_KEY_ID\',' . "\n"
+        . '  \'secret_access_key\' => \'SECRET_ACCESS_KEY\',' . "\n"
+        . '  \'from_address\' => \'noreply@example.com\',' . "\n"
+        . '  \'from_name\' => \'Notificaciones del sitio\',' . "\n"
+        . '];</code></pre>',
     ];
 
     $form['test'] = [
       '#type' => 'details',
-      '#title' => $this->t('Send a test email'),
+      '#title' => $this->t('Enviar correo de prueba'),
       '#open' => TRUE,
+    ];
+    $form['test']['help'] = [
+      '#markup' => '<p class="ses-api-mailer-test-help">' . $this->t('La prueba usa SES directamente y no modifica el mailer activo.') . '</p>',
     ];
     $form['test']['test_recipient'] = [
       '#type' => 'email',
-      '#title' => $this->t('Recipient'),
-      '#description' => $this->t('Sends a direct SES API test without changing the active default mailer.'),
+      '#title' => $this->t('Destinatario'),
     ];
     $form['test']['send_test'] = [
       '#type' => 'submit',
-      '#value' => $this->t('Send test email'),
+      '#value' => $this->t('Enviar prueba por SES'),
       '#submit' => ['::submitTest'],
       '#limit_validation_errors' => [['test_recipient']],
       '#disabled' => !$configured,
@@ -117,7 +155,7 @@ final class SesApiMailerSettingsForm extends ConfigFormBase {
     $form['actions'] = ['#type' => 'actions'];
     $form['actions']['submit'] = [
       '#type' => 'submit',
-      '#value' => $this->t('Save delivery settings'),
+      '#value' => $this->t('Guardar estado de entrega'),
     ];
 
     return $form;
@@ -174,15 +212,24 @@ final class SesApiMailerSettingsForm extends ConfigFormBase {
   /**
    * Checks whether secure SES settings are present.
    */
-  private function hasSecureSettings(): bool {
-    $settings = Settings::get('ses_api_mailer', []);
-    if (!is_array($settings) || $settings === []) {
-      $settings = Settings::get('ai_whatsapp_automation_ses', []);
-    }
+  private function hasSecureSettings(array $settings): bool {
     return is_array($settings)
       && !empty($settings['access_key_id'])
       && !empty($settings['secret_access_key'])
       && !empty($settings['from_address']);
+  }
+
+  /**
+   * Returns generic settings or the legacy project settings during migration.
+   */
+  private function secureSettings(): array {
+    $settings = Settings::get('ses_api_mailer', []);
+    if (is_array($settings) && $settings !== []) {
+      return $settings;
+    }
+
+    $legacy = Settings::get('ai_whatsapp_automation_ses', []);
+    return is_array($legacy) ? $legacy : [];
   }
 
 }

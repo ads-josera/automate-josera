@@ -1,0 +1,174 @@
+.ses-api-mailer-form {
+  max-width: 1120px;
+}
+
+.ses-api-mailer-form details {
+  border: 1px solid #d9e0ea;
+  border-radius: 6px;
+  box-shadow: none;
+  margin-block: 20px;
+  overflow: hidden;
+}
+
+.ses-api-mailer-form details > summary {
+  align-items: center;
+  background: #f7f9fc;
+  color: #182b4d;
+  display: flex;
+  font-size: 18px;
+  font-weight: 700;
+  gap: 12px;
+  line-height: 1.3;
+  min-height: 58px;
+  padding: 14px 20px 14px 44px;
+  position: relative;
+}
+
+.ses-api-mailer-form details > summary::marker {
+  color: #2563eb;
+}
+
+.ses-api-mailer-form details > :not(summary) {
+  margin-inline: 24px;
+}
+
+.ses-api-mailer-status {
+  display: grid;
+  gap: 18px;
+  padding-block: 24px 26px;
+}
+
+.ses-api-mailer-status__headline {
+  align-items: flex-start;
+  background: #f4fbf7;
+  border-left: 4px solid #16865b;
+  display: flex;
+  gap: 14px;
+  padding: 18px 20px;
+}
+
+.ses-api-mailer-status__headline--legacy {
+  background: #fff8e8;
+  border-left-color: #b96d00;
+}
+
+.ses-api-mailer-status__headline--inactive {
+  background: #f5f7fa;
+  border-left-color: #64748b;
+}
+
+.ses-api-mailer-status__icon {
+  align-items: center;
+  background: #16865b;
+  border-radius: 50%;
+  color: #fff;
+  display: inline-flex;
+  flex: 0 0 28px;
+  font-size: 17px;
+  font-weight: 800;
+  height: 28px;
+  justify-content: center;
+  line-height: 1;
+}
+
+.ses-api-mailer-status__headline--legacy .ses-api-mailer-status__icon {
+  background: #b96d00;
+}
+
+.ses-api-mailer-status__headline--inactive .ses-api-mailer-status__icon {
+  background: #64748b;
+}
+
+.ses-api-mailer-status__title {
+  color: #17243c;
+  display: block;
+  font-size: 18px;
+  margin-bottom: 3px;
+}
+
+.ses-api-mailer-status__message {
+  color: #526275;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.ses-api-mailer-status__facts {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ses-api-mailer-status__fact {
+  border-bottom: 1px solid #e3e8ef;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 0 12px;
+}
+
+.ses-api-mailer-status__label {
+  color: #607086;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ses-api-mailer-status__value {
+  color: #17243c;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.ses-api-mailer-status__badge {
+  border-radius: 999px;
+  display: inline-block;
+  font-size: 13px;
+  padding: 3px 9px;
+}
+
+.ses-api-mailer-status__badge--ready {
+  background: #dff7ea;
+  color: #126342;
+}
+
+.ses-api-mailer-status__badge--warning {
+  background: #fff0cc;
+  color: #8a5100;
+}
+
+.ses-api-mailer-form .ses-api-mailer-migration {
+  background: #fffaf0;
+  border: 1px solid #f2d391;
+  color: #5d4211;
+  font-size: 14px;
+  line-height: 1.55;
+  margin-top: 2px;
+  padding: 14px 16px;
+}
+
+.ses-api-mailer-form .ses-api-mailer-code {
+  background: #14233e;
+  border-radius: 4px;
+  color: #eef5ff;
+  font-size: 13px;
+  line-height: 1.55;
+  overflow-x: auto;
+  padding: 16px;
+  white-space: pre;
+}
+
+.ses-api-mailer-form .ses-api-mailer-test-help {
+  color: #607086;
+  font-size: 14px;
+  margin-bottom: 18px;
+}
+
+@media (max-width: 640px) {
+  .ses-api-mailer-form details > :not(summary) {
+    margin-inline: 16px;
+  }
+
+  .ses-api-mailer-status__facts {
+    grid-template-columns: 1fr;
+  }
+}
+

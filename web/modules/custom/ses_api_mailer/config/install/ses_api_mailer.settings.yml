@@ -1,2 +1,4 @@
 previous_mailer: php_mail
+previous_mailsystem_sender: ''
+previous_mailsystem_formatter: ''
 daily_send_limit: 50

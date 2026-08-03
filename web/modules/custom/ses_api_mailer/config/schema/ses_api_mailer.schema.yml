@@ -5,6 +5,12 @@ ses_api_mailer.settings:
     previous_mailer:
       type: string
       label: 'Mailer used before SES API Mailer was enabled'
+    previous_mailsystem_sender:
+      type: string
+      label: 'Mailsystem sender used before SES API Mailer was enabled'
+    previous_mailsystem_formatter:
+      type: string
+      label: 'Mailsystem formatter used before SES API Mailer was enabled'
     daily_send_limit:
       type: integer
       label: 'Maximum SES recipients per day'

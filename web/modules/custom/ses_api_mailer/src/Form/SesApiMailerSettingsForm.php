@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Drupal\ses_api_mailer\Form;
 
+use Drupal\Core\Config\Config;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Config\TypedConfigManagerInterface;
+use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Mail\MailManagerInterface;
@@ -27,6 +29,7 @@ final class SesApiMailerSettingsForm extends ConfigFormBase {
     TypedConfigManagerInterface $typed_config_manager,
     private readonly MailManagerInterface $mailManager,
     private readonly StateInterface $state,
+    private readonly ModuleHandlerInterface $moduleHandler,
   ) {
     parent::__construct($config_factory, $typed_config_manager);
   }
@@ -40,6 +43,7 @@ final class SesApiMailerSettingsForm extends ConfigFormBase {
       $container->get('config.typed'),
       $container->get('plugin.manager.mail'),
       $container->get('state'),
+      $container->get('module_handler'),
     );
   }
 
@@ -61,8 +65,7 @@ final class SesApiMailerSettingsForm extends ConfigFormBase {
    * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state): array {
-    $system_mail = $this->config('system.mail');
-    $current_mailer = (string) ($system_mail->get('interface.default') ?: 'php_mail');
+    $current_mailer = $this->currentMailer();
     $secure_settings = $this->secureSettings();
     $configured = $this->hasSecureSettings($secure_settings);
     $uses_reusable_mailer = $current_mailer === 'ses_api_mailer';
@@ -191,17 +194,20 @@ final class SesApiMailerSettingsForm extends ConfigFormBase {
     $settings = $this->configFactory->getEditable('ses_api_mailer.settings');
     $settings->set('daily_send_limit', max(0, (int) $form_state->getValue('daily_send_limit')));
     $system_mail = $this->configFactory->getEditable('system.mail');
-    $current = (string) ($system_mail->get('interface.default') ?: 'php_mail');
+    $current = $this->currentMailer();
+    $system_default = (string) ($system_mail->get('interface.default') ?: 'php_mail');
     $enable = (bool) $form_state->getValue('enabled');
 
     if ($enable && $current !== 'ses_api_mailer') {
-      $settings->set('previous_mailer', $current)->save();
+      $settings->set('previous_mailer', $system_default);
       $system_mail->set('interface.default', 'ses_api_mailer')->save();
+      $this->configureMailsystem($settings, TRUE);
       $this->messenger()->addStatus($this->t('Amazon SES API is now the default Drupal mailer.'));
     }
     elseif (!$enable && $current === 'ses_api_mailer') {
       $previous = (string) ($settings->get('previous_mailer') ?: 'php_mail');
       $system_mail->set('interface.default', $previous)->save();
+      $this->configureMailsystem($settings, FALSE);
       $this->messenger()->addStatus($this->t('The previous default mailer (@mailer) was restored.', ['@mailer' => $previous]));
     }
     $settings->save();
@@ -255,6 +261,48 @@ final class SesApiMailerSettingsForm extends ConfigFormBase {
 
     $legacy = Settings::get('ai_whatsapp_automation_ses', []);
     return is_array($legacy) ? $legacy : [];
+  }
+
+  /**
+   * Gets the mail backend used after optional Mailsystem overrides.
+   */
+  private function currentMailer(): string {
+    if ($this->moduleHandler->moduleExists('mailsystem')) {
+      $mailer = (string) $this->config('mailsystem.settings')->get('defaults.sender');
+      if ($mailer !== '') {
+        return $mailer;
+      }
+    }
+
+    return (string) ($this->config('system.mail')->get('interface.default') ?: 'php_mail');
+  }
+
+  /**
+   * Updates Mailsystem's sender and formatter when it is enabled.
+   */
+  private function configureMailsystem(Config $settings, bool $enable): void {
+    if (!$this->moduleHandler->moduleExists('mailsystem')) {
+      return;
+    }
+
+    $mailsystem = $this->configFactory->getEditable('mailsystem.settings');
+    if ($enable) {
+      $settings->set('previous_mailsystem_sender', (string) $mailsystem->get('defaults.sender'));
+      $settings->set('previous_mailsystem_formatter', (string) $mailsystem->get('defaults.formatter'));
+      $mailsystem->set('defaults.sender', 'ses_api_mailer');
+      $mailsystem->set('defaults.formatter', 'ses_api_mailer');
+    }
+    else {
+      $previous_sender = (string) $settings->get('previous_mailsystem_sender');
+      $previous_formatter = (string) $settings->get('previous_mailsystem_formatter');
+      if ($previous_sender !== '') {
+        $mailsystem->set('defaults.sender', $previous_sender);
+      }
+      if ($previous_formatter !== '') {
+        $mailsystem->set('defaults.formatter', $previous_formatter);
+      }
+    }
+    $mailsystem->save();
   }
 
   /**

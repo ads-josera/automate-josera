@@ -5,8 +5,12 @@ declare(strict_types=1);
 namespace Drupal\ai_whatsapp_automation\Controller;
 
 use Drupal\ai_whatsapp_automation\Application\Webhook\WebhookProviderService;
+use Drupal\ai_whatsapp_automation\Application\Webhook\WebhookProcessorService;
 use Drupal\ai_whatsapp_automation\Application\Webhook\WebhookQueueService;
+use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Controller\ControllerBase;
+use Drupal\Core\Logger\LoggerChannelFactoryInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -18,12 +22,21 @@ use Symfony\Component\HttpFoundation\Response;
 final class WebhookController extends ControllerBase {
 
   /**
+   * The logger channel.
+   */
+  private readonly LoggerInterface $logger;
+
+  /**
    * Constructs a WebhookController object.
    */
   public function __construct(
     private readonly WebhookProviderService $providerService,
     private readonly WebhookQueueService $queueService,
+    private readonly WebhookProcessorService $processor,
+    private readonly ConfigFactoryInterface $settingsConfigFactory,
+    LoggerChannelFactoryInterface $loggerFactory,
   ) {
+    $this->logger = $loggerFactory->get('ai_whatsapp_automation');
   }
 
   /**
@@ -33,6 +46,9 @@ final class WebhookController extends ControllerBase {
     return new self(
       $container->get('ai_whatsapp_automation.webhook_provider'),
       $container->get('ai_whatsapp_automation.webhook_queue'),
+      $container->get('ai_whatsapp_automation.webhook_processor'),
+      $container->get('config.factory'),
+      $container->get('logger.factory'),
     );
   }
 
@@ -57,9 +73,35 @@ final class WebhookController extends ControllerBase {
       return new JsonResponse(['status' => 'ignored']);
     }
 
-    $this->queueService->enqueue($provider, $message);
+    if (!(bool) $this->settingsConfigFactory->get('ai_whatsapp_automation.settings')->get('options.enable_immediate_webhook_processing')) {
+      $this->queueService->enqueue($provider, $message);
 
-    return new JsonResponse(['status' => 'queued']);
+      return new JsonResponse(['status' => 'queued']);
+    }
+
+    try {
+      $result = $this->processor->process([
+        'provider' => $provider,
+        'message' => $message,
+        'attempts' => 0,
+        'created' => time(),
+      ]);
+    }
+    catch (\Throwable $exception) {
+      $this->queueService->enqueue($provider, $message);
+      $this->logger->warning('Immediate webhook processing failed for @provider message @message; queued for retry: @error', [
+        '@provider' => $provider,
+        '@message' => (string) ($message['provider_message_id'] ?? ''),
+        '@error' => $exception->getMessage(),
+      ]);
+
+      return new JsonResponse(['status' => 'queued_fallback']);
+    }
+
+    return new JsonResponse([
+      'status' => (string) ($result['status'] ?? 'processed'),
+      'processing' => 'immediate',
+    ]);
   }
 
   /**

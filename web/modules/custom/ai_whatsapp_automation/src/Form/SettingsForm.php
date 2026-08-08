@@ -379,6 +379,12 @@ final class SettingsForm extends ConfigFormBase {
       '#title' => $this->t('Enable metrics'),
       '#default_value' => (bool) $config->get('options.enable_metrics'),
     ];
+    $form['options']['enable_immediate_webhook_processing'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Process WhatsApp webhooks immediately'),
+      '#default_value' => (bool) $config->get('options.enable_immediate_webhook_processing'),
+      '#description' => $this->t('When enabled, incoming provider webhooks are processed during the request for faster replies. Failed requests are automatically placed in the queue for retry. Leave disabled to use queue-only processing.'),
+    ];
     $form['options']['auto_close_ai_hours'] = [
       '#type' => 'number',
       '#title' => $this->t('Auto-close inactive AI conversations'),
@@ -535,6 +541,7 @@ final class SettingsForm extends ConfigFormBase {
       ->set('options.enable_logs', (bool) $options['enable_logs'])
       ->set('options.enable_storage', (bool) $options['enable_storage'])
       ->set('options.enable_metrics', (bool) $options['enable_metrics'])
+      ->set('options.enable_immediate_webhook_processing', (bool) $options['enable_immediate_webhook_processing'])
       ->set('options.auto_close_ai_hours', (int) $options['auto_close_ai_hours'])
       ->set('options.enable_lead_notifications', (bool) $options['enable_lead_notifications'])
       ->set('options.lead_notification_numbers', $options['lead_notification_numbers'])

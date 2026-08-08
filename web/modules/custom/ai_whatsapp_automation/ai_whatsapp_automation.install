@@ -720,6 +720,16 @@ function ai_whatsapp_automation_update_11027(): void {
 }
 
 /**
+ * Adds the immediate webhook processing switch, disabled by default.
+ */
+function ai_whatsapp_automation_update_11028(): void {
+  $config = \Drupal::configFactory()->getEditable('ai_whatsapp_automation.settings');
+  if ($config->get('options.enable_immediate_webhook_processing') === NULL) {
+    $config->set('options.enable_immediate_webhook_processing', FALSE)->save();
+  }
+}
+
+/**
  * Returns the entity type IDs provided by this module.
  *
  * @return string[]

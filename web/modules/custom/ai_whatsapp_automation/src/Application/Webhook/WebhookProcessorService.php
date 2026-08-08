@@ -11,6 +11,7 @@ use Drupal\Core\Database\Connection;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
+use Drupal\Core\Lock\LockBackendInterface;
 use Drupal\Core\State\StateInterface;
 use Psr\Log\LoggerInterface;
 
@@ -34,6 +35,7 @@ final class WebhookProcessorService {
     private readonly ProviderMessageSenderService $messageSender,
     private readonly LeadHandoffService $leadHandoff,
     private readonly StateInterface $state,
+    private readonly LockBackendInterface $lock,
     private readonly Connection $database,
     LoggerChannelFactoryInterface $loggerFactory,
   ) {
@@ -52,14 +54,43 @@ final class WebhookProcessorService {
   public function process(array $item): array {
     $provider = (string) ($item['provider'] ?? '');
     $message = is_array($item['message'] ?? NULL) ? $item['message'] : [];
-    if ($this->isDuplicateProviderMessage((string) ($message['provider_message_id'] ?? ''))) {
-      $this->logger->notice('Skipped duplicate @provider webhook message @message.', [
-        '@provider' => $provider,
-        '@message' => (string) $message['provider_message_id'],
+    $lock_name = $this->processingLockName($provider, (string) ($message['provider_message_id'] ?? ''));
+    if ($lock_name !== '' && !$this->lock->acquire($lock_name, 90.0)) {
+      $this->logger->notice('Webhook message @message is already being processed.', [
+        '@message' => (string) ($message['provider_message_id'] ?? ''),
       ]);
 
-      return ['status' => 'ignored_duplicate'];
+      return ['status' => 'ignored_in_progress'];
     }
+
+    try {
+      return $this->processLocked($provider, $message);
+    }
+    finally {
+      if ($lock_name !== '') {
+        $this->lock->release($lock_name);
+      }
+    }
+  }
+
+  /**
+   * Processes a webhook message while its provider ID lock is held.
+   *
+   * @param array<string, mixed> $message
+   *   Normalized message data.
+   *
+   * @return array<string, mixed>
+   *   Processing result.
+   */
+  private function processLocked(string $provider, array $message): array {
+    $duplicate = $this->loadInboundProviderMessage((string) ($message['provider_message_id'] ?? ''));
+    if ($duplicate instanceof ContentEntityInterface) {
+      $resumed = $this->resumeDuplicateProviderMessage($provider, $message, $duplicate);
+      if ($resumed !== NULL) {
+        return $resumed;
+      }
+    }
+
     $is_new_conversation = FALSE;
     $conversation = $this->loadOrCreateConversation($provider, $message, $is_new_conversation);
     $this->touchConversation($conversation);
@@ -120,24 +151,13 @@ final class WebhookProcessorService {
       ];
     }
 
+    $this->markAiProcessingStarted($provider, (string) ($message['provider_message_id'] ?? ''));
     $engine_result = $this->conversationEngine->processIncomingMessage($conversation, (string) $message['body'], [
       'provider_message_id' => (string) ($message['provider_message_id'] ?? ''),
     ]);
+    $this->clearAiProcessingStarted($provider, (string) ($message['provider_message_id'] ?? ''));
 
-    $outbound_message = $message + [
-      'whatsapp_account_id' => $conversation->hasField('whatsapp_account') ? $conversation->get('whatsapp_account')->target_id : NULL,
-    ];
-    $delivery = $this->messageSender->sendText($provider, $outbound_message, (string) $engine_result['response_text']);
-    $handoff = $this->leadHandoff->handle($conversation, (string) $engine_result['response_text']);
-    $this->logger->notice('Lead handoff check for conversation @conversation finished with status @status.', [
-      '@conversation' => (string) $conversation->id(),
-      '@status' => (string) ($handoff['status'] ?? 'unknown'),
-    ]);
-
-    return $engine_result + [
-      'delivery' => $delivery,
-      'handoff' => $handoff,
-    ];
+    return $this->deliverEngineResult($provider, $message, $conversation, $engine_result);
   }
 
   /**
@@ -514,6 +534,99 @@ final class WebhookProcessorService {
   }
 
   /**
+   * Resumes a webhook message that was stored before a transient failure.
+   *
+   * @param array<string, mixed> $message
+   *   Normalized message data.
+   *
+   * @return array<string, mixed>|null
+   *   A resumed result, or NULL when normal processing should continue.
+   */
+  private function resumeDuplicateProviderMessage(string $provider, array $message, ContentEntityInterface $incoming): ?array {
+    $conversation = $this->entityTypeManager
+      ->getStorage('ai_whatsapp_conversation')
+      ->load($incoming->get('conversation')->target_id);
+    if (!$conversation instanceof ContentEntityInterface) {
+      return NULL;
+    }
+
+    $outgoing = $this->findOutgoingResponse($incoming);
+    if (!$outgoing instanceof ContentEntityInterface) {
+      if (!$this->isAiProcessingStarted($provider, (string) ($message['provider_message_id'] ?? ''))) {
+        $this->logger->notice('Skipped duplicate @provider webhook message @message with no pending AI work.', [
+          '@provider' => $provider,
+          '@message' => (string) $message['provider_message_id'],
+        ]);
+
+        return ['status' => 'ignored_duplicate'];
+      }
+      $this->logger->notice('Resuming saved @provider webhook message @message before AI response.', [
+        '@provider' => $provider,
+        '@message' => (string) $message['provider_message_id'],
+      ]);
+      $engine_result = $this->conversationEngine->processSavedIncomingMessage($conversation, $incoming);
+      $this->clearAiProcessingStarted($provider, (string) ($message['provider_message_id'] ?? ''));
+
+      return $this->deliverEngineResult($provider, $message, $conversation, $engine_result);
+    }
+
+    if ($this->wasProviderDeliverySuccessful($provider, (string) ($message['provider_message_id'] ?? ''))) {
+      $this->logger->notice('Skipped duplicate @provider webhook message @message.', [
+        '@provider' => $provider,
+        '@message' => (string) $message['provider_message_id'],
+      ]);
+
+      return ['status' => 'ignored_duplicate'];
+    }
+
+    $this->logger->notice('Retrying provider delivery for duplicate @provider webhook message @message.', [
+      '@provider' => $provider,
+      '@message' => (string) $message['provider_message_id'],
+    ]);
+
+    return $this->deliverEngineResult($provider, $message, $conversation, [
+      'conversation_id' => $conversation->id(),
+      'incoming_message_id' => $incoming->id(),
+      'outgoing_message_id' => $outgoing->id(),
+      'response_text' => (string) $outgoing->get('content')->value,
+      'resumed_delivery' => TRUE,
+    ]);
+  }
+
+  /**
+   * Delivers a generated response and records a successful provider send.
+   *
+   * @param array<string, mixed> $message
+   *   Normalized message data.
+   * @param array<string, mixed> $engine_result
+   *   Generated or resumed response details.
+   *
+   * @return array<string, mixed>
+   *   Processing result.
+   */
+  private function deliverEngineResult(string $provider, array $message, ContentEntityInterface $conversation, array $engine_result): array {
+    $outbound_message = $message + [
+      'whatsapp_account_id' => $conversation->hasField('whatsapp_account') ? $conversation->get('whatsapp_account')->target_id : NULL,
+    ];
+    $delivery = $this->messageSender->sendText($provider, $outbound_message, (string) $engine_result['response_text']);
+    if (($delivery['status'] ?? '') !== 'sent') {
+      throw new \RuntimeException('Provider delivery failed: ' . (string) ($delivery['error'] ?? $delivery['status'] ?? 'unknown error'));
+    }
+
+    $this->markProviderDeliverySuccessful($provider, (string) ($message['provider_message_id'] ?? ''));
+    $handoff = $this->leadHandoff->handle($conversation, (string) $engine_result['response_text']);
+    $this->logger->notice('Lead handoff check for conversation @conversation finished with status @status.', [
+      '@conversation' => (string) $conversation->id(),
+      '@status' => (string) ($handoff['status'] ?? 'unknown'),
+    ]);
+
+    return $engine_result + [
+      'delivery' => $delivery,
+      'handoff' => $handoff,
+    ];
+  }
+
+  /**
    * Saves an incoming message without AI processing.
    *
    * @param array<string, mixed> $message
@@ -536,12 +649,12 @@ final class WebhookProcessorService {
   }
 
   /**
-   * Checks whether an inbound provider message was already recorded.
+   * Loads a previously stored inbound provider message, when present.
    */
-  private function isDuplicateProviderMessage(string $provider_message_id): bool {
+  private function loadInboundProviderMessage(string $provider_message_id): ?ContentEntityInterface {
     $provider_message_id = trim($provider_message_id);
     if ($provider_message_id === '') {
-      return FALSE;
+      return NULL;
     }
 
     $storage = $this->entityTypeManager->getStorage('ai_whatsapp_message');
@@ -552,23 +665,115 @@ final class WebhookProcessorService {
       ->execute();
 
     if ($ids === []) {
-      return FALSE;
+      return NULL;
     }
 
     $incoming = $storage->load(reset($ids));
     if (!$incoming instanceof ContentEntityInterface || $incoming->get('sender')->value !== 'contact') {
-      return TRUE;
+      return NULL;
     }
 
+    return $incoming;
+  }
+
+  /**
+   * Finds the AI response associated with a stored inbound message.
+   */
+  private function findOutgoingResponse(ContentEntityInterface $incoming): ?ContentEntityInterface {
+    $storage = $this->entityTypeManager->getStorage('ai_whatsapp_message');
     $response_ids = $storage->getQuery()
       ->accessCheck(FALSE)
       ->condition('conversation', $incoming->get('conversation')->target_id)
       ->condition('sender', 'ai')
       ->condition('created', $incoming->get('created')->value, '>=')
+      ->sort('created', 'ASC')
       ->range(0, 1)
       ->execute();
 
-    return $response_ids !== [];
+    if ($response_ids === []) {
+      return NULL;
+    }
+
+    $outgoing = $storage->load(reset($response_ids));
+
+    return $outgoing instanceof ContentEntityInterface ? $outgoing : NULL;
+  }
+
+  /**
+   * Builds the per-message lock name used by the HTTP endpoint and queue.
+   */
+  private function processingLockName(string $provider, string $provider_message_id): string {
+    $provider_message_id = trim($provider_message_id);
+    if ($provider_message_id === '') {
+      return '';
+    }
+
+    return 'ai_whatsapp_automation.webhook.' . hash('sha256', $provider . ':' . $provider_message_id);
+  }
+
+  /**
+   * Returns whether the generated response was accepted by its provider.
+   */
+  private function wasProviderDeliverySuccessful(string $provider, string $provider_message_id): bool {
+    $provider_message_id = trim($provider_message_id);
+    if ($provider_message_id === '') {
+      return FALSE;
+    }
+
+    return (bool) $this->state->get('ai_whatsapp_automation.webhook_delivery.' . hash('sha256', $provider . ':' . $provider_message_id), FALSE);
+  }
+
+  /**
+   * Marks an inbound provider message as having a successful response send.
+   */
+  private function markProviderDeliverySuccessful(string $provider, string $provider_message_id): void {
+    $provider_message_id = trim($provider_message_id);
+    if ($provider_message_id === '') {
+      return;
+    }
+
+    $this->state->set('ai_whatsapp_automation.webhook_delivery.' . hash('sha256', $provider . ':' . $provider_message_id), time());
+  }
+
+  /**
+   * Marks a saved inbound message as awaiting an AI response.
+   */
+  private function markAiProcessingStarted(string $provider, string $provider_message_id): void {
+    $key = $this->aiProcessingStateKey($provider, $provider_message_id);
+    if ($key !== '') {
+      $this->state->set($key, time());
+    }
+  }
+
+  /**
+   * Returns whether the saved inbound message can safely resume AI work.
+   */
+  private function isAiProcessingStarted(string $provider, string $provider_message_id): bool {
+    $key = $this->aiProcessingStateKey($provider, $provider_message_id);
+
+    return $key !== '' && (int) $this->state->get($key, 0) > 0;
+  }
+
+  /**
+   * Clears the pending AI marker after a response has been generated.
+   */
+  private function clearAiProcessingStarted(string $provider, string $provider_message_id): void {
+    $key = $this->aiProcessingStateKey($provider, $provider_message_id);
+    if ($key !== '') {
+      $this->state->delete($key);
+    }
+  }
+
+  /**
+   * Builds the state key used to resume a failed AI request.
+   */
+  private function aiProcessingStateKey(string $provider, string $provider_message_id): string {
+    $provider_message_id = trim($provider_message_id);
+    if ($provider_message_id === '') {
+      return '';
+    }
+
+    return 'ai_whatsapp_automation.webhook_ai_pending.' . hash('sha256', $provider . ':' . $provider_message_id);
   }
 
 }

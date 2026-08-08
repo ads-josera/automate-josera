@@ -61,6 +61,32 @@ final class ConversationEngineService {
       'provider_message_id' => (string) ($context['provider_message_id'] ?? ''),
     ]);
 
+    return $this->processSavedIncomingMessage($conversation, $incoming);
+  }
+
+  /**
+   * Generates a response for an incoming message that is already stored.
+   *
+   * This is used to resume a webhook after a transient failure without
+   * persisting the provider message twice.
+   *
+   * @return array<string, mixed>
+   *   Engine result with generated text and saved message IDs.
+   */
+  public function processSavedIncomingMessage(
+    ContentEntityInterface $conversation,
+    ContentEntityInterface $incoming,
+  ): array {
+    $incoming_message = trim((string) $incoming->get('content')->value);
+    if ($incoming_message === '') {
+      throw new OpenAIServiceException('The incoming message cannot be empty.');
+    }
+
+    $bot = $this->botManager->getBotForConversation($conversation);
+    if (!$bot instanceof ContentEntityInterface) {
+      throw new OpenAIServiceException('No active bot is associated with this conversation.');
+    }
+
     $prompt_data = $this->promptBuilder->build($bot, $conversation, $incoming_message);
     $response = $this->openAIService->sendPrompt(
       (string) $prompt_data['prompt'],

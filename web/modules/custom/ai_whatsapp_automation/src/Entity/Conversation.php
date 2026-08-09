@@ -67,6 +67,24 @@ final class Conversation extends ContentEntityBase {
   /**
    * {@inheritdoc}
    */
+  public function label(): string {
+    $name = trim((string) ($this->get('name')->value ?? ''));
+    $provider = (string) ($this->get('provider')->value ?? '');
+
+    if ($provider === 'web' && ($name === '' || $name === 'Web visitor')) {
+      return (string) t('Visitante web');
+    }
+
+    if ($name !== '') {
+      return $name;
+    }
+
+    return (string) ($this->get('phone')->value ?? t('Contacto'));
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public static function baseFieldDefinitions(EntityTypeInterface $entity_type): array {
     $fields = parent::baseFieldDefinitions($entity_type);
 

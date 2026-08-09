@@ -64,7 +64,7 @@ final class ConversationController extends ControllerBase {
         '#type' => 'container',
         '#attributes' => ['class' => ['aiwa-conversation-detail__header']],
         'contact' => [
-          '#markup' => '<div class="aiwa-conversation-detail__eyebrow">' . $this->t('Contacto') . '</div><h2>' . Html::escape($this->contactLabel($conversation)) . '</h2><div class="aiwa-conversation-detail__metadata">' . Html::escape($this->channelLabel($provider)) . ' · ' . Html::escape($this->fieldValue($conversation, 'phone')) . '</div>',
+          '#markup' => '<div class="aiwa-conversation-detail__eyebrow">' . $this->t('Contacto') . '</div><h2>' . Html::escape($this->contactLabel($conversation)) . '</h2><div class="aiwa-conversation-detail__metadata">' . Html::escape($this->conversationMetadata($conversation, $provider)) . '</div>',
         ],
         'status' => [
           '#markup' => '<span class="aiwa-conversation-detail__status aiwa-conversation-detail__status--' . $this->statusClass($status) . '">' . $this->statusLabel($status) . '</span>',
@@ -160,8 +160,26 @@ final class ConversationController extends ControllerBase {
   private function contactLabel(ContentEntityInterface $conversation): string {
     $name = $this->fieldValue($conversation, 'name');
     $phone = $this->fieldValue($conversation, 'phone');
+    $provider = $this->fieldValue($conversation, 'provider');
+
+    if ($provider === 'web' && ($name === '' || $name === 'Web visitor')) {
+      return (string) $this->t('Visitante web');
+    }
 
     return $name !== '' ? $name : ($phone !== '' ? $phone : (string) $this->t('Contacto'));
+  }
+
+  /**
+   * Returns concise, non-sensitive conversation metadata.
+   */
+  private function conversationMetadata(ContentEntityInterface $conversation, string $provider): string {
+    if ($provider === 'web') {
+      return (string) $this->t('Chat web · Sesión web #@id', [
+        '@id' => $conversation->id(),
+      ]);
+    }
+
+    return $this->channelLabel($provider) . ' · ' . $this->fieldValue($conversation, 'phone');
   }
 
   /**

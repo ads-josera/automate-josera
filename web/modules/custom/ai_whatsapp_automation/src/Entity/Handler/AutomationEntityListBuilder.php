@@ -751,7 +751,7 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
       return NULL;
     }
 
-    $lead = Drupal::entityTypeManager()
+    $lead = \Drupal::entityTypeManager()
       ->getStorage('ai_whatsapp_lead')
       ->load((int) $matches[1]);
 

@@ -1,0 +1,98 @@
+.ai-whatsapp-routing-guide {
+  border: 1px solid #cfd8e6;
+  border-left: 4px solid #175cd3;
+  border-radius: 6px;
+  margin: 0 0 28px;
+  padding: 24px;
+}
+
+.ai-whatsapp-routing-guide__heading {
+  max-width: 760px;
+  margin-bottom: 22px;
+}
+
+.ai-whatsapp-routing-guide h2,
+.ai-whatsapp-routing-assignments-title {
+  color: #172b4d;
+  font-size: 22px;
+  line-height: 1.25;
+  margin: 0;
+}
+
+.ai-whatsapp-routing-guide__heading p {
+  color: #52637a;
+  font-size: 15px;
+  line-height: 1.5;
+  margin: 7px 0 0;
+}
+
+.ai-whatsapp-routing-guide__steps {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ai-whatsapp-routing-step {
+  align-items: flex-start;
+  border-top: 1px solid #dbe3ef;
+  display: flex;
+  gap: 14px;
+  padding-top: 18px;
+}
+
+.ai-whatsapp-routing-step__number {
+  align-items: center;
+  background: #e8f1ff;
+  border: 1px solid #a9c6f6;
+  border-radius: 50%;
+  color: #0b4ea2;
+  display: inline-flex;
+  flex: 0 0 28px;
+  font-size: 14px;
+  font-weight: 700;
+  height: 28px;
+  justify-content: center;
+}
+
+.ai-whatsapp-routing-step__content {
+  min-width: 0;
+}
+
+.ai-whatsapp-routing-step h3 {
+  color: #172b4d;
+  font-size: 17px;
+  line-height: 1.3;
+  margin: 2px 0 5px;
+}
+
+.ai-whatsapp-routing-step p {
+  color: #52637a;
+  font-size: 14px;
+  line-height: 1.45;
+  margin: 0 0 15px;
+}
+
+.ai-whatsapp-routing-assignments-title {
+  font-size: 19px;
+  margin: 0 0 12px;
+}
+
+.ai-whatsapp-routing-table-wrapper {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.ai-whatsapp-routing-table {
+  min-width: 1080px;
+}
+
+@media (max-width: 720px) {
+  .ai-whatsapp-routing-guide {
+    margin-bottom: 22px;
+    padding: 18px;
+  }
+
+  .ai-whatsapp-routing-guide__steps {
+    grid-template-columns: 1fr;
+  }
+}

@@ -17,10 +17,26 @@
   font-weight: 700;
 }
 
-.aiwa-operator-action-list__meta,
 .aiwa-operator-action-list__date {
   color: #667085;
   font-size: 0.78rem;
+}
+
+.aiwa-operator-action-list__routing {
+  display: grid;
+  gap: 3px;
+  margin-top: 5px;
+}
+
+.aiwa-operator-action-list__bot {
+  color: #344054;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.aiwa-operator-action-list__channel {
+  color: #667085;
+  font-size: 0.76rem;
 }
 
 .aiwa-operator-action-list__action {
@@ -52,15 +68,38 @@
   background: #fff0d5;
 }
 
-.aiwa-operator-action-list__user {
+.aiwa-operator-action-list__origin {
   color: #344054;
   font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.aiwa-operator-action-list__origin--automation {
+  color: #475467;
+  font-weight: 500;
 }
 
 .aiwa-operator-action-list__note {
   max-width: 360px;
   color: #475467;
   font-size: 0.84rem;
+  overflow-wrap: anywhere;
+}
+
+.aiwa-operator-action-list__result {
+  display: grid;
+  gap: 4px;
+  max-width: 260px;
+}
+
+.aiwa-operator-action-list__result a {
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.aiwa-operator-action-list__result span {
+  color: #667085;
+  font-size: 0.78rem;
   overflow-wrap: anywhere;
 }
 

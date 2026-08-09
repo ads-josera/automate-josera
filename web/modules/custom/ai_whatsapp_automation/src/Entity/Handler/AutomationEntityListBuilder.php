@@ -49,10 +49,10 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
     }
     if ($this->entityTypeId === 'ai_whatsapp_operator_action') {
       return [
-        'conversation' => $this->t('Conversación'),
-        'action' => $this->t('Acción'),
-        'user' => $this->t('Responsable'),
-        'note' => $this->t('Detalle'),
+        'conversation' => $this->t('Contacto y contexto'),
+        'action' => $this->t('Evento'),
+        'user' => $this->t('Origen'),
+        'note' => $this->t('Resultado'),
         'created' => $this->t('Fecha'),
       ] + parent::buildHeader();
     }
@@ -293,6 +293,14 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
           'title' => $this->t('Ver conversación'),
           'weight' => 5,
           'url' => $conversation->toUrl('canonical'),
+        ];
+      }
+      $lead = $this->getActionLead($entity);
+      if ($lead instanceof EntityInterface) {
+        $operations['lead'] = [
+          'title' => $this->t('Ver lead'),
+          'weight' => 6,
+          'url' => $lead->toUrl('canonical'),
         ];
       }
 
@@ -674,13 +682,19 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
    */
   private function buildOperatorActionRow(EntityInterface $entity): array {
     $conversation = $entity->hasField('conversation') ? $entity->get('conversation')->entity : NULL;
+    $provider = $conversation instanceof EntityInterface ? $this->getFieldValue($conversation, 'provider') : '';
     $contact = $conversation instanceof EntityInterface
-      ? ($this->getFieldValue($conversation, 'name') ?: $this->getFieldValue($conversation, 'phone'))
+      ? ($this->getFieldValue($conversation, 'name') ?: ($provider === 'web' ? (string) $this->t('Visitante web') : $this->getFieldValue($conversation, 'phone')))
       : $this->t('Conversación eliminada');
     $operator = $entity->hasField('user') ? $entity->get('user')->entity : NULL;
     $action = $this->getFieldValue($entity, 'action');
     $note = preg_replace('/\s+/u', ' ', $this->getFieldValue($entity, 'note')) ?? '';
-    $note = $note !== '' ? mb_strimwidth($note, 0, 140, '...') : (string) $this->t('Sin detalle adicional');
+    $lead = $this->getActionLead($entity);
+    $bot = $conversation instanceof EntityInterface ? $this->getConversationBot($conversation) : NULL;
+    $account = $conversation instanceof EntityInterface && $conversation->hasField('whatsapp_account')
+      ? $conversation->get('whatsapp_account')->entity
+      : NULL;
+    $channel = $conversation instanceof EntityInterface ? $this->getFieldValue($conversation, 'channel') : '';
     $action_labels = [
       'AI_STOPPED' => $this->t('IA pausada'),
       'OPERATOR_ASSIGNED' => $this->t('Operador asignado'),
@@ -701,7 +715,7 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
     ];
     if ($conversation instanceof EntityInterface) {
       $row['conversation']['data']['id'] = [
-        '#markup' => '<div class="aiwa-operator-action-list__meta">#' . $conversation->id() . '</div>',
+        '#markup' => $this->routingMarkup($bot, $account, $channel, $provider, 'aiwa-operator-action-list'),
       ];
     }
     $row['action'] = [
@@ -711,12 +725,12 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
     ];
     $row['user'] = [
       'data' => [
-        '#markup' => '<span class="aiwa-operator-action-list__user">' . Html::escape($operator instanceof EntityInterface ? $operator->label() : (string) $this->t('Sistema')) . '</span>',
+        '#markup' => $this->actionOriginMarkup($action, $operator),
       ],
     ];
     $row['note'] = [
       'data' => [
-        '#markup' => '<div class="aiwa-operator-action-list__note">' . Html::escape($note) . '</div>',
+        '#markup' => $this->actionResultMarkup($lead, $note),
       ],
     ];
     $row['created'] = [
@@ -726,6 +740,55 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
     ];
 
     return $row;
+  }
+
+  /**
+   * Returns the lead associated with an audit record when one was created.
+   */
+  private function getActionLead(EntityInterface $entity): ?EntityInterface {
+    $note = $this->getFieldValue($entity, 'note');
+    if (!preg_match('/\bLead ID:\s*(\d+)\b/i', $note, $matches)) {
+      return NULL;
+    }
+
+    $lead = Drupal::entityTypeManager()
+      ->getStorage('ai_whatsapp_lead')
+      ->load((int) $matches[1]);
+
+    return $lead instanceof EntityInterface ? $lead : NULL;
+  }
+
+  /**
+   * Builds the source label for an action row.
+   */
+  private function actionOriginMarkup(string $action, ?EntityInterface $operator): string {
+    if ($action === 'LEAD_HANDOFF') {
+      return '<span class="aiwa-operator-action-list__origin aiwa-operator-action-list__origin--automation">' . Html::escape((string) $this->t('Automatización')) . '</span>';
+    }
+
+    $label = $operator instanceof EntityInterface ? $operator->label() : (string) $this->t('Sistema');
+
+    return '<span class="aiwa-operator-action-list__origin">' . Html::escape($label) . '</span>';
+  }
+
+  /**
+   * Builds a readable outcome for an action row.
+   */
+  private function actionResultMarkup(?EntityInterface $lead, string $note): string {
+    if ($lead instanceof EntityInterface) {
+      $label = $this->leadContactName(
+        $this->getFieldValue($lead, 'name'),
+        $this->getFieldValue($lead, 'email'),
+        $this->getFieldValue($lead, 'phone'),
+      );
+      $link = Link::fromTextAndUrl($this->t('Ver lead #@id', ['@id' => $lead->id()]), $lead->toUrl('canonical'))->toString();
+
+      return '<div class="aiwa-operator-action-list__result">' . $link . '<span>' . Html::escape($label) . '</span></div>';
+    }
+
+    $note = $note !== '' ? mb_strimwidth($note, 0, 140, '...') : (string) $this->t('Sin detalle adicional');
+
+    return '<div class="aiwa-operator-action-list__note">' . Html::escape($note) . '</div>';
   }
 
   /**

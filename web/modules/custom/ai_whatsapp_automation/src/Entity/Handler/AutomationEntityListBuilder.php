@@ -34,7 +34,7 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
     if ($this->entityTypeId === 'ai_whatsapp_conversation') {
       return [
         'contact' => $this->t('Contacto'),
-        'provider' => $this->t('Origen'),
+        'routing' => $this->t('Bot y canal'),
         'status' => $this->t('Estado'),
         'changed' => $this->t('Última actividad'),
       ] + parent::buildHeader();
@@ -201,6 +201,7 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
       $request = \Drupal::request();
       $search = trim((string) $request->query->get('q', ''));
       $provider = trim((string) $request->query->get('provider', ''));
+      $bot = (int) $request->query->get('bot', 0);
       $status = trim((string) $request->query->get('status', ''));
       if ($search !== '') {
         $search_group = $query->orConditionGroup()
@@ -210,6 +211,9 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
       }
       if (in_array($provider, ['twilio', 'cloud_api', 'evolution', 'web'], TRUE)) {
         $query->condition('provider', $provider);
+      }
+      if ($bot > 0) {
+        $query->condition('bot', $bot);
       }
       if (in_array($status, ['AI_ACTIVE', 'HUMAN_ASSIGNED', 'CLOSED'], TRUE)) {
         $query->condition('status', $status);
@@ -438,12 +442,11 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
     $phone = $this->getFieldValue($entity, 'phone');
     $name = $this->getFieldValue($entity, 'name');
     $contact = $name ?: ($provider === 'web' ? $this->t('Visitante web') : $phone);
-    $provider_labels = [
-      'twilio' => $this->t('WhatsApp Twilio'),
-      'cloud_api' => $this->t('WhatsApp Cloud API'),
-      'evolution' => $this->t('WhatsApp Evolution'),
-      'web' => $this->t('Chat web'),
-    ];
+    $bot = $this->getConversationBot($entity);
+    $account = $entity->hasField('whatsapp_account')
+      ? $entity->get('whatsapp_account')->entity
+      : NULL;
+    $channel = $this->getFieldValue($entity, 'channel');
     $status = $this->getFieldValue($entity, 'status');
     $status_labels = [
       'AI_ACTIVE' => $this->t('IA activa'),
@@ -468,9 +471,9 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
         '#markup' => '<div class="aiwa-conversation-list__phone">#' . $entity->id() . '</div>',
       ];
     }
-    $row['provider'] = [
+    $row['routing'] = [
       'data' => [
-        '#markup' => '<span class="aiwa-conversation-list__provider">' . Html::escape((string) ($provider_labels[$provider] ?? $provider)) . '</span>',
+        '#markup' => $this->routingMarkup($bot, $account instanceof EntityInterface ? $account : NULL, $channel, $provider, 'aiwa-conversation-list'),
       ],
     ];
     $row['status'] = [

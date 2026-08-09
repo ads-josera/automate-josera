@@ -38,7 +38,7 @@ final class ConversationListFilterForm extends FormBase {
     ];
     $form['provider'] = [
       '#type' => 'select',
-      '#title' => $this->t('Origen'),
+      '#title' => $this->t('Canal'),
       '#options' => [
         '' => $this->t('Todos'),
         'twilio' => $this->t('WhatsApp Twilio'),
@@ -47,6 +47,22 @@ final class ConversationListFilterForm extends FormBase {
         'web' => $this->t('Chat web'),
       ],
       '#default_value' => (string) $request->query->get('provider', ''),
+    ];
+    $bot_options = ['' => $this->t('Todos los bots')];
+    $bot_ids = \Drupal::entityTypeManager()
+      ->getStorage('ai_whatsapp_bot')
+      ->getQuery()
+      ->accessCheck(TRUE)
+      ->sort('name', 'ASC')
+      ->execute();
+    foreach (\Drupal::entityTypeManager()->getStorage('ai_whatsapp_bot')->loadMultiple($bot_ids) as $bot) {
+      $bot_options[(string) $bot->id()] = $bot->label();
+    }
+    $form['bot'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Bot'),
+      '#options' => $bot_options,
+      '#default_value' => (string) $request->query->get('bot', ''),
     ];
     $form['status'] = [
       '#type' => 'select',

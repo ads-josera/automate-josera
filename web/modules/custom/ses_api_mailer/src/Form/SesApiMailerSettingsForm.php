@@ -7,6 +7,7 @@ namespace Drupal\ses_api_mailer\Form;
 use Drupal\Core\Config\Config;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Config\TypedConfigManagerInterface;
+use Drupal\Core\Database\Connection;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
@@ -30,6 +31,7 @@ final class SesApiMailerSettingsForm extends ConfigFormBase {
     private readonly MailManagerInterface $mailManager,
     private readonly StateInterface $state,
     private readonly ModuleHandlerInterface $moduleHandler,
+    private readonly Connection $database,
   ) {
     parent::__construct($config_factory, $typed_config_manager);
   }
@@ -44,6 +46,7 @@ final class SesApiMailerSettingsForm extends ConfigFormBase {
       $container->get('plugin.manager.mail'),
       $container->get('state'),
       $container->get('module_handler'),
+      $container->get('database'),
     );
   }
 
@@ -142,6 +145,25 @@ final class SesApiMailerSettingsForm extends ConfigFormBase {
       '#description' => $this->t('El valor inicial es 50. El límite se aplica a todos los correos de Drupal enviados por SES. Usa 0 para desactivarlo. Un correo a varios destinatarios cuenta una vez por cada destinatario.'),
     ];
 
+    $month_options = $this->monthOptions();
+    $selected_month = (string) ($form_state->getValue('statistics_month') ?: array_key_first($month_options));
+    $form['statistics'] = [
+      '#type' => 'details',
+      '#title' => $this->t('Historial mensual de envíos'),
+      '#open' => TRUE,
+    ];
+    $form['statistics']['statistics_month'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Mes'),
+      '#options' => $month_options,
+      '#default_value' => $selected_month,
+      '#ajax' => [
+        'callback' => '::refreshMonthlyStatistics',
+        'wrapper' => 'ses-api-mailer-monthly-report',
+      ],
+    ];
+    $form['statistics']['report'] = $this->monthlyReport($selected_month);
+
     $form['credentials'] = [
       '#type' => 'details',
       '#title' => $this->t('Credenciales seguras'),
@@ -185,6 +207,13 @@ final class SesApiMailerSettingsForm extends ConfigFormBase {
     ];
 
     return $form;
+  }
+
+  /**
+   * Rebuilds the monthly report after selecting a different month.
+   */
+  public function refreshMonthlyStatistics(array &$form, FormStateInterface $form_state): array {
+    return $form['statistics']['report'];
   }
 
   /**
@@ -264,7 +293,7 @@ final class SesApiMailerSettingsForm extends ConfigFormBase {
   }
 
   /**
-   * Gets the mail backend used after optional Mailsystem overrides.
+   * Gets the mail backend that Drupal will use after Mailsystem overrides.
    */
   private function currentMailer(): string {
     if ($this->moduleHandler->moduleExists('mailsystem')) {
@@ -278,7 +307,7 @@ final class SesApiMailerSettingsForm extends ConfigFormBase {
   }
 
   /**
-   * Updates Mailsystem's sender and formatter when it is enabled.
+   * Updates Mailsystem's default sender and formatter when it is enabled.
    */
   private function configureMailsystem(Config $settings, bool $enable): void {
     if (!$this->moduleHandler->moduleExists('mailsystem')) {
@@ -312,6 +341,96 @@ final class SesApiMailerSettingsForm extends ConfigFormBase {
     $timezone = (string) ($this->config('system.date')->get('timezone.default') ?: date_default_timezone_get());
     $day = (new \DateTimeImmutable('now', new \DateTimeZone($timezone)))->format('Y-m-d');
     return (int) $this->state->get('ses_api_mailer.daily_send_count.' . $day, 0);
+  }
+
+  /**
+   * Returns available months based on the private daily SES counters.
+   *
+   * @return array<string, string>
+   *   Month keys and human-readable labels.
+   */
+  private function monthOptions(): array {
+    $months = [];
+    foreach (array_keys($this->dailyCounts()) as $day) {
+      $months[substr($day, 0, 7)] = TRUE;
+    }
+
+    $timezone = (string) ($this->config('system.date')->get('timezone.default') ?: date_default_timezone_get());
+    $months[(new \DateTimeImmutable('now', new \DateTimeZone($timezone)))->format('Y-m')] = TRUE;
+    ksort($months);
+
+    $options = [];
+    foreach (array_reverse(array_keys($months)) as $month) {
+      $options[$month] = (new \DateTimeImmutable($month . '-01'))->format('m/Y');
+    }
+
+    return $options;
+  }
+
+  /**
+   * Builds the selected month's private aggregate report.
+   */
+  private function monthlyReport(string $month): array {
+    $counts = array_filter(
+      $this->dailyCounts(),
+      static fn (string $day): bool => str_starts_with($day, $month . '-'),
+      ARRAY_FILTER_USE_KEY,
+    );
+    $total = array_sum($counts);
+
+    $rows = [];
+    foreach ($counts as $day => $count) {
+      $rows[] = [
+        'data' => [
+          ['data' => (new \DateTimeImmutable($day))->format('d/m/Y')],
+          ['data' => (string) $count],
+        ],
+      ];
+    }
+
+    return [
+      '#type' => 'container',
+      '#attributes' => ['id' => 'ses-api-mailer-monthly-report'],
+      'summary' => [
+        '#markup' => '<div class="ses-api-mailer-monthly-summary"><div><span>' . $this->t('Correos enviados por SES') . '</span><strong>' . $total . '</strong></div><p>' . $this->t('Cuenta destinatarios aceptados por SES. No se almacenan direcciones, asuntos ni contenido; un correo a varios destinatarios cuenta una vez por cada destinatario.') . '</p></div>',
+      ],
+      'daily' => [
+        '#type' => 'table',
+        '#header' => [$this->t('Fecha'), $this->t('Correos enviados')],
+        '#rows' => $rows,
+        '#empty' => $this->t('No hay envíos registrados para este mes.'),
+      ],
+    ];
+  }
+
+  /**
+   * Gets daily recipient counts without exposing any message data.
+   *
+   * @return array<string, int>
+   *   Counts keyed by ISO date.
+   */
+  private function dailyCounts(): array {
+    $prefix = 'ses_api_mailer.daily_send_count.';
+    $result = $this->database->select('key_value', 'kv')
+      ->fields('kv', ['name', 'value'])
+      ->condition('collection', 'state')
+      ->condition('name', $prefix . '%', 'LIKE')
+      ->execute();
+
+    $counts = [];
+    foreach ($result as $record) {
+      $day = substr((string) $record->name, strlen($prefix));
+      if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $day)) {
+        continue;
+      }
+      $value = unserialize($record->value, ['allowed_classes' => FALSE]);
+      if (is_int($value) || is_float($value) || is_string($value) && is_numeric($value)) {
+        $counts[$day] = max(0, (int) $value);
+      }
+    }
+    ksort($counts);
+
+    return $counts;
   }
 
 }

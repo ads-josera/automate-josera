@@ -190,6 +190,38 @@
   font-size: 24px;
 }
 
+.ses-api-mailer-monthly-summary {
+  background: #f7f9fc;
+  border: 1px solid #d8e0ea;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  padding: 16px;
+}
+
+.ses-api-mailer-monthly-summary div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ses-api-mailer-monthly-summary span,
+.ses-api-mailer-monthly-summary p {
+  color: #596579;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ses-api-mailer-monthly-summary strong {
+  color: #15233d;
+  font-size: 28px;
+}
+
+.ses-api-mailer-monthly-summary p {
+  font-weight: 400;
+  line-height: 1.45;
+  margin: 12px 0 0;
+}
+
 @media (max-width: 640px) {
   .ses-api-mailer-form details > :not(summary) {
     margin-inline: 16px;

@@ -64,7 +64,9 @@ final class SesApiMailer implements MailInterface, ContainerFactoryPluginInterfa
     $is_html = $this->isHtmlMessage($message);
 
     foreach ($body as $part) {
-      // Preserve HTML supplied by Webform instead of rendering tags as text.
+      // Webform supplies HTML email bodies as markup. Preserve it instead of
+      // converting it to plain text, otherwise CSS and markup are displayed
+      // literally by the recipient's mail client.
       $is_html = $is_html || $part instanceof MarkupInterface;
     }
 
@@ -147,10 +149,6 @@ final class SesApiMailer implements MailInterface, ContainerFactoryPluginInterfa
    */
   private function reserveDailyCapacity(int $recipients): bool {
     $limit = $this->dailySendLimit();
-    if ($limit === 0) {
-      return TRUE;
-    }
-
     $lock_name = 'ses_api_mailer.daily_send_limit.' . $this->currentDay();
     if (!$this->lock->acquire($lock_name, 5.0)) {
       $this->logger->error('Amazon SES mail delivery was not attempted because the daily send counter is busy.');
@@ -160,7 +158,7 @@ final class SesApiMailer implements MailInterface, ContainerFactoryPluginInterfa
     try {
       $key = $this->dailyCounterKey();
       $sent = (int) $this->state->get($key, 0);
-      if ($sent + $recipients > $limit) {
+      if ($limit > 0 && $sent + $recipients > $limit) {
         $this->logger->warning('Amazon SES daily recipient limit reached (@sent of @limit). Mail was not sent.', [
           '@sent' => $sent,
           '@limit' => $limit,
@@ -179,10 +177,6 @@ final class SesApiMailer implements MailInterface, ContainerFactoryPluginInterfa
    * Returns unused capacity when SES rejects a request.
    */
   private function releaseDailyCapacity(int $recipients): void {
-    if ($this->dailySendLimit() === 0) {
-      return;
-    }
-
     $lock_name = 'ses_api_mailer.daily_send_limit.' . $this->currentDay();
     if (!$this->lock->acquire($lock_name, 5.0)) {
       return;

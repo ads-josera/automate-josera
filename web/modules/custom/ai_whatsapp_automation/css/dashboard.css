@@ -173,16 +173,22 @@
 }
 
 .ai-whatsapp-dashboard__bot,
-.ai-whatsapp-dashboard__conversation {
+.ai-whatsapp-dashboard__conversation,
+.ai-whatsapp-dashboard__channel {
   min-width: 0;
 }
 
 .ai-whatsapp-dashboard__bot > span,
-.ai-whatsapp-dashboard__conversation > span {
+.ai-whatsapp-dashboard__conversation > span,
+.ai-whatsapp-dashboard__channel > span {
   display: block;
   margin-top: 3px;
   color: var(--aiwa-muted);
   font-size: 0.6875rem;
+}
+
+.ai-whatsapp-dashboard__channel {
+  font-weight: 700;
 }
 
 .ai-whatsapp-dashboard__conversation a {

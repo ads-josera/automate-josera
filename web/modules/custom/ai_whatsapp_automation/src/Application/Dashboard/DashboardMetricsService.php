@@ -38,7 +38,7 @@ final class DashboardMetricsService {
         'openai_cost' => $this->sumColumn('ai_whatsapp_message', 'cost', $range),
       ],
       'cost_by_bot' => $this->getCostByBot($range),
-      'cost_by_conversation' => $this->getCostByConversation($range),
+      'cost_by_channel' => $this->getCostByChannel($range),
     ];
   }
 
@@ -148,39 +148,42 @@ final class DashboardMetricsService {
   }
 
   /**
-   * Returns OpenAI cost grouped by conversation.
+   * Returns OpenAI cost grouped by channel and resolved bot.
    *
    * @return array<int, array<string, mixed>>
    *   Cost rows.
    */
-  private function getCostByConversation(?array $range): array {
+  private function getCostByChannel(?array $range): array {
     $query = $this->database->select('ai_whatsapp_message', 'm');
     $query->join('ai_whatsapp_conversation', 'c', 'm.conversation = c.id');
-    $query->fields('c', ['id', 'phone', 'name', 'provider', 'status', 'changed']);
+    $query->leftJoin('ai_whatsapp_account', 'a', 'c.whatsapp_account = a.id');
+    $query->leftJoin('ai_whatsapp_bot', 'direct_bot', 'c.bot = direct_bot.id');
+    $query->leftJoin('ai_whatsapp_bot', 'account_bot', 'a.bot = account_bot.id');
+    $query->fields('c', ['provider']);
+    $query->addExpression('COALESCE(direct_bot.id, account_bot.id)', 'bot_id');
+    $query->addExpression("COALESCE(direct_bot.name, account_bot.name, 'Unassigned')", 'bot_name');
     $query->addExpression('COALESCE(SUM(m.cost), 0)', 'total_cost');
     $query->addExpression('COALESCE(SUM(m.tokens), 0)', 'total_tokens');
     $query->addExpression('COUNT(m.id)', 'message_count');
+    $query->addExpression('COUNT(DISTINCT c.id)', 'conversation_count');
     $this->applyRange($query, 'm.created', $range);
-    $query->groupBy('c.id');
-    $query->groupBy('c.phone');
-    $query->groupBy('c.name');
     $query->groupBy('c.provider');
-    $query->groupBy('c.status');
-    $query->groupBy('c.changed');
+    $query->groupBy('direct_bot.id');
+    $query->groupBy('direct_bot.name');
+    $query->groupBy('account_bot.id');
+    $query->groupBy('account_bot.name');
     $query->orderBy('total_cost', 'DESC');
     $query->range(0, 10);
 
     return array_map(static function (object $row): array {
       return [
-        'id' => (int) $row->id,
-        'phone' => (string) $row->phone,
-        'name' => (string) $row->name,
         'provider' => (string) $row->provider,
-        'status' => (string) $row->status,
-        'changed' => (int) $row->changed,
+        'bot_id' => $row->bot_id === NULL ? NULL : (int) $row->bot_id,
+        'bot_name' => (string) $row->bot_name,
         'total_cost' => (float) $row->total_cost,
         'total_tokens' => (int) $row->total_tokens,
         'message_count' => (int) $row->message_count,
+        'conversation_count' => (int) $row->conversation_count,
       ];
     }, $query->execute()->fetchAll());
   }

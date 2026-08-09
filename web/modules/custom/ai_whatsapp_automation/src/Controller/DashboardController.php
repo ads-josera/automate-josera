@@ -7,8 +7,6 @@ namespace Drupal\ai_whatsapp_automation\Controller;
 use Drupal\ai_whatsapp_automation\Application\Dashboard\DashboardMetricsService;
 use Drupal\ai_whatsapp_automation\Form\DashboardFilterForm;
 use Drupal\Core\Controller\ControllerBase;
-use Drupal\Core\Link;
-use Drupal\Core\Url;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 
@@ -109,26 +107,28 @@ final class DashboardController extends ControllerBase {
             '#empty' => $this->t('No bot cost data available.'),
           ],
         ],
-        'cost_by_conversation' => [
+        'cost_by_channel' => [
           '#type' => 'container',
           '#attributes' => ['class' => ['ai-whatsapp-dashboard__panel']],
           'title' => [
             '#type' => 'html_tag',
             '#tag' => 'h2',
             '#attributes' => ['class' => ['ai-whatsapp-dashboard__panel-title']],
-            '#value' => $this->t('Highest-cost conversations'),
+            '#value' => $this->t('Cost by channel and bot'),
           ],
           'table' => [
             '#type' => 'table',
             '#attributes' => ['class' => ['ai-whatsapp-dashboard__table']],
             '#header' => [
-              $this->t('Conversation'),
+              $this->t('Channel'),
+              $this->t('Bot'),
+              $this->t('Conversations'),
               $this->t('Messages'),
               $this->t('AI tokens'),
               $this->t('Estimated cost'),
             ],
-            '#rows' => $this->buildCostByConversationRows($metrics['cost_by_conversation']),
-            '#empty' => $this->t('No conversation cost data available.'),
+            '#rows' => $this->buildCostByChannelRows($metrics['cost_by_channel']),
+            '#empty' => $this->t('No channel cost data available.'),
           ],
         ],
       ],
@@ -187,7 +187,7 @@ final class DashboardController extends ControllerBase {
   }
 
   /**
-   * Builds conversation cost table rows.
+   * Builds channel and bot cost table rows.
    *
    * @param array<int, array<string, mixed>> $rows
    *   Metric rows.
@@ -195,28 +195,25 @@ final class DashboardController extends ControllerBase {
    * @return array<int, array<int, array<string, mixed>>>
    *   Table rows.
    */
-  private function buildCostByConversationRows(array $rows): array {
+  private function buildCostByChannelRows(array $rows): array {
     return array_map(function (array $row): array {
       $is_web = $row['provider'] === 'web';
-      $label = $is_web
-        ? (string) $this->t('Web visitor')
-        : ($row['name'] !== '' ? (string) $row['name'] : (string) $row['phone']);
-      $source = $is_web
+      $channel = $is_web
         ? (string) $this->t('Web chat')
-        : (string) $this->t('WhatsApp') . ' · ' . $this->providerLabel((string) $row['provider']);
-      $link = Link::fromTextAndUrl($label, Url::fromRoute('entity.ai_whatsapp_conversation.canonical', [
-        'ai_whatsapp_conversation' => $row['id'],
-      ]))->toRenderable();
+        : (string) $this->t('WhatsApp');
+      $provider = $is_web ? '' : $this->providerLabel((string) $row['provider']);
 
       return [
         [
           'data' => [
             '#type' => 'container',
-            '#attributes' => ['class' => ['ai-whatsapp-dashboard__conversation']],
-            'link' => $link,
-            'meta' => ['#markup' => '<span>' . $source . ' · #' . (int) $row['id'] . '</span>'],
+            '#attributes' => ['class' => ['ai-whatsapp-dashboard__channel']],
+            'name' => ['#plain_text' => $channel],
+            'meta' => $provider === '' ? [] : ['#markup' => '<span>' . $provider . '</span>'],
           ],
         ],
+        ['data' => ['#plain_text' => $row['bot_name'] !== '' ? (string) $row['bot_name'] : (string) $this->t('Unassigned')]],
+        ['data' => ['#markup' => (string) (int) $row['conversation_count']]],
         ['data' => ['#markup' => (string) (int) $row['message_count']]],
         ['data' => ['#markup' => $this->formatTokens((int) $row['total_tokens'])]],
         ['data' => ['#markup' => $this->formatCost((float) $row['total_cost'])]],

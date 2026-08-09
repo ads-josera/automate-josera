@@ -173,13 +173,39 @@ final class ConversationController extends ControllerBase {
    * Returns concise, non-sensitive conversation metadata.
    */
   private function conversationMetadata(ContentEntityInterface $conversation, string $provider): string {
+    $bot = $this->botLabel($conversation);
+
     if ($provider === 'web') {
-      return (string) $this->t('Chat web · Sesión web #@id', [
-        '@id' => $conversation->id(),
+      $id = (string) ($conversation->id() ?? '');
+      if ($id === '') {
+        return (string) $this->t('Chat web · Bot: @bot', [
+          '@bot' => $bot,
+        ]);
+      }
+
+      return (string) $this->t('Chat web · Bot: @bot · Sesión web #@id', [
+        '@bot' => $bot,
+        '@id' => $id,
       ]);
     }
 
-    return $this->channelLabel($provider) . ' · ' . $this->fieldValue($conversation, 'phone');
+    return (string) $this->t('@channel · Bot: @bot · @phone', [
+      '@channel' => $this->channelLabel($provider),
+      '@bot' => $bot,
+      '@phone' => $this->fieldValue($conversation, 'phone'),
+    ]);
+  }
+
+  /**
+   * Returns the assigned bot label.
+   */
+  private function botLabel(ContentEntityInterface $conversation): string {
+    if (!$conversation->hasField('bot') || $conversation->get('bot')->isEmpty()) {
+      return (string) $this->t('Sin asignar');
+    }
+
+    $bot = $conversation->get('bot')->entity;
+    return $bot ? $bot->label() : (string) $this->t('Sin asignar');
   }
 
   /**

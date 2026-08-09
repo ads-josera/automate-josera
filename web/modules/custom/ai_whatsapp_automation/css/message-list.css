@@ -33,6 +33,7 @@
 
 .aiwa-message-list {
   font-size: 0.9rem;
+  table-layout: fixed;
 }
 
 .aiwa-message-list th {
@@ -46,6 +47,30 @@
 
 .aiwa-message-list__conversation a {
   font-size: 0.94rem;
+}
+
+.aiwa-message-list__routing,
+.aiwa-lead-list__routing {
+  min-width: 0;
+}
+
+.aiwa-message-list__bot,
+.aiwa-lead-list__bot {
+  color: #344054;
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.aiwa-message-list__channel,
+.aiwa-lead-list__channel {
+  color: #667085;
+  display: block;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  margin-top: 3px;
+  overflow-wrap: anywhere;
 }
 
 .aiwa-message-list__sender {
@@ -78,10 +103,10 @@
 }
 
 .aiwa-message-list__preview {
-  max-width: 720px;
   color: #344054;
   font-size: 0.88rem;
   line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .aiwa-message-list__date {
@@ -92,6 +117,30 @@
 
 .aiwa-message-list .dropbutton__item > a {
   font-size: 0.84rem;
+}
+
+.aiwa-message-list th:nth-child(1) {
+  width: 11%;
+}
+
+.aiwa-message-list th:nth-child(2) {
+  width: 13%;
+}
+
+.aiwa-message-list th:nth-child(3) {
+  width: 8%;
+}
+
+.aiwa-message-list th:nth-child(4) {
+  width: 46%;
+}
+
+.aiwa-message-list th:nth-child(5) {
+  width: 11%;
+}
+
+.aiwa-message-list th:nth-child(6) {
+  width: 11%;
 }
 
 @media (max-width: 700px) {

@@ -25,6 +25,7 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
     if ($this->entityTypeId === 'ai_whatsapp_message') {
       return [
         'conversation' => $this->t('Conversación'),
+        'routing' => $this->t('Bot y canal'),
         'sender' => $this->t('Dirección'),
         'content' => $this->t('Mensaje'),
         'created' => $this->t('Fecha'),
@@ -41,7 +42,7 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
     if ($this->entityTypeId === 'ai_whatsapp_lead') {
       return [
         'contact' => $this->t('Contacto'),
-        'source' => $this->t('Origen'),
+        'routing' => $this->t('Bot y canal'),
         'status' => $this->t('Estado'),
         'created' => $this->t('Creado'),
       ] + parent::buildHeader();
@@ -299,28 +300,13 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
     }
 
     if ($entity->getEntityTypeId() === 'ai_whatsapp_lead') {
-      $phone = $this->getFieldValue($entity, 'phone');
-      if ($phone !== '') {
-        $conversation_ids = \Drupal::entityTypeManager()
-          ->getStorage('ai_whatsapp_conversation')
-          ->getQuery()
-          ->accessCheck(TRUE)
-          ->condition('phone', $phone)
-          ->sort('changed', 'DESC')
-          ->range(0, 1)
-          ->execute();
-        if ($conversation_ids !== []) {
-          $conversation = \Drupal::entityTypeManager()
-            ->getStorage('ai_whatsapp_conversation')
-            ->load(reset($conversation_ids));
-          if ($conversation instanceof EntityInterface) {
-            $operations['conversation'] = [
-              'title' => $this->t('Ver conversación'),
-              'weight' => 5,
-              'url' => $conversation->toUrl('canonical'),
-            ];
-          }
-        }
+      $conversation = $this->getLeadConversation($entity);
+      if ($conversation instanceof EntityInterface) {
+        $operations['conversation'] = [
+          'title' => $this->t('Ver conversación'),
+          'weight' => 5,
+          'url' => $conversation->toUrl('canonical'),
+        ];
       }
 
       return $operations;
@@ -382,6 +368,12 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
       ? ($this->getFieldValue($conversation, 'name') ?: $this->getFieldValue($conversation, 'phone'))
       : $this->t('Conversation unavailable');
     $conversation_id = $conversation instanceof EntityInterface ? $conversation->id() : NULL;
+    $bot = $conversation instanceof EntityInterface ? $this->getConversationBot($conversation) : NULL;
+    $account = $conversation instanceof EntityInterface && $conversation->hasField('whatsapp_account')
+      ? $conversation->get('whatsapp_account')->entity
+      : NULL;
+    $channel = $conversation instanceof EntityInterface ? $this->getFieldValue($conversation, 'channel') : '';
+    $provider = $conversation instanceof EntityInterface ? $this->getFieldValue($conversation, 'provider') : '';
     $preview = preg_replace('/\s+/u', ' ', $this->getFieldValue($entity, 'content')) ?? '';
     $preview = mb_strimwidth($preview, 0, 180, '...');
     $sender = $this->getFieldValue($entity, 'sender');
@@ -406,6 +398,11 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
         '#markup' => '<div class="aiwa-message-list__conversation-id">#' . $conversation_id . '</div>',
       ];
     }
+    $row['routing'] = [
+      'data' => [
+        '#markup' => $this->routingMarkup($bot, $account, $channel, $provider, 'aiwa-message-list'),
+      ],
+    ];
     $row['sender'] = [
       'data' => [
         '#markup' => '<span class="aiwa-message-list__sender aiwa-message-list__sender--' . Html::getClass($sender) . '">' . Html::escape((string) ($sender_labels[$sender] ?? $sender)) . '</span>',
@@ -488,11 +485,15 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
   private function buildLeadRow(EntityInterface $entity): array {
     $phone = $this->getFieldValue($entity, 'phone');
     $email = $this->getFieldValue($entity, 'email');
-    $name = trim(preg_replace('/[*_`]+/u', '', $this->getFieldValue($entity, 'name')) ?? '');
-    if ($name === '' || !preg_match('/[\\p{L}\\p{N}]/u', $name)) {
-      $name = $email ?: ($phone ?: (string) $this->t('Contacto pendiente'));
-    }
+    $name = $this->leadContactName($this->getFieldValue($entity, 'name'), $email, $phone);
     $source = $this->getFieldValue($entity, 'source');
+    $conversation = $this->getLeadConversation($entity);
+    $bot = $conversation instanceof EntityInterface ? $this->getConversationBot($conversation) : NULL;
+    $account = $conversation instanceof EntityInterface && $conversation->hasField('whatsapp_account')
+      ? $conversation->get('whatsapp_account')->entity
+      : NULL;
+    $channel = $conversation instanceof EntityInterface ? $this->getFieldValue($conversation, 'channel') : $source;
+    $provider = $conversation instanceof EntityInterface ? $this->getFieldValue($conversation, 'provider') : $source;
     $status = $this->getFieldValue($entity, 'status');
     $source_labels = [
       'whatsapp' => $this->t('WhatsApp'),
@@ -523,9 +524,9 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
         '#markup' => '<div class="aiwa-lead-list__meta">' . Html::escape($email) . '</div>',
       ];
     }
-    $row['source'] = [
+    $row['routing'] = [
       'data' => [
-        '#markup' => '<span class="aiwa-lead-list__source">' . Html::escape((string) ($source_labels[$source] ?? $source ?: $this->t('No definido'))) . '</span>',
+        '#markup' => $this->routingMarkup($bot, $account, $channel, $provider, 'aiwa-lead-list', $source_labels),
       ],
     ];
     $row['status'] = [
@@ -540,6 +541,132 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
     ];
 
     return $row;
+  }
+
+  /**
+   * Returns the conversation that generated a lead when it is available.
+   */
+  private function getLeadConversation(EntityInterface $lead): ?EntityInterface {
+    $action_ids = \Drupal::entityTypeManager()
+      ->getStorage('ai_whatsapp_operator_action')
+      ->getQuery()
+      ->accessCheck(TRUE)
+      ->condition('action', 'LEAD_HANDOFF')
+      ->condition('note', 'Lead ID: ' . $lead->id())
+      ->sort('created', 'DESC')
+      ->range(0, 1)
+      ->execute();
+
+    if ($action_ids !== []) {
+      $action = \Drupal::entityTypeManager()
+        ->getStorage('ai_whatsapp_operator_action')
+        ->load(reset($action_ids));
+      $conversation = $action instanceof EntityInterface && $action->hasField('conversation')
+        ? $action->get('conversation')->entity
+        : NULL;
+      if ($conversation instanceof EntityInterface) {
+        return $conversation;
+      }
+    }
+
+    $phone = $this->getFieldValue($lead, 'phone');
+    if ($phone === '') {
+      return NULL;
+    }
+
+    $conversation_ids = \Drupal::entityTypeManager()
+      ->getStorage('ai_whatsapp_conversation')
+      ->getQuery()
+      ->accessCheck(TRUE)
+      ->condition('phone', $phone)
+      ->sort('changed', 'DESC')
+      ->range(0, 1)
+      ->execute();
+    $conversation = $conversation_ids !== []
+      ? \Drupal::entityTypeManager()->getStorage('ai_whatsapp_conversation')->load(reset($conversation_ids))
+      : NULL;
+
+    return $conversation instanceof EntityInterface ? $conversation : NULL;
+  }
+
+  /**
+   * Resolves the bot that handled a conversation.
+   */
+  private function getConversationBot(EntityInterface $conversation): ?EntityInterface {
+    if ($conversation->hasField('bot') && !$conversation->get('bot')->isEmpty()) {
+      $bot = $conversation->get('bot')->entity;
+      if ($bot instanceof EntityInterface) {
+        return $bot;
+      }
+    }
+
+    $account = $conversation->hasField('whatsapp_account')
+      ? $conversation->get('whatsapp_account')->entity
+      : NULL;
+    $bot = $account instanceof EntityInterface && $account->hasField('bot')
+      ? $account->get('bot')->entity
+      : NULL;
+
+    return $bot instanceof EntityInterface ? $bot : NULL;
+  }
+
+  /**
+   * Builds the bot and channel summary used in operational lists.
+   *
+   * @param array<string, \Drupal\Core\StringTranslation\TranslatableMarkup> $fallback_labels
+   *   Optional labels used when a conversation cannot be resolved.
+   */
+  private function routingMarkup(?EntityInterface $bot, ?EntityInterface $account, string $channel, string $provider, string $prefix, array $fallback_labels = []): string {
+    $channel_labels = [
+      'whatsapp' => $this->t('WhatsApp'),
+      'web' => $this->t('Chat web'),
+    ];
+    $provider_labels = [
+      'twilio' => $this->t('Twilio'),
+      'cloud_api' => $this->t('Cloud API'),
+      'evolution' => $this->t('Evolution API'),
+      'web' => $this->t('Web widget'),
+    ];
+    $channel_label = (string) ($channel_labels[$channel] ?? $fallback_labels[$channel] ?? $channel ?: $this->t('No definido'));
+    $details = $account instanceof EntityInterface
+      ? $account->label()
+      : (string) ($provider_labels[$provider] ?? '');
+    $bot_label = $bot instanceof EntityInterface ? $bot->label() : (string) $this->t('Bot no asociado');
+
+    $markup = '<div class="' . Html::getClass($prefix . '__routing') . '">';
+    $markup .= '<div class="' . Html::getClass($prefix . '__bot') . '">' . Html::escape($bot_label) . '</div>';
+    $markup .= '<span class="' . Html::getClass($prefix . '__channel') . '">' . Html::escape($channel_label);
+    if ($details !== '') {
+      $markup .= ' · ' . Html::escape($details);
+    }
+    $markup .= '</span></div>';
+
+    return $markup;
+  }
+
+  /**
+   * Returns a contact name suitable for an operational lead list.
+   */
+  private function leadContactName(string $name, string $email, string $phone): string {
+    $name = trim(preg_replace('/[*_`]+/u', '', $name) ?? '');
+    $normalized = mb_strtolower($name);
+    $generic_values = [
+      'correo electrónico',
+      'correo electronico',
+      'email',
+      'e-mail',
+      'correo',
+      'teléfono',
+      'telefono',
+      'contacto',
+      'nombre',
+    ];
+
+    if ($name === '' || !preg_match('/[\\p{L}\\p{N}]/u', $name) || in_array($normalized, $generic_values, TRUE) || filter_var($name, FILTER_VALIDATE_EMAIL)) {
+      return (string) $this->t('Nombre no capturado');
+    }
+
+    return $name;
   }
 
   /**

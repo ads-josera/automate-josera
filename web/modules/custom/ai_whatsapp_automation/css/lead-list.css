@@ -24,6 +24,27 @@
   overflow-wrap: anywhere;
 }
 
+.aiwa-lead-list__routing {
+  max-width: 260px;
+}
+
+.aiwa-lead-list__bot {
+  color: #344054;
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.aiwa-lead-list__channel {
+  color: #667085;
+  display: block;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+}
+
 .aiwa-lead-list__source,
 .aiwa-lead-list__status {
   display: inline-flex;
@@ -72,6 +93,26 @@
 
 .aiwa-lead-list .dropbutton__item > a {
   font-size: 0.84rem;
+}
+
+.aiwa-lead-list th:nth-child(1) {
+  width: 30%;
+}
+
+.aiwa-lead-list th:nth-child(2) {
+  width: 26%;
+}
+
+.aiwa-lead-list th:nth-child(3) {
+  width: 16%;
+}
+
+.aiwa-lead-list th:nth-child(4) {
+  width: 16%;
+}
+
+.aiwa-lead-list th:nth-child(5) {
+  width: 12%;
 }
 
 @media (max-width: 700px) {

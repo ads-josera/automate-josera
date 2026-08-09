@@ -135,6 +135,68 @@
   color: #8a5100;
 }
 
+.ses-api-mailer-health {
+  border: 1px solid #cfe7da;
+  border-left: 4px solid #16865b;
+  margin-top: 2px;
+  padding: 16px;
+}
+
+.ses-api-mailer-health--warning {
+  background: #fffaf0;
+  border-color: #f2d391;
+  border-left-color: #b96d00;
+}
+
+.ses-api-mailer-health--limit {
+  background: #fff5f5;
+  border-color: #f0c9c9;
+  border-left-color: #c23b3b;
+}
+
+.ses-api-mailer-health__headline {
+  display: grid;
+  gap: 4px;
+}
+
+.ses-api-mailer-health__headline strong {
+  color: #17243c;
+  font-size: 16px;
+}
+
+.ses-api-mailer-health__headline span {
+  color: #526275;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.ses-api-mailer-health__facts {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 16px;
+}
+
+.ses-api-mailer-health__facts div {
+  border-top: 1px solid #dfe6ee;
+  display: grid;
+  gap: 4px;
+  padding-top: 10px;
+}
+
+.ses-api-mailer-health__facts span {
+  color: #607086;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ses-api-mailer-health__facts strong {
+  color: #25344e;
+  font-size: 14px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
 .ses-api-mailer-form .ses-api-mailer-migration {
   background: #fffaf0;
   border: 1px solid #f2d391;
@@ -228,6 +290,10 @@
   }
 
   .ses-api-mailer-status__facts {
+    grid-template-columns: 1fr;
+  }
+
+  .ses-api-mailer-health__facts {
     grid-template-columns: 1fr;
   }
 

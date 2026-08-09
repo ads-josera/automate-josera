@@ -91,13 +91,17 @@ final class SesApiMailer implements MailInterface, ContainerFactoryPluginInterfa
   public function mail(array $message): bool {
     $settings = $this->settings();
     if (!$this->isConfigured($settings)) {
-      $this->logger->error('Amazon SES API mail is not configured in settings.php.');
+      $message = 'Amazon SES API mail is not configured in settings.php.';
+      $this->recordFailure($message);
+      $this->logger->error($message);
       return FALSE;
     }
 
     $recipients = $this->recipients($message);
     if ($recipients === []) {
-      $this->logger->error('Amazon SES mail delivery failed: no recipients were supplied.');
+      $failure = 'Amazon SES mail delivery failed: no recipients were supplied.';
+      $this->recordFailure($failure);
+      $this->logger->error($failure);
       return FALSE;
     }
 
@@ -123,6 +127,7 @@ final class SesApiMailer implements MailInterface, ContainerFactoryPluginInterfa
         'RawMessage' => ['Data' => $email->toString()],
       ]);
 
+      $this->recordSuccess($reserved_recipients, (string) $result->get('MessageId'));
       $this->logger->info('Amazon SES accepted mail @id for delivery.', [
         '@id' => (string) $result->get('MessageId'),
       ]);
@@ -130,12 +135,15 @@ final class SesApiMailer implements MailInterface, ContainerFactoryPluginInterfa
     }
     catch (AwsException $exception) {
       $this->releaseDailyCapacity($reserved_recipients);
+      $failure = $exception->getAwsErrorMessage() ?: $exception->getMessage();
+      $this->recordFailure($failure);
       $this->logger->error('Amazon SES rejected mail delivery: @message', [
-        '@message' => $exception->getAwsErrorMessage() ?: $exception->getMessage(),
+        '@message' => $failure,
       ]);
     }
     catch (\Throwable $exception) {
       $this->releaseDailyCapacity($reserved_recipients);
+      $this->recordFailure($exception->getMessage());
       $this->logger->error('Amazon SES mail delivery failed: @message', [
         '@message' => $exception->getMessage(),
       ]);
@@ -151,6 +159,7 @@ final class SesApiMailer implements MailInterface, ContainerFactoryPluginInterfa
     $limit = $this->dailySendLimit();
     $lock_name = 'ses_api_mailer.daily_send_limit.' . $this->currentDay();
     if (!$this->lock->acquire($lock_name, 5.0)) {
+      $this->recordFailure('The local SES daily send counter is busy.');
       $this->logger->error('Amazon SES mail delivery was not attempted because the daily send counter is busy.');
       return FALSE;
     }
@@ -159,6 +168,7 @@ final class SesApiMailer implements MailInterface, ContainerFactoryPluginInterfa
       $key = $this->dailyCounterKey();
       $sent = (int) $this->state->get($key, 0);
       if ($limit > 0 && $sent + $recipients > $limit) {
+        $this->recordFailure('The local SES daily recipient limit was reached.');
         $this->logger->warning('Amazon SES daily recipient limit reached (@sent of @limit). Mail was not sent.', [
           '@sent' => $sent,
           '@limit' => $limit,
@@ -212,6 +222,27 @@ final class SesApiMailer implements MailInterface, ContainerFactoryPluginInterfa
    */
   private function dailyCounterKey(): string {
     return 'ses_api_mailer.daily_send_count.' . $this->currentDay();
+  }
+
+  /**
+   * Records the latest accepted delivery without retaining message data.
+   */
+  private function recordSuccess(int $recipients, string $message_id): void {
+    $this->state->set('ses_api_mailer.last_success', [
+      'timestamp' => time(),
+      'recipients' => $recipients,
+      'message_id' => $message_id,
+    ]);
+  }
+
+  /**
+   * Records the latest failure for the administrator health panel.
+   */
+  private function recordFailure(string $message): void {
+    $this->state->set('ses_api_mailer.last_failure', [
+      'timestamp' => time(),
+      'message' => mb_substr(trim($message), 0, 240),
+    ]);
   }
 
   /**

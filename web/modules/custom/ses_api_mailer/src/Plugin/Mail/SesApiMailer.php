@@ -12,6 +12,7 @@ use Drupal\Core\Lock\LockBackendInterface;
 use Drupal\Core\Mail\Attribute\Mail;
 use Drupal\Core\Mail\MailFormatHelper;
 use Drupal\Core\Mail\MailInterface;
+use Drupal\Core\Mail\MailManagerInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Site\Settings;
 use Drupal\Core\State\StateInterface;
@@ -41,6 +42,7 @@ final class SesApiMailer implements MailInterface, ContainerFactoryPluginInterfa
     private readonly ConfigFactoryInterface $configFactory,
     private readonly StateInterface $state,
     private readonly LockBackendInterface $lock,
+    private readonly MailManagerInterface $mailManager,
   ) {
   }
 
@@ -53,6 +55,7 @@ final class SesApiMailer implements MailInterface, ContainerFactoryPluginInterfa
       $container->get('config.factory'),
       $container->get('state'),
       $container->get('lock'),
+      $container->get('plugin.manager.mail'),
     );
   }
 
@@ -89,6 +92,7 @@ final class SesApiMailer implements MailInterface, ContainerFactoryPluginInterfa
    * {@inheritdoc}
    */
   public function mail(array $message): bool {
+    $is_health_alert = !empty($message['params']['ses_api_mailer_health_alert']);
     $settings = $this->settings();
     if (!$this->isConfigured($settings)) {
       $message = 'Amazon SES API mail is not configured in settings.php.';
@@ -106,7 +110,7 @@ final class SesApiMailer implements MailInterface, ContainerFactoryPluginInterfa
     }
 
     $reserved_recipients = count($recipients);
-    if (!$this->reserveDailyCapacity($reserved_recipients)) {
+    if (!$is_health_alert && !$this->reserveDailyCapacity($reserved_recipients)) {
       return FALSE;
     }
 
@@ -127,14 +131,19 @@ final class SesApiMailer implements MailInterface, ContainerFactoryPluginInterfa
         'RawMessage' => ['Data' => $email->toString()],
       ]);
 
-      $this->recordSuccess($reserved_recipients, (string) $result->get('MessageId'));
+      if (!$is_health_alert) {
+        $this->recordSuccess($reserved_recipients, (string) $result->get('MessageId'));
+        $this->notifyUsageThresholds();
+      }
       $this->logger->info('Amazon SES accepted mail @id for delivery.', [
         '@id' => (string) $result->get('MessageId'),
       ]);
       return TRUE;
     }
     catch (AwsException $exception) {
-      $this->releaseDailyCapacity($reserved_recipients);
+      if (!$is_health_alert) {
+        $this->releaseDailyCapacity($reserved_recipients);
+      }
       $failure = $exception->getAwsErrorMessage() ?: $exception->getMessage();
       $this->recordFailure($failure);
       $this->logger->error('Amazon SES rejected mail delivery: @message', [
@@ -142,7 +151,9 @@ final class SesApiMailer implements MailInterface, ContainerFactoryPluginInterfa
       ]);
     }
     catch (\Throwable $exception) {
-      $this->releaseDailyCapacity($reserved_recipients);
+      if (!$is_health_alert) {
+        $this->releaseDailyCapacity($reserved_recipients);
+      }
       $this->recordFailure($exception->getMessage());
       $this->logger->error('Amazon SES mail delivery failed: @message', [
         '@message' => $exception->getMessage(),
@@ -243,6 +254,70 @@ final class SesApiMailer implements MailInterface, ContainerFactoryPluginInterfa
       'timestamp' => time(),
       'message' => mb_substr(trim($message), 0, 240),
     ]);
+  }
+
+  /**
+   * Notifies configured administrators as local daily thresholds are crossed.
+   */
+  private function notifyUsageThresholds(): void {
+    $limit = $this->dailySendLimit();
+    if ($limit === 0) {
+      return;
+    }
+
+    $recipients = $this->alertRecipients();
+    if ($recipients === []) {
+      return;
+    }
+
+    $sent = (int) $this->state->get($this->dailyCounterKey(), 0);
+    foreach ([80, 100] as $threshold) {
+      if ($sent < (int) ceil($limit * ($threshold / 100))) {
+        continue;
+      }
+      foreach ($recipients as $recipient) {
+        $key = 'ses_api_mailer.daily_usage_alert.' . $this->currentDay() . '.' . $threshold . '.' . hash('sha256', $recipient);
+        if ($this->state->get($key, FALSE)) {
+          continue;
+        }
+
+        $result = $this->mailManager->mail(
+          'ses_api_mailer',
+          'usage_alert',
+          $recipient,
+          (string) ($this->configFactory->get('system.site')->get('default_langcode') ?: 'en'),
+          [
+            'ses_api_mailer_health_alert' => TRUE,
+            'subject' => sprintf('SES: %d%% del límite diario utilizado', $threshold),
+            'body' => sprintf('Drupal ha utilizado %d de %d destinatarios del límite diario de Amazon SES (%d%%). Revisa la configuración de Amazon SES API mailer en el sitio.', $sent, $limit, $threshold),
+          ],
+        );
+        if ($result['result'] ?? FALSE) {
+          $this->state->set($key, TRUE);
+        }
+        else {
+          $this->logger->error('Amazon SES usage alert could not be sent to @recipient.', ['@recipient' => $recipient]);
+        }
+      }
+    }
+  }
+
+  /**
+   * Gets unique valid alert recipients from module configuration.
+   *
+   * @return string[]
+   *   Email addresses.
+   */
+  private function alertRecipients(): array {
+    $raw = (string) $this->configFactory->get('ses_api_mailer.settings')->get('alert_recipients');
+    $recipients = [];
+    foreach (preg_split('/[\s,;]+/', $raw, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $recipient) {
+      $recipient = trim($recipient);
+      if (filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
+        $recipients[strtolower($recipient)] = $recipient;
+      }
+    }
+    return array_values($recipients);
   }
 
   /**

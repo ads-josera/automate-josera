@@ -145,6 +145,13 @@ final class SesApiMailerSettingsForm extends ConfigFormBase {
       '#step' => 1,
       '#description' => $this->t('El valor inicial es 50. El límite se aplica a todos los correos de Drupal enviados por SES. Usa 0 para desactivarlo. Un correo a varios destinatarios cuenta una vez por cada destinatario.'),
     ];
+    $form['limit']['alert_recipients'] = [
+      '#type' => 'textarea',
+      '#title' => $this->t('Destinatarios de alertas preventivas'),
+      '#default_value' => (string) $this->config('ses_api_mailer.settings')->get('alert_recipients'),
+      '#rows' => 2,
+      '#description' => $this->t('Recibirán un aviso una vez al alcanzar el 80% y el 100% del límite diario. Escribe un correo por línea o sepáralos por coma. Las alertas operativas no consumen el límite de correos de Drupal para asegurar que el aviso de 100% pueda enviarse.'),
+    ];
 
     $month_options = $this->monthOptions();
     $selected_month = (string) ($form_state->getValue('statistics_month') ?: array_key_first($month_options));
@@ -223,6 +230,7 @@ final class SesApiMailerSettingsForm extends ConfigFormBase {
   public function submitForm(array &$form, FormStateInterface $form_state): void {
     $settings = $this->configFactory->getEditable('ses_api_mailer.settings');
     $settings->set('daily_send_limit', max(0, (int) $form_state->getValue('daily_send_limit')));
+    $settings->set('alert_recipients', trim((string) $form_state->getValue('alert_recipients')));
     $system_mail = $this->configFactory->getEditable('system.mail');
     $current = $this->currentMailer();
     $system_default = (string) ($system_mail->get('interface.default') ?: 'php_mail');

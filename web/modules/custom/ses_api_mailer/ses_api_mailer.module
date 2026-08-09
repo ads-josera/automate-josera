@@ -1,0 +1,21 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * @file
+ * Mail definitions for the Amazon SES API mailer.
+ */
+
+/**
+ * Implements hook_mail().
+ */
+function ses_api_mailer_mail(string $key, array &$message, array $params): void {
+  if ($key !== 'usage_alert') {
+    return;
+  }
+
+  $message['subject'] = (string) ($params['subject'] ?? 'Amazon SES delivery alert');
+  $message['body'][] = (string) ($params['body'] ?? 'Review the Amazon SES API mailer settings.');
+}
+

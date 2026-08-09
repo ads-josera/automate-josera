@@ -14,3 +14,6 @@ ses_api_mailer.settings:
     daily_send_limit:
       type: integer
       label: 'Maximum SES recipients per day'
+    alert_recipients:
+      type: string
+      label: 'Recipients for SES daily usage alerts'

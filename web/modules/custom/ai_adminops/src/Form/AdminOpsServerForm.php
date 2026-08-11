@@ -184,13 +184,30 @@ final class AdminOpsServerForm extends FormBase {
    */
   public function validateForm(array &$form, FormStateInterface $form_state): void {
     $hostname = trim((string) $form_state->getValue(['identity', 'hostname']));
-    if ($hostname === '' || preg_match('/\s/', $hostname) === 1) {
-      $form_state->setErrorByName('hostname', $this->t('Enter a valid hostname or IP address without spaces.'));
+    if (!$this->isValidHostnameOrIp($hostname)) {
+      $form_state->setErrorByName('identity][hostname', $this->t('Enter a valid hostname or IP address without a protocol, port, path, or spaces.'));
     }
     $reference = (string) $form_state->getValue(['connection', 'credential_reference']);
     if (preg_match('/\s/', $reference) === 1 || preg_match('/(?:-----BEGIN|sk-|token|password|secret)/i', $reference) === 1) {
       $form_state->setErrorByName('credential_reference', $this->t('Enter only a credential reference. Do not store a secret value in this field.'));
     }
+  }
+
+  /**
+   * Validates an IP address or a DNS hostname without resolving it.
+   */
+  private function isValidHostnameOrIp(string $value): bool {
+    if ($value === '' || strlen($value) > 253 || preg_match('/\s/', $value) === 1) {
+      return FALSE;
+    }
+
+    if (filter_var($value, FILTER_VALIDATE_IP) !== FALSE) {
+      return TRUE;
+    }
+
+    // DNS labels may begin with a digit, as in provider-generated hostnames.
+    $label = '[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?';
+    return preg_match('/^(?:' . $label . ')(?:\\.(?:' . $label . '))*$/', $value) === 1;
   }
 
   /**

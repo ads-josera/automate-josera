@@ -55,3 +55,21 @@ services:
     arguments:
       - '@plugin.manager.ai_adminops_tool'
       - '@current_user'
+
+  ai_adminops.monitoring_scheduler:
+    class: Drupal\ai_adminops\Service\MonitoringScheduler
+    arguments:
+      - '@config.factory'
+      - '@state'
+      - '@queue'
+      - '@entity_type.manager'
+      - '@datetime.time'
+      - '@logger.channel.ai_adminops'
+
+  ai_adminops.monitoring_job_processor:
+    class: Drupal\ai_adminops\Service\MonitoringJobProcessor
+    arguments:
+      - '@entity_type.manager'
+      - '@state'
+      - '@datetime.time'
+      - '@logger.channel.ai_adminops'

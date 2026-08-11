@@ -61,13 +61,13 @@ final class AdminOpsSettingsForm extends ConfigFormBase {
       '#type' => 'details',
       '#title' => $this->t('Monitoring'),
       '#open' => TRUE,
-      '#description' => $this->t('Monitoring execution will be introduced after servers and monitoring tools are available.'),
+      '#description' => $this->t('Schedule read-only monitoring work for active servers. Connector execution remains disabled until a future integration phase.'),
     ];
     $form['monitoring']['enabled'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('Enable monitoring'),
       '#default_value' => (bool) $config->get('monitoring.enabled'),
-      '#disabled' => TRUE,
+      '#description' => $this->t('When enabled, Drupal cron queues monitoring work for active servers.'),
     ];
     $form['monitoring']['interval_minutes'] = [
       '#type' => 'number',
@@ -75,7 +75,7 @@ final class AdminOpsSettingsForm extends ConfigFormBase {
       '#default_value' => (int) $config->get('monitoring.interval_minutes'),
       '#min' => 1,
       '#max' => 1440,
-      '#disabled' => TRUE,
+      '#description' => $this->t('Minimum time between monitoring jobs for each active server.'),
     ];
 
     $form['notifications'] = [
@@ -106,5 +106,15 @@ final class AdminOpsSettingsForm extends ConfigFormBase {
     parent::submitForm($form, $form_state);
   }
 
-}
+  /**
+   * {@inheritdoc}
+   */
+  public function validateForm(array &$form, FormStateInterface $form_state): void {
+    $interval = (int) $form_state->getValue(['monitoring', 'interval_minutes']);
+    if ($interval < 1 || $interval > 1440) {
+      $form_state->setErrorByName('monitoring][interval_minutes', $this->t('The monitoring interval must be between 1 and 1440 minutes.'));
+    }
+    parent::validateForm($form, $form_state);
+  }
 
+}

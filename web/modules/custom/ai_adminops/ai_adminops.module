@@ -7,3 +7,9 @@ declare(strict_types=1);
  * AI AdminOps module hooks.
  */
 
+/**
+ * Implements hook_cron().
+ */
+function ai_adminops_cron(): void {
+  \Drupal::service('ai_adminops.monitoring_scheduler')->queueDueChecks();
+}

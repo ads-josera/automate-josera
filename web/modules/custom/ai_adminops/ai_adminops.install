@@ -49,3 +49,26 @@ function ai_adminops_update_10002(): string {
 
   return t('Added safe notification defaults for AI AdminOps.');
 }
+
+/**
+ * Adds default monitoring alert thresholds for existing installations.
+ */
+function ai_adminops_update_10003(): string {
+  $defaults = [
+    'enabled' => TRUE,
+    'unreachable_enabled' => TRUE,
+    'load_1m_warning' => 4,
+    'cpu_percent_warning' => 90,
+    'memory_percent_warning' => 90,
+    'disk_percent_warning' => 85,
+    'exim_queue_warning' => 100,
+  ];
+
+  $config = \Drupal::configFactory()->getEditable('ai_adminops.settings');
+  $existing = $config->get('alerts');
+  $config
+    ->set('alerts', array_replace($defaults, is_array($existing) ? $existing : []))
+    ->save();
+
+  return t('Added monitoring alert defaults for AI AdminOps.');
+}

@@ -54,6 +54,20 @@ final class AdminOpsEventManager {
       throw new \InvalidArgumentException('The event severity is not supported.');
     }
 
+    $occurred_at ??= $this->time->getRequestTime();
+    $fingerprint = hash('sha256', implode('|', [$server_id, $event_type]));
+    $existing = $this->openEventByFingerprint($fingerprint);
+    if ($existing !== NULL) {
+      $existing->set('severity', $severity);
+      $existing->set('summary', $summary);
+      $existing->set('details', trim($details));
+      $existing->set('evidence_json', $this->payloadSanitizer->encode($evidence));
+      $existing->set('occurred_at', $occurred_at);
+      $existing->save();
+
+      return $existing;
+    }
+
     $event = $this->entityTypeManager->getStorage('ai_adminops_event')->create([
       'server' => $server_id,
       'event_type' => $event_type,
@@ -61,9 +75,9 @@ final class AdminOpsEventManager {
       'summary' => $summary,
       'details' => trim($details),
       'evidence_json' => $this->payloadSanitizer->encode($evidence),
-      'fingerprint' => hash('sha256', implode('|', [$server_id, $event_type, $summary])),
+      'fingerprint' => $fingerprint,
       'status' => 'open',
-      'occurred_at' => $occurred_at ?? $this->time->getRequestTime(),
+      'occurred_at' => $occurred_at,
     ]);
     $event->save();
 
@@ -109,6 +123,41 @@ final class AdminOpsEventManager {
     $event->set('resolved_at', $this->time->getRequestTime());
     $event->save();
     return $event;
+  }
+
+  /**
+   * Resolves an open condition when a later metric returns to normal.
+   */
+  public function resolveCondition(string $server_id, string $event_type): void {
+    $fingerprint = hash('sha256', implode('|', [$server_id, trim($event_type)]));
+    $event = $this->openEventByFingerprint($fingerprint);
+    if ($event === NULL) {
+      return;
+    }
+
+    $event->set('status', 'resolved');
+    $event->set('resolved_at', $this->time->getRequestTime());
+    $event->save();
+  }
+
+  /**
+   * Finds the active event for a stable operational condition.
+   */
+  private function openEventByFingerprint(string $fingerprint): ?ContentEntityInterface {
+    $storage = $this->entityTypeManager->getStorage('ai_adminops_event');
+    $ids = $storage->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('fingerprint', $fingerprint)
+      ->condition('status', ['open', 'acknowledged'], 'IN')
+      ->sort('id', 'DESC')
+      ->range(0, 1)
+      ->execute();
+    if ($ids === []) {
+      return NULL;
+    }
+
+    $event = $storage->load((int) reset($ids));
+    return $event instanceof ContentEntityInterface ? $event : NULL;
   }
 
   /**

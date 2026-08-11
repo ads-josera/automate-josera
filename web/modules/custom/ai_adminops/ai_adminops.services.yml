@@ -51,6 +51,12 @@ services:
   ai_adminops.read_only_ssh_connector:
     class: Drupal\ai_adminops\Service\ReadOnlySshConnector
 
+  ai_adminops.monitoring_alert_evaluator:
+    class: Drupal\ai_adminops\Service\MonitoringAlertEvaluator
+    arguments:
+      - '@config.factory'
+      - '@ai_adminops.event_manager'
+
   plugin.manager.ai_adminops_tool:
     class: Drupal\ai_adminops\Plugin\AdminOpsTool\AdminOpsToolManager
     arguments:
@@ -82,4 +88,5 @@ services:
       - '@datetime.time'
       - '@ai_adminops.read_only_ssh_connector'
       - '@ai_adminops.execution_audit'
+      - '@ai_adminops.monitoring_alert_evaluator'
       - '@logger.channel.ai_adminops'

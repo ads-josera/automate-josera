@@ -12,6 +12,31 @@ ai_adminops.settings:
         interval_minutes:
           type: integer
           label: 'Monitoring interval in minutes'
+    alerts:
+      type: mapping
+      label: 'Monitoring alert rules'
+      mapping:
+        enabled:
+          type: boolean
+          label: 'Enable metric alerts'
+        unreachable_enabled:
+          type: boolean
+          label: 'Enable unreachable server alerts'
+        load_1m_warning:
+          type: float
+          label: 'Load average warning threshold'
+        cpu_percent_warning:
+          type: integer
+          label: 'CPU warning threshold'
+        memory_percent_warning:
+          type: integer
+          label: 'Memory warning threshold'
+        disk_percent_warning:
+          type: integer
+          label: 'Disk warning threshold'
+        exim_queue_warning:
+          type: integer
+          label: 'Exim queue warning threshold'
     notifications:
       type: mapping
       label: 'Notification settings'

@@ -1,6 +1,14 @@
 monitoring:
   enabled: false
   interval_minutes: 15
+alerts:
+  enabled: true
+  unreachable_enabled: true
+  load_1m_warning: 4
+  cpu_percent_warning: 90
+  memory_percent_warning: 90
+  disk_percent_warning: 85
+  exim_queue_warning: 100
 notifications:
   enabled: true
   minimum_severity: warning

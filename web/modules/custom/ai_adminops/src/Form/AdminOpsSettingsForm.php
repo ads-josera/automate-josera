@@ -81,6 +81,46 @@ final class AdminOpsSettingsForm extends ConfigFormBase {
       '#description' => $this->t('Minimum time between monitoring jobs for each active server.'),
     ];
 
+    $alerts = $config->get('alerts') ?: [];
+    $form['alerts'] = [
+      '#type' => 'details',
+      '#title' => $this->t('Monitoring alert rules'),
+      '#open' => TRUE,
+      '#description' => $this->t('Creates one operational event per ongoing condition and resolves it automatically when the metric returns to normal. Use 0 to disable an individual metric threshold.'),
+    ];
+    $form['alerts']['enabled'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Enable metric alerts'),
+      '#default_value' => (bool) ($alerts['enabled'] ?? TRUE),
+    ];
+    $form['alerts']['unreachable_enabled'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Alert when a server does not respond'),
+      '#default_value' => (bool) ($alerts['unreachable_enabled'] ?? TRUE),
+      '#description' => $this->t('Creates a critical alert if a configured SSH monitoring check cannot be completed.'),
+    ];
+    $form['alerts']['load_1m_warning'] = [
+      '#type' => 'number',
+      '#title' => $this->t('Load average warning threshold (1 minute)'),
+      '#default_value' => $alerts['load_1m_warning'] ?? 4,
+      '#min' => 0,
+      '#max' => 1000,
+      '#step' => 0.1,
+      '#description' => $this->t('An absolute load-average threshold. Adjust it for the server capacity; 0 disables this alert.'),
+    ];
+    $form['alerts']['cpu_percent_warning'] = $this->thresholdElement($this->t('CPU usage warning threshold (%)'), $alerts['cpu_percent_warning'] ?? 90);
+    $form['alerts']['memory_percent_warning'] = $this->thresholdElement($this->t('Memory usage warning threshold (%)'), $alerts['memory_percent_warning'] ?? 90);
+    $form['alerts']['disk_percent_warning'] = $this->thresholdElement($this->t('Disk usage warning threshold (%)'), $alerts['disk_percent_warning'] ?? 85);
+    $form['alerts']['exim_queue_warning'] = [
+      '#type' => 'number',
+      '#title' => $this->t('Exim queue warning threshold'),
+      '#default_value' => $alerts['exim_queue_warning'] ?? 100,
+      '#min' => 0,
+      '#max' => 1000000,
+      '#step' => 1,
+      '#description' => $this->t('Number of queued messages that generates a warning. Use 0 to disable this alert.'),
+    ];
+
     $form['notifications'] = [
       '#type' => 'details',
       '#title' => $this->t('Notifications'),
@@ -177,6 +217,15 @@ final class AdminOpsSettingsForm extends ConfigFormBase {
     $this->configFactory->getEditable('ai_adminops.settings')
       ->set('monitoring.enabled', (bool) $form_state->getValue(['monitoring', 'enabled']))
       ->set('monitoring.interval_minutes', (int) $form_state->getValue(['monitoring', 'interval_minutes']))
+      ->set('alerts', [
+        'enabled' => (bool) $form_state->getValue(['alerts', 'enabled']),
+        'unreachable_enabled' => (bool) $form_state->getValue(['alerts', 'unreachable_enabled']),
+        'load_1m_warning' => (float) $form_state->getValue(['alerts', 'load_1m_warning']),
+        'cpu_percent_warning' => (int) $form_state->getValue(['alerts', 'cpu_percent_warning']),
+        'memory_percent_warning' => (int) $form_state->getValue(['alerts', 'memory_percent_warning']),
+        'disk_percent_warning' => (int) $form_state->getValue(['alerts', 'disk_percent_warning']),
+        'exim_queue_warning' => (int) $form_state->getValue(['alerts', 'exim_queue_warning']),
+      ])
       ->set('notifications.enabled', (bool) $form_state->getValue(['notifications', 'enabled']))
       ->set('notifications.minimum_severity', (string) $form_state->getValue(['notifications', 'minimum_severity']))
       ->set('notifications.cooldown_minutes', (int) $form_state->getValue(['notifications', 'cooldown_minutes']))
@@ -206,6 +255,20 @@ final class AdminOpsSettingsForm extends ConfigFormBase {
     if ($cooldown < 0 || $cooldown > 10080) {
       $form_state->setErrorByName('notifications][cooldown_minutes', $this->t('The notification cooldown must be between 0 and 10080 minutes.'));
     }
+    $load = (float) $form_state->getValue(['alerts', 'load_1m_warning']);
+    if ($load < 0 || $load > 1000) {
+      $form_state->setErrorByName('alerts][load_1m_warning', $this->t('The load threshold must be between 0 and 1000.'));
+    }
+    foreach (['cpu_percent_warning', 'memory_percent_warning', 'disk_percent_warning'] as $name) {
+      $value = (int) $form_state->getValue(['alerts', $name]);
+      if ($value < 0 || $value > 100) {
+        $form_state->setErrorByName('alerts][' . $name, $this->t('Percentage thresholds must be between 0 and 100.'));
+      }
+    }
+    $queue = (int) $form_state->getValue(['alerts', 'exim_queue_warning']);
+    if ($queue < 0 || $queue > 1000000) {
+      $form_state->setErrorByName('alerts][exim_queue_warning', $this->t('The Exim queue threshold must be between 0 and 1000000.'));
+    }
     foreach ($this->lines($form_state->getValue(['notifications', 'email', 'recipients'])) as $recipient) {
       if (!filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
         $form_state->setErrorByName('notifications][email][recipients', $this->t('"@recipient" is not a valid email address.', ['@recipient' => $recipient]));
@@ -231,6 +294,21 @@ final class AdminOpsSettingsForm extends ConfigFormBase {
     $values = array_map('trim', $values);
     $values = array_filter($values, static fn(string $value): bool => $value !== '');
     return array_values(array_unique($values));
+  }
+
+  /**
+   * Builds a percentage alert threshold element.
+   */
+  private function thresholdElement(string $title, int|float $default_value): array {
+    return [
+      '#type' => 'number',
+      '#title' => $title,
+      '#default_value' => $default_value,
+      '#min' => 0,
+      '#max' => 100,
+      '#step' => 1,
+      '#description' => $this->t('Use 0 to disable this alert.'),
+    ];
   }
 
 }

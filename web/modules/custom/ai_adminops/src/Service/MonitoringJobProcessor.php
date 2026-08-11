@@ -23,6 +23,7 @@ final class MonitoringJobProcessor {
     private readonly TimeInterface $time,
     private readonly ReadOnlySshConnector $sshConnector,
     private readonly AdminOpsExecutionAudit $executionAudit,
+    private readonly MonitoringAlertEvaluator $alertEvaluator,
     private readonly LoggerInterface $logger,
   ) {}
 
@@ -55,12 +56,15 @@ final class MonitoringJobProcessor {
     }
 
     $checks = [];
+    $successful_checks = 0;
     foreach ($tools as $tool_id) {
       $execution = $this->executionAudit->begin($server_id, $tool_id, $this->toolLabel($tool_id), ['source' => 'scheduled_monitoring']);
       $this->executionAudit->markRunning((int) $execution->id());
       try {
         $checks[$tool_id] = $this->sshConnector->collect($server, $tool_id);
         $this->executionAudit->markSucceeded((int) $execution->id(), $checks[$tool_id]);
+        $successful_checks++;
+        $this->alertEvaluator->evaluate($server_id, $tool_id, $checks[$tool_id]);
       }
       catch (\Throwable $exception) {
         $checks[$tool_id] = ['status' => 'failed'];
@@ -70,6 +74,13 @@ final class MonitoringJobProcessor {
           '@server' => $server_id,
         ]);
       }
+    }
+
+    if ($successful_checks === 0 && $tools !== []) {
+      $this->alertEvaluator->recordServerUnreachable($server_id);
+    }
+    elseif ($successful_checks > 0) {
+      $this->alertEvaluator->recordServerReachable($server_id);
     }
 
     $result = [

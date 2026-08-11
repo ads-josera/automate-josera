@@ -299,10 +299,10 @@ final class AdminOpsSettingsForm extends ConfigFormBase {
   /**
    * Builds a percentage alert threshold element.
    */
-  private function thresholdElement(string $title, int|float $default_value): array {
+  private function thresholdElement(string|\Stringable $title, int|float $default_value): array {
     return [
       '#type' => 'number',
-      '#title' => $title,
+      '#title' => (string) $title,
       '#default_value' => $default_value,
       '#min' => 0,
       '#max' => 100,

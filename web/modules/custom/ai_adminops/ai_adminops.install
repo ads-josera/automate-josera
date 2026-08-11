@@ -20,3 +20,32 @@ function ai_adminops_update_10001(): void {
     $definition_manager->installEntityType($entity_type_manager->getDefinition($entity_type_id));
   }
 }
+
+/**
+ * Adds safe notification defaults for existing AdminOps installations.
+ */
+function ai_adminops_update_10002(): string {
+  $defaults = [
+    'enabled' => TRUE,
+    'minimum_severity' => 'warning',
+    'cooldown_minutes' => 60,
+    'email' => [
+      'enabled' => TRUE,
+      'recipients' => [],
+    ],
+    'whatsapp' => [
+      'enabled' => FALSE,
+      'account_id' => '',
+      'recipients' => [],
+      'template_sid' => '',
+    ],
+  ];
+
+  $config = \Drupal::configFactory()->getEditable('ai_adminops.settings');
+  $existing = $config->get('notifications');
+  $config
+    ->set('notifications', array_replace_recursive($defaults, is_array($existing) ? $existing : []))
+    ->save();
+
+  return t('Added safe notification defaults for AI AdminOps.');
+}

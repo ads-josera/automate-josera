@@ -1,0 +1,22 @@
+ai_adminops.settings:
+  type: config_object
+  label: 'AI AdminOps settings'
+  mapping:
+    monitoring:
+      type: mapping
+      label: 'Monitoring settings'
+      mapping:
+        enabled:
+          type: boolean
+          label: 'Enable monitoring'
+        interval_minutes:
+          type: integer
+          label: 'Monitoring interval in minutes'
+    notifications:
+      type: mapping
+      label: 'Notification settings'
+      mapping:
+        enabled:
+          type: boolean
+          label: 'Enable notifications'
+

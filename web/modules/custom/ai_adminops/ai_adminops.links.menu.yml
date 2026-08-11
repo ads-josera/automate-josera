@@ -1,0 +1,14 @@
+ai_adminops.dashboard:
+  title: 'AI AdminOps'
+  description: 'Review infrastructure monitoring and administration activity.'
+  route_name: ai_adminops.dashboard
+  parent: system.admin_reports
+  weight: 40
+
+ai_adminops.settings:
+  title: 'AI AdminOps'
+  description: 'Configure infrastructure monitoring and notifications.'
+  route_name: ai_adminops.settings
+  parent: system.admin_config_system
+  weight: 40
+

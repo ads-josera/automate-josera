@@ -1,0 +1,6 @@
+monitoring:
+  enabled: false
+  interval_minutes: 15
+notifications:
+  enabled: true
+

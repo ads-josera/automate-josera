@@ -1,0 +1,29 @@
+.ai-adminops-dashboard,
+.ai-adminops-settings-form {
+  max-width: 960px;
+}
+
+.ai-adminops-dashboard {
+  border: 1px solid #d7deea;
+  border-left: 4px solid #155eef;
+  padding: 28px;
+  background: #ffffff;
+}
+
+.ai-adminops-dashboard__eyebrow {
+  margin: 0 0 8px;
+  color: #52627d;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.ai-adminops-dashboard h2 {
+  margin: 0 0 8px;
+  color: #182230;
+}
+
+.ai-adminops-dashboard p:last-child {
+  margin-bottom: 0;
+  color: #52627d;
+}

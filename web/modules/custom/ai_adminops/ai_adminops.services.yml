@@ -1,0 +1,18 @@
+services:
+  logger.channel.ai_adminops:
+    parent: logger.channel_base
+    arguments: ['ai_adminops']
+
+  ai_adminops.ai_client:
+    class: Drupal\ai_adminops\Service\AdminOpsAiClient
+    arguments:
+      - '@Drupal\ai_whatsapp_automation\Application\OpenAI\OpenAIServiceInterface'
+      - '@logger.channel.ai_adminops'
+
+  ai_adminops.notification_bridge:
+    class: Drupal\ai_adminops\Service\NotificationBridge
+    arguments:
+      - '@ai_whatsapp_automation.provider_message_sender'
+      - '@plugin.manager.mail'
+      - '@logger.channel.ai_adminops'
+

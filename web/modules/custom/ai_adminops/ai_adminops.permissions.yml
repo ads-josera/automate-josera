@@ -1,0 +1,9 @@
+access ai adminops dashboard:
+  title: 'View AI AdminOps dashboard'
+  description: 'View the AdminOps overview and operational status.'
+
+administer ai adminops:
+  title: 'Administer AI AdminOps'
+  description: 'Configure AI AdminOps settings and future server integrations.'
+  restrict access: true
+

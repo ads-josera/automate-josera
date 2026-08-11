@@ -1,0 +1,9 @@
+name: AI AdminOps
+type: module
+description: Provides secure infrastructure monitoring and controlled administration operations.
+package: Custom
+core_version_requirement: ^11
+configure: ai_adminops.settings
+dependencies:
+  - ai_whatsapp_automation:ai_whatsapp_automation
+

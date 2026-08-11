@@ -57,6 +57,8 @@ final class AdminOpsSettingsForm extends ConfigFormBase {
    */
   public function buildForm(array $form, FormStateInterface $form_state): array {
     $config = $this->config('ai_adminops.settings');
+    // Form values are read and saved through nested element paths below.
+    $form['#tree'] = TRUE;
     $form['#attached']['library'][] = 'ai_adminops/admin';
     $form['#attributes']['class'][] = 'ai-adminops-settings-form';
 

@@ -46,6 +46,7 @@ final class AdminOpsServerForm extends FormBase {
 
     $form['identity'] = [
       '#type' => 'details',
+      '#tree' => TRUE,
       '#title' => $this->t('Server profile'),
       '#open' => TRUE,
       '#description' => $this->t('Register the infrastructure target and its operational context. This form never stores passwords, tokens, or private keys.'),
@@ -91,6 +92,7 @@ final class AdminOpsServerForm extends FormBase {
 
     $form['connection'] = [
       '#type' => 'details',
+      '#tree' => TRUE,
       '#title' => $this->t('Connection profile'),
       '#open' => TRUE,
       '#description' => $this->t('Connection profiles are declarative only in this version. No remote request is made when you save this form.'),
@@ -123,6 +125,7 @@ final class AdminOpsServerForm extends FormBase {
 
     $form['operations'] = [
       '#type' => 'details',
+      '#tree' => TRUE,
       '#title' => $this->t('Operations'),
       '#open' => TRUE,
     ];

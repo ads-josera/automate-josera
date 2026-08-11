@@ -22,5 +22,28 @@ final class AdminOpsAiClient {
     private readonly LoggerInterface $logger,
   ) {}
 
-}
+  /**
+   * Delegates a structured AdminOps analysis request to the shared AI service.
+   *
+   * This method deliberately does not execute tools or commands. Tool selection
+   * and execution remain separate, explicitly approved phases of AdminOps.
+   *
+   * @param array<string, mixed> $options
+   *   Supported OpenAI request options.
+   *
+   * @return array<string, mixed>
+   *   The normalized response from the shared public service.
+   */
+  public function analyze(string $prompt, ?string $model = NULL, array $options = []): array {
+    try {
+      return $this->openAi->sendPrompt($prompt, $model, $options);
+    }
+    catch (\Throwable $exception) {
+      $this->logger->error('AdminOps AI analysis failed: @message', [
+        '@message' => $exception->getMessage(),
+      ]);
+      throw $exception;
+    }
+  }
 
+}

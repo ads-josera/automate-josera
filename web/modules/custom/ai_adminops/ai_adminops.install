@@ -1,0 +1,22 @@
+<?php
+
+/**
+ * @file
+ * Update hooks for AI AdminOps.
+ */
+
+/**
+ * Installs the content entity schemas introduced after initial installation.
+ */
+function ai_adminops_update_10001(): void {
+  $definition_manager = \Drupal::entityDefinitionUpdateManager();
+  $entity_type_manager = \Drupal::entityTypeManager();
+
+  foreach ([
+    'ai_adminops_event',
+    'ai_adminops_action_request',
+    'ai_adminops_tool_execution',
+  ] as $entity_type_id) {
+    $definition_manager->installEntityType($entity_type_manager->getDefinition($entity_type_id));
+  }
+}

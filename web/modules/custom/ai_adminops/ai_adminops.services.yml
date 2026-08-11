@@ -16,3 +16,29 @@ services:
       - '@plugin.manager.mail'
       - '@logger.channel.ai_adminops'
 
+  ai_adminops.payload_sanitizer:
+    class: Drupal\ai_adminops\Service\PayloadSanitizer
+
+  ai_adminops.event_manager:
+    class: Drupal\ai_adminops\Service\AdminOpsEventManager
+    arguments:
+      - '@entity_type.manager'
+      - '@datetime.time'
+      - '@ai_adminops.payload_sanitizer'
+      - '@logger.channel.ai_adminops'
+
+  ai_adminops.action_request_manager:
+    class: Drupal\ai_adminops\Service\AdminOpsActionRequestManager
+    arguments:
+      - '@entity_type.manager'
+      - '@datetime.time'
+      - '@ai_adminops.payload_sanitizer'
+      - '@logger.channel.ai_adminops'
+
+  ai_adminops.execution_audit:
+    class: Drupal\ai_adminops\Service\AdminOpsExecutionAudit
+    arguments:
+      - '@entity_type.manager'
+      - '@datetime.time'
+      - '@ai_adminops.payload_sanitizer'
+      - '@logger.channel.ai_adminops'

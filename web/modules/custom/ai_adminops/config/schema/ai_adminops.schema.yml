@@ -19,4 +19,45 @@ ai_adminops.settings:
         enabled:
           type: boolean
           label: 'Enable notifications'
-
+ai_adminops.server.*:
+  type: config_entity
+  label: 'AdminOps server'
+  mapping:
+    id:
+      type: string
+      label: 'Machine name'
+    label:
+      type: label
+      label: 'Label'
+    hostname:
+      type: string
+      label: 'Hostname'
+    port:
+      type: integer
+      label: 'Port'
+    operating_system:
+      type: string
+      label: 'Operating system'
+    provider:
+      type: string
+      label: 'Provider'
+    connection_type:
+      type: string
+      label: 'Connection type'
+    credential_reference:
+      type: string
+      label: 'Credential reference'
+    server_status:
+      type: string
+      label: 'Operational status'
+    description:
+      type: text
+      label: 'Description'
+    active:
+      type: boolean
+      label: 'Active'
+    tags:
+      type: sequence
+      label: 'Tags'
+      sequence:
+        type: string

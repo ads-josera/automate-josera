@@ -21,6 +21,7 @@ final class AdminOpsEventManager {
     private readonly EntityTypeManagerInterface $entityTypeManager,
     private readonly TimeInterface $time,
     private readonly PayloadSanitizer $payloadSanitizer,
+    private readonly NotificationBridge $notificationBridge,
     private readonly LoggerInterface $logger,
   ) {}
 
@@ -65,6 +66,16 @@ final class AdminOpsEventManager {
       'occurred_at' => $occurred_at ?? $this->time->getRequestTime(),
     ]);
     $event->save();
+
+    try {
+      $this->notificationBridge->notifyEvent($event);
+    }
+    catch (\Throwable $exception) {
+      $this->logger->error('AdminOps event @event was stored, but notification delivery failed: @message', [
+        '@event' => (string) $event->id(),
+        '@message' => $exception->getMessage(),
+      ]);
+    }
 
     $this->logger->notice('AdminOps event @event recorded for server @server with @severity severity.', [
       '@event' => (string) $event->id(),

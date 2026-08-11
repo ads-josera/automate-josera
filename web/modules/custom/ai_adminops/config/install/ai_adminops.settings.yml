@@ -3,4 +3,13 @@ monitoring:
   interval_minutes: 15
 notifications:
   enabled: true
-
+  minimum_severity: warning
+  cooldown_minutes: 60
+  email:
+    enabled: true
+    recipients: []
+  whatsapp:
+    enabled: false
+    account_id: ''
+    recipients: []
+    template_sid: ''

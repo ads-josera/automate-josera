@@ -6,6 +6,7 @@ namespace Drupal\ai_adminops\Form;
 
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Config\TypedConfigManagerInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -21,6 +22,7 @@ final class AdminOpsSettingsForm extends ConfigFormBase {
   public function __construct(
     ConfigFactoryInterface $config_factory,
     TypedConfigManagerInterface $typed_config_manager,
+    private readonly EntityTypeManagerInterface $entityTypeManager,
   ) {
     parent::__construct($config_factory, $typed_config_manager);
   }
@@ -32,6 +34,7 @@ final class AdminOpsSettingsForm extends ConfigFormBase {
     return new self(
       $container->get('config.factory'),
       $container->get('config.typed'),
+      $container->get('entity_type.manager'),
     );
   }
 
@@ -82,13 +85,86 @@ final class AdminOpsSettingsForm extends ConfigFormBase {
       '#type' => 'details',
       '#title' => $this->t('Notifications'),
       '#open' => TRUE,
-      '#description' => $this->t('Future AdminOps notifications will reuse the existing WhatsApp and Drupal mail infrastructure.'),
+      '#description' => $this->t('Operational alerts use Drupal email and the existing WhatsApp delivery service. Notifications never expose event evidence or credentials.'),
     ];
     $form['notifications']['enabled'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('Enable notifications'),
       '#default_value' => (bool) $config->get('notifications.enabled'),
-      '#disabled' => TRUE,
+      '#description' => $this->t('Only open events at or above the selected severity are eligible.'),
+    ];
+    $form['notifications']['minimum_severity'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Minimum severity'),
+      '#options' => [
+        'info' => $this->t('Info and above'),
+        'warning' => $this->t('Warning and above'),
+        'critical' => $this->t('Critical only'),
+      ],
+      '#default_value' => $config->get('notifications.minimum_severity') ?: 'warning',
+    ];
+    $form['notifications']['cooldown_minutes'] = [
+      '#type' => 'number',
+      '#title' => $this->t('Cooldown in minutes'),
+      '#default_value' => (int) ($config->get('notifications.cooldown_minutes') ?? 60),
+      '#min' => 0,
+      '#max' => 10080,
+      '#description' => $this->t('Minimum interval before an open event can send another alert. Use 0 to disable this protection.'),
+    ];
+
+    $email = $config->get('notifications.email') ?: [];
+    $form['notifications']['email'] = [
+      '#type' => 'details',
+      '#title' => $this->t('Email channel'),
+      '#open' => TRUE,
+    ];
+    $form['notifications']['email']['enabled'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Send alerts by email'),
+      '#default_value' => (bool) ($email['enabled'] ?? TRUE),
+    ];
+    $form['notifications']['email']['recipients'] = [
+      '#type' => 'textarea',
+      '#title' => $this->t('Email recipients'),
+      '#default_value' => implode("\n", $email['recipients'] ?? []),
+      '#description' => $this->t('One valid email address per line. Drupal uses the site default mailer.'),
+    ];
+
+    $whatsapp = $config->get('notifications.whatsapp') ?: [];
+    $account_options = ['' => $this->t('- Select an active WhatsApp account -')];
+    foreach ($this->entityTypeManager->getStorage('ai_whatsapp_account')->loadMultiple() as $account) {
+      if ((string) $account->get('status')->value === 'active') {
+        $account_options[(string) $account->id()] = $account->label();
+      }
+    }
+    $form['notifications']['whatsapp'] = [
+      '#type' => 'details',
+      '#title' => $this->t('WhatsApp channel'),
+      '#open' => FALSE,
+      '#description' => $this->t('Uses an existing active WhatsApp account. A Twilio template is recommended for reliable business-initiated alerts.'),
+    ];
+    $form['notifications']['whatsapp']['enabled'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Send alerts by WhatsApp'),
+      '#default_value' => (bool) ($whatsapp['enabled'] ?? FALSE),
+    ];
+    $form['notifications']['whatsapp']['account_id'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Sending WhatsApp account'),
+      '#options' => $account_options,
+      '#default_value' => (string) ($whatsapp['account_id'] ?? ''),
+    ];
+    $form['notifications']['whatsapp']['recipients'] = [
+      '#type' => 'textarea',
+      '#title' => $this->t('WhatsApp recipients'),
+      '#default_value' => implode("\n", $whatsapp['recipients'] ?? []),
+      '#description' => $this->t('One phone number per line in international format, for example +5215512345678.'),
+    ];
+    $form['notifications']['whatsapp']['template_sid'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Twilio Content Template SID'),
+      '#default_value' => (string) ($whatsapp['template_sid'] ?? ''),
+      '#description' => $this->t('Optional for non-Twilio providers. For Twilio, configure a template with variable {{1}} to support alerts outside the 24-hour messaging window.'),
     ];
 
     return parent::buildForm($form, $form_state);
@@ -102,6 +178,18 @@ final class AdminOpsSettingsForm extends ConfigFormBase {
       ->set('monitoring.enabled', (bool) $form_state->getValue(['monitoring', 'enabled']))
       ->set('monitoring.interval_minutes', (int) $form_state->getValue(['monitoring', 'interval_minutes']))
       ->set('notifications.enabled', (bool) $form_state->getValue(['notifications', 'enabled']))
+      ->set('notifications.minimum_severity', (string) $form_state->getValue(['notifications', 'minimum_severity']))
+      ->set('notifications.cooldown_minutes', (int) $form_state->getValue(['notifications', 'cooldown_minutes']))
+      ->set('notifications.email', [
+        'enabled' => (bool) $form_state->getValue(['notifications', 'email', 'enabled']),
+        'recipients' => $this->lines($form_state->getValue(['notifications', 'email', 'recipients'])),
+      ])
+      ->set('notifications.whatsapp', [
+        'enabled' => (bool) $form_state->getValue(['notifications', 'whatsapp', 'enabled']),
+        'account_id' => (string) $form_state->getValue(['notifications', 'whatsapp', 'account_id']),
+        'recipients' => $this->lines($form_state->getValue(['notifications', 'whatsapp', 'recipients'])),
+        'template_sid' => trim((string) $form_state->getValue(['notifications', 'whatsapp', 'template_sid'])),
+      ])
       ->save();
     parent::submitForm($form, $form_state);
   }
@@ -114,7 +202,35 @@ final class AdminOpsSettingsForm extends ConfigFormBase {
     if ($interval < 1 || $interval > 1440) {
       $form_state->setErrorByName('monitoring][interval_minutes', $this->t('The monitoring interval must be between 1 and 1440 minutes.'));
     }
+    $cooldown = (int) $form_state->getValue(['notifications', 'cooldown_minutes']);
+    if ($cooldown < 0 || $cooldown > 10080) {
+      $form_state->setErrorByName('notifications][cooldown_minutes', $this->t('The notification cooldown must be between 0 and 10080 minutes.'));
+    }
+    foreach ($this->lines($form_state->getValue(['notifications', 'email', 'recipients'])) as $recipient) {
+      if (!filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
+        $form_state->setErrorByName('notifications][email][recipients', $this->t('"@recipient" is not a valid email address.', ['@recipient' => $recipient]));
+      }
+    }
+    foreach ($this->lines($form_state->getValue(['notifications', 'whatsapp', 'recipients'])) as $recipient) {
+      $digits = preg_replace('/\D+/', '', $recipient) ?? '';
+      if ($digits !== '' && (strlen($digits) < 8 || strlen($digits) > 15)) {
+        $form_state->setErrorByName('notifications][whatsapp][recipients', $this->t('"@recipient" is not a valid international phone number.', ['@recipient' => $recipient]));
+      }
+    }
     parent::validateForm($form, $form_state);
+  }
+
+  /**
+   * Converts a newline-delimited field into unique non-empty values.
+   *
+   * @return string[]
+   *   Normalized lines.
+   */
+  private function lines(mixed $value): array {
+    $values = preg_split('/\R+/', (string) $value) ?: [];
+    $values = array_map('trim', $values);
+    $values = array_filter($values, static fn(string $value): bool => $value !== '');
+    return array_values(array_unique($values));
   }
 
 }

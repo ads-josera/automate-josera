@@ -19,6 +19,42 @@ ai_adminops.settings:
         enabled:
           type: boolean
           label: 'Enable notifications'
+        minimum_severity:
+          type: string
+          label: 'Minimum notification severity'
+        cooldown_minutes:
+          type: integer
+          label: 'Notification cooldown in minutes'
+        email:
+          type: mapping
+          label: 'Email notification settings'
+          mapping:
+            enabled:
+              type: boolean
+              label: 'Enable email notifications'
+            recipients:
+              type: sequence
+              label: 'Email recipients'
+              sequence:
+                type: email
+        whatsapp:
+          type: mapping
+          label: 'WhatsApp notification settings'
+          mapping:
+            enabled:
+              type: boolean
+              label: 'Enable WhatsApp notifications'
+            account_id:
+              type: string
+              label: 'WhatsApp account ID'
+            recipients:
+              type: sequence
+              label: 'WhatsApp recipients'
+              sequence:
+                type: string
+            template_sid:
+              type: string
+              label: 'Twilio content template SID'
 ai_adminops.server.*:
   type: config_entity
   label: 'AdminOps server'

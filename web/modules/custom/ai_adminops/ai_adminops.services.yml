@@ -14,6 +14,10 @@ services:
     arguments:
       - '@ai_whatsapp_automation.provider_message_sender'
       - '@plugin.manager.mail'
+      - '@config.factory'
+      - '@entity_type.manager'
+      - '@state'
+      - '@datetime.time'
       - '@logger.channel.ai_adminops'
 
   ai_adminops.payload_sanitizer:
@@ -25,6 +29,7 @@ services:
       - '@entity_type.manager'
       - '@datetime.time'
       - '@ai_adminops.payload_sanitizer'
+      - '@ai_adminops.notification_bridge'
       - '@logger.channel.ai_adminops'
 
   ai_adminops.action_request_manager:

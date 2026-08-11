@@ -13,3 +13,15 @@ declare(strict_types=1);
 function ai_adminops_cron(): void {
   \Drupal::service('ai_adminops.monitoring_scheduler')->queueDueChecks();
 }
+
+/**
+ * Implements hook_mail().
+ */
+function ai_adminops_mail(string $key, array &$message, array $params): void {
+  if ($key !== 'event_alert') {
+    return;
+  }
+
+  $message['subject'] = (string) ($params['subject'] ?? 'AI AdminOps alert');
+  $message['body'][] = (string) ($params['body'] ?? 'An operational alert requires review.');
+}

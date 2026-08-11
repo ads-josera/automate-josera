@@ -42,3 +42,16 @@ services:
       - '@datetime.time'
       - '@ai_adminops.payload_sanitizer'
       - '@logger.channel.ai_adminops'
+
+  plugin.manager.ai_adminops_tool:
+    class: Drupal\ai_adminops\Plugin\AdminOpsTool\AdminOpsToolManager
+    arguments:
+      - '@container.namespaces'
+      - '@module_handler'
+      - '@cache.discovery'
+
+  ai_adminops.tool_policy:
+    class: Drupal\ai_adminops\Service\AdminOpsToolPolicy
+    arguments:
+      - '@plugin.manager.ai_adminops_tool'
+      - '@current_user'

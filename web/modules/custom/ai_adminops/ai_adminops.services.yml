@@ -48,6 +48,9 @@ services:
       - '@ai_adminops.payload_sanitizer'
       - '@logger.channel.ai_adminops'
 
+  ai_adminops.read_only_ssh_connector:
+    class: Drupal\ai_adminops\Service\ReadOnlySshConnector
+
   plugin.manager.ai_adminops_tool:
     class: Drupal\ai_adminops\Plugin\AdminOpsTool\AdminOpsToolManager
     arguments:
@@ -77,4 +80,6 @@ services:
       - '@entity_type.manager'
       - '@state'
       - '@datetime.time'
+      - '@ai_adminops.read_only_ssh_connector'
+      - '@ai_adminops.execution_audit'
       - '@logger.channel.ai_adminops'

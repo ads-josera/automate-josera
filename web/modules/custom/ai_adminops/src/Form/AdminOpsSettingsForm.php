@@ -64,7 +64,7 @@ final class AdminOpsSettingsForm extends ConfigFormBase {
       '#type' => 'details',
       '#title' => $this->t('Monitoring'),
       '#open' => TRUE,
-      '#description' => $this->t('Schedule read-only monitoring work for active servers. Connector execution remains disabled until a future integration phase.'),
+      '#description' => $this->t('Schedule read-only monitoring work for active servers. A server is contacted only when its SSH profile is declared in settings.php; secrets are never stored in this form.'),
     ];
     $form['monitoring']['enabled'] = [
       '#type' => 'checkbox',

@@ -11,3 +11,31 @@ ai_adminops.settings:
   route_name: ai_adminops.settings
   parent: system.admin_config_system
   weight: 40
+
+ai_adminops.servers:
+  title: 'AdminOps servers'
+  description: 'Register and manage infrastructure targets without storing secrets.'
+  route_name: ai_adminops.servers
+  parent: system.admin_config_system
+  weight: 41
+
+ai_adminops.events:
+  title: 'AdminOps events'
+  description: 'Review active infrastructure events and their status.'
+  route_name: ai_adminops.events
+  parent: system.admin_reports
+  weight: 40
+
+ai_adminops.action_requests:
+  title: 'AdminOps action requests'
+  description: 'Review approvals for controlled administrative actions.'
+  route_name: ai_adminops.action_requests
+  parent: system.admin_reports
+  weight: 41
+
+ai_adminops.executions:
+  title: 'AdminOps audit log'
+  description: 'Review the auditable history of AdminOps tool activity.'
+  route_name: ai_adminops.executions
+  parent: system.admin_reports
+  weight: 42

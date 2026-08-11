@@ -14,3 +14,78 @@ ai_adminops.settings:
   requirements:
     _permission: 'administer ai adminops'
 
+ai_adminops.servers:
+  path: '/admin/config/system/ai-adminops/servers'
+  defaults:
+    _controller: '\Drupal\ai_adminops\Controller\AdminOpsConsoleController::servers'
+    _title: 'AdminOps servers'
+  requirements:
+    _permission: 'administer ai adminops'
+
+ai_adminops.server_add:
+  path: '/admin/config/system/ai-adminops/servers/add'
+  defaults:
+    _form: '\Drupal\ai_adminops\Form\AdminOpsServerForm'
+    _title: 'Add AdminOps server'
+  requirements:
+    _permission: 'administer ai adminops'
+
+ai_adminops.server_edit:
+  path: '/admin/config/system/ai-adminops/servers/{ai_adminops_server}/edit'
+  defaults:
+    _form: '\Drupal\ai_adminops\Form\AdminOpsServerForm'
+    _title: 'Edit AdminOps server'
+  requirements:
+    _permission: 'administer ai adminops'
+  options:
+    parameters:
+      ai_adminops_server:
+        type: entity:ai_adminops_server
+
+ai_adminops.events:
+  path: '/admin/reports/ai-adminops/events'
+  defaults:
+    _controller: '\Drupal\ai_adminops\Controller\AdminOpsConsoleController::events'
+    _title: 'AdminOps events'
+  requirements:
+    _permission: 'access ai adminops dashboard'
+
+ai_adminops.event_status:
+  path: '/admin/reports/ai-adminops/events/{ai_adminops_event}/status'
+  defaults:
+    _form: '\Drupal\ai_adminops\Form\AdminOpsEventStatusForm'
+    _title: 'Update event'
+  requirements:
+    _permission: 'administer ai adminops'
+  options:
+    parameters:
+      ai_adminops_event:
+        type: entity:ai_adminops_event
+
+ai_adminops.action_requests:
+  path: '/admin/reports/ai-adminops/action-requests'
+  defaults:
+    _controller: '\Drupal\ai_adminops\Controller\AdminOpsConsoleController::actionRequests'
+    _title: 'AdminOps action requests'
+  requirements:
+    _permission: 'access ai adminops dashboard'
+
+ai_adminops.action_request_status:
+  path: '/admin/reports/ai-adminops/action-requests/{ai_adminops_action_request}/review'
+  defaults:
+    _form: '\Drupal\ai_adminops\Form\AdminOpsActionRequestStatusForm'
+    _title: 'Review action request'
+  requirements:
+    _permission: 'administer ai adminops'
+  options:
+    parameters:
+      ai_adminops_action_request:
+        type: entity:ai_adminops_action_request
+
+ai_adminops.executions:
+  path: '/admin/reports/ai-adminops/executions'
+  defaults:
+    _controller: '\Drupal\ai_adminops\Controller\AdminOpsConsoleController::executions'
+    _title: 'AdminOps audit log'
+  requirements:
+    _permission: 'access ai adminops dashboard'

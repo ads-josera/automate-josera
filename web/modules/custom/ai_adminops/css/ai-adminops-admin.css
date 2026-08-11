@@ -1,12 +1,19 @@
-.ai-adminops-dashboard,
-.ai-adminops-settings-form {
-  max-width: 960px;
+.ai-adminops-dashboard {
+  max-width: 1180px;
 }
 
-.ai-adminops-dashboard {
+.ai-adminops-settings-form,
+.ai-adminops-server-form,
+.ai-adminops-review-form,
+.ai-adminops-console {
+  max-width: 1180px;
+}
+
+.ai-adminops-dashboard__intro,
+.ai-adminops-console__heading {
   border: 1px solid #d7deea;
   border-left: 4px solid #155eef;
-  padding: 28px;
+  padding: 24px;
   background: #ffffff;
 }
 
@@ -26,4 +33,151 @@
 .ai-adminops-dashboard p:last-child {
   margin-bottom: 0;
   color: #52627d;
+}
+
+.ai-adminops-dashboard__metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.ai-adminops-metric {
+  min-height: 118px;
+  border: 1px solid #d7deea;
+  border-top: 3px solid #12b76a;
+  padding: 16px;
+  background: #ffffff;
+}
+
+.ai-adminops-metric span,
+.ai-adminops-metric small {
+  display: block;
+  color: #52627d;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.ai-adminops-metric strong {
+  display: block;
+  margin: 10px 0 6px;
+  color: #182230;
+  font-size: 1.75rem;
+}
+
+.ai-adminops-dashboard__navigation {
+  margin-top: 18px;
+  border-top: 1px solid #d7deea;
+  padding-top: 14px;
+}
+
+.ai-adminops-dashboard__navigation h3,
+.ai-adminops-console__heading h2 {
+  margin: 0;
+  color: #182230;
+}
+
+.ai-adminops-dashboard__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ai-adminops-dashboard__links li {
+  margin: 0;
+}
+
+.ai-adminops-console__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 16px;
+}
+
+.ai-adminops-console__heading p {
+  max-width: 760px;
+  margin: 8px 0 0;
+  color: #52627d;
+}
+
+.ai-adminops-table {
+  width: 100%;
+  border: 1px solid #d7deea;
+  background: #ffffff;
+}
+
+.ai-adminops-table th {
+  color: #475467;
+  font-size: 0.8125rem;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.ai-adminops-table td,
+.ai-adminops-table th {
+  padding: 14px 16px;
+  vertical-align: top;
+}
+
+.ai-adminops-table__secondary {
+  margin-top: 4px;
+  color: #667085;
+  font-size: 0.8125rem;
+}
+
+.ai-adminops-badge {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: #eef2f6;
+  color: #475467;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.ai-adminops-badge--severity-critical,
+.ai-adminops-badge--status-failed,
+.ai-adminops-badge--status-offline {
+  background: #fee4e2;
+  color: #b42318;
+}
+
+.ai-adminops-badge--severity-warning,
+.ai-adminops-badge--risk-critical,
+.ai-adminops-badge--status-pending,
+.ai-adminops-badge--status-degraded {
+  background: #fef0c7;
+  color: #b54708;
+}
+
+.ai-adminops-badge--severity-info,
+.ai-adminops-badge--status-acknowledged,
+.ai-adminops-badge--status-running {
+  background: #e0eaff;
+  color: #175cd3;
+}
+
+.ai-adminops-badge--good,
+.ai-adminops-badge--status-healthy,
+.ai-adminops-badge--status-succeeded,
+.ai-adminops-badge--status-resolved,
+.ai-adminops-badge--status-approved {
+  background: #d1fadf;
+  color: #067647;
+}
+
+@media (max-width: 720px) {
+  .ai-adminops-dashboard__metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-adminops-console__heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }

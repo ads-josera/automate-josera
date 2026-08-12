@@ -254,8 +254,10 @@ final class AdminOpsConsoleController extends ControllerBase {
    * Builds a server reference cell for a content entity.
    */
   private function serverReferenceCell(ContentEntityInterface $entity): array {
-    $server_id = (int) $entity->get('server')->target_id;
-    $server = $server_id > 0
+    // Server configuration entities use a string machine name such as
+    // "whm_produccion", so never cast the reference to an integer.
+    $server_id = trim((string) $entity->get('server')->target_id);
+    $server = $server_id !== ''
       ? $this->adminOpsEntityTypeManager->getStorage('ai_adminops_server')->load($server_id)
       : NULL;
     if ($server === NULL) {

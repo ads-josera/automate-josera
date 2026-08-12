@@ -52,7 +52,7 @@ final class AdminOpsConsoleController extends ControllerBase {
       $active = (bool) $server->get('active');
       $rows[] = [
         'data' => [
-          $this->serverCell($server),
+          ['data' => $this->serverCell($server)],
           ['data' => ['#markup' => $this->badge((string) $server->get('server_status'), 'status')]],
           ['data' => ['#plain_text' => $this->connectionLabel((string) $server->get('connection_type'))]],
           ['data' => ['#plain_text' => (string) $server->get('provider') ?: '-']],
@@ -92,7 +92,7 @@ final class AdminOpsConsoleController extends ControllerBase {
     foreach ($storage->loadMultiple($ids) as $event) {
       $rows[] = [
         'data' => [
-          $this->serverReferenceCell($event),
+          ['data' => $this->serverReferenceCell($event)],
           ['data' => ['#markup' => $this->badge((string) $event->get('severity')->value, 'severity')]],
           ['data' => ['#markup' => '<strong>' . $this->escape((string) $event->label()) . '</strong><div class="ai-adminops-table__secondary">' . $this->escape((string) $event->get('event_type')->value) . '</div>']],
           ['data' => ['#markup' => $this->badge((string) $event->get('status')->value, 'status')]],
@@ -128,7 +128,7 @@ final class AdminOpsConsoleController extends ControllerBase {
       $status = (string) $request->get('status')->value;
       $rows[] = [
         'data' => [
-          $this->serverReferenceCell($request),
+          ['data' => $this->serverReferenceCell($request)],
           ['data' => ['#markup' => '<strong>' . $this->escape((string) $request->label()) . '</strong><div class="ai-adminops-table__secondary">' . $this->escape((string) $request->get('tool_id')->value) . '</div>']],
           ['data' => ['#markup' => $this->badge((string) $request->get('risk')->value, 'risk')]],
           ['data' => ['#markup' => $this->badge($status, 'status')]],
@@ -170,7 +170,7 @@ final class AdminOpsConsoleController extends ControllerBase {
     foreach ($storage->loadMultiple($ids) as $execution) {
       $rows[] = [
         'data' => [
-          $this->serverReferenceCell($execution),
+          ['data' => $this->serverReferenceCell($execution)],
           ['data' => ['#markup' => '<strong>' . $this->escape((string) $execution->get('tool_label')->value) . '</strong><div class="ai-adminops-table__secondary">' . $this->escape((string) $execution->get('tool_id')->value) . '</div>']],
           ['data' => ['#markup' => $this->badge((string) $execution->get('risk')->value, 'risk')]],
           ['data' => ['#markup' => $this->badge((string) $execution->get('status')->value, 'status')]],

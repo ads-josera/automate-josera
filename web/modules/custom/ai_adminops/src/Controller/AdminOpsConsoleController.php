@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\ai_adminops\Controller;
 
 use Drupal\Core\Controller\ControllerBase;
+use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
@@ -24,6 +25,7 @@ final class AdminOpsConsoleController extends ControllerBase {
   public function __construct(
     private readonly EntityTypeManagerInterface $adminOpsEntityTypeManager,
     private readonly DateFormatterInterface $dateFormatter,
+    private readonly ConfigFactoryInterface $adminOpsConfigFactory,
   ) {}
 
   /**
@@ -33,6 +35,7 @@ final class AdminOpsConsoleController extends ControllerBase {
     return new self(
       $container->get('entity_type.manager'),
       $container->get('date.formatter'),
+      $container->get('config.factory'),
     );
   }
 
@@ -156,7 +159,12 @@ final class AdminOpsConsoleController extends ControllerBase {
    */
   public function executions(): array {
     $storage = $this->adminOpsEntityTypeManager->getStorage('ai_adminops_tool_execution');
-    $ids = $storage->getQuery()->accessCheck(FALSE)->sort('created', 'DESC')->range(0, 100)->execute();
+    $ids = $storage->getQuery()
+      ->accessCheck(FALSE)
+      ->sort('created', 'DESC')
+      ->sort('id', 'DESC')
+      ->range(0, 100)
+      ->execute();
     $rows = [];
 
     foreach ($storage->loadMultiple($ids) as $execution) {
@@ -172,14 +180,14 @@ final class AdminOpsConsoleController extends ControllerBase {
     }
 
     return $this->consolePage(
-      $this->t('Audit log'),
-      $this->t('A sanitized record of every AdminOps tool request. This initial console does not expose connector credentials or raw command output.'),
+      $this->t('Bitácora de actividad'),
+      $this->t('La actividad más reciente aparece primero. Este registro seguro no expone credenciales del conector ni la salida de comandos.'),
       NULL,
       [
         '#theme' => 'table',
-        '#header' => [$this->t('Server'), $this->t('Tool'), $this->t('Risk'), $this->t('Result'), $this->t('Recorded')],
+        '#header' => [$this->t('Servidor'), $this->t('Verificación'), $this->t('Acceso'), $this->t('Resultado'), $this->t('Registrado')],
         '#rows' => $rows,
-        '#empty' => $this->t('No tool activity has been recorded.'),
+        '#empty' => $this->t('Aún no se ha registrado actividad de monitoreo.'),
         '#attributes' => ['class' => ['ai-adminops-table']],
       ],
     );
@@ -222,9 +230,12 @@ final class AdminOpsConsoleController extends ControllerBase {
    * Builds a server reference cell for a content entity.
    */
   private function serverReferenceCell(ContentEntityInterface $entity): array {
-    $server = $entity->get('server')->entity;
+    $server_id = (int) $entity->get('server')->target_id;
+    $server = $server_id > 0
+      ? $this->adminOpsEntityTypeManager->getStorage('ai_adminops_server')->load($server_id)
+      : NULL;
     if ($server === NULL) {
-      return ['#plain_text' => $this->t('Unknown server')];
+      return ['#plain_text' => $this->t('Servidor no disponible')];
     }
     return $this->serverCell($server);
   }
@@ -254,7 +265,12 @@ final class AdminOpsConsoleController extends ControllerBase {
    * Formats a timestamp consistently for the administrative UI.
    */
   private function formatTimestamp(int $timestamp): string {
-    return $timestamp > 0 ? $this->dateFormatter->format($timestamp, 'custom', 'd M Y - H:i') : '-';
+    if ($timestamp <= 0) {
+      return '-';
+    }
+
+    $timezone = (string) $this->adminOpsConfigFactory->get('system.date')->get('timezone.default');
+    return $this->dateFormatter->format($timestamp, 'custom', 'd M Y - H:i', $timezone ?: NULL);
   }
 
   /**

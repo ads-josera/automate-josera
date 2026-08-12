@@ -6,7 +6,6 @@ namespace Drupal\ai_adminops\Controller;
 
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Drupal\Core\Link;
 use Drupal\Core\Url;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -51,33 +50,31 @@ final class AdminOpsDashboardController extends ControllerBase {
           '#markup' => '<p class="ai-adminops-dashboard__eyebrow">ADMINISTRACION DE INFRAESTRUCTURA</p>',
         ],
         'title' => [
-          '#markup' => '<h2>AI AdminOps console</h2>',
+          '#markup' => '<h2>' . $this->t('Consola AI AdminOps') . '</h2>',
         ],
         'description' => [
-          '#markup' => '<p>Organize servers, operational events, approval requests, and audit activity from one controlled workspace. Server registration does not create a remote connection.</p>',
+          '#markup' => '<p>' . $this->t('Administra servidores, alertas, aprobaciones y actividad de auditoria desde un solo espacio de trabajo controlado.') . '</p>',
         ],
       ],
       'metrics' => [
         '#type' => 'container',
         '#attributes' => ['class' => ['ai-adminops-dashboard__metrics']],
-        'servers' => $this->metric((string) $this->t('Servers'), $server_total, (string) $this->t('@active active', ['@active' => $active_servers])),
-        'events' => $this->metric((string) $this->t('Open events'), $open_events, (string) $this->t('Needs review')),
-        'requests' => $this->metric((string) $this->t('Pending approvals'), $pending_requests, (string) $this->t('No remote execution')),
+        'servers' => $this->metric((string) $this->t('Servidores'), $server_total, (string) $this->t('@active activos', ['@active' => $active_servers])),
+        'events' => $this->metric((string) $this->t('Alertas abiertas'), $open_events, (string) $this->t('Requieren revision')),
+        'requests' => $this->metric((string) $this->t('Aprobaciones pendientes'), $pending_requests, (string) $this->t('Sin ejecucion remota')),
       ],
       'navigation' => [
         '#type' => 'container',
         '#attributes' => ['class' => ['ai-adminops-dashboard__navigation']],
-        'title' => ['#markup' => '<h3>' . $this->t('Console') . '</h3>'],
+        'title' => ['#markup' => '<h3>' . $this->t('Acciones de consola') . '</h3>'],
         'links' => [
-          '#theme' => 'item_list',
-          '#items' => [
-            Link::fromTextAndUrl($this->t('Manage servers'), Url::fromRoute('ai_adminops.servers')),
-            Link::fromTextAndUrl($this->t('Review events'), Url::fromRoute('ai_adminops.events')),
-            Link::fromTextAndUrl($this->t('Review approvals'), Url::fromRoute('ai_adminops.action_requests')),
-            Link::fromTextAndUrl($this->t('View audit log'), Url::fromRoute('ai_adminops.executions')),
-            Link::fromTextAndUrl($this->t('Open settings'), Url::fromRoute('ai_adminops.settings')),
-          ],
+          '#type' => 'container',
           '#attributes' => ['class' => ['ai-adminops-dashboard__links']],
+          'servers' => $this->actionLink((string) $this->t('Servidores'), (string) $this->t('Gestionar conexiones y monitoreo'), 'ai_adminops.servers'),
+          'events' => $this->actionLink((string) $this->t('Alertas'), (string) $this->t('Revisar eventos operativos'), 'ai_adminops.events'),
+          'approvals' => $this->actionLink((string) $this->t('Aprobaciones'), (string) $this->t('Consultar solicitudes pendientes'), 'ai_adminops.action_requests'),
+          'audit' => $this->actionLink((string) $this->t('Bitacora'), (string) $this->t('Ver actividad de monitoreo'), 'ai_adminops.executions'),
+          'settings' => $this->actionLink((string) $this->t('Configuracion'), (string) $this->t('Ajustar alertas y monitoreo'), 'ai_adminops.settings'),
         ],
       ],
     ];
@@ -93,6 +90,25 @@ final class AdminOpsDashboardController extends ControllerBase {
       'label' => ['#markup' => '<span>' . $label . '</span>'],
       'value' => ['#markup' => '<strong>' . $value . '</strong>'],
       'detail' => ['#markup' => '<small>' . $detail . '</small>'],
+    ];
+  }
+
+  /**
+   * Builds one dashboard navigation action.
+   */
+  private function actionLink(string $label, string $detail, string $route_name): array {
+    return [
+      '#type' => 'container',
+      '#attributes' => ['class' => ['ai-adminops-dashboard__action']],
+      'link' => [
+        '#type' => 'link',
+        '#title' => $label,
+        '#url' => Url::fromRoute($route_name),
+        '#attributes' => ['class' => ['ai-adminops-dashboard__action-link']],
+      ],
+      'detail' => [
+        '#markup' => '<span>' . $detail . '</span>',
+      ],
     ];
   }
 

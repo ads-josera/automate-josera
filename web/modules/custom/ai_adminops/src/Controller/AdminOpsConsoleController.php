@@ -221,9 +221,33 @@ final class AdminOpsConsoleController extends ControllerBase {
    * Builds a server link cell.
    */
   private function serverCell(object $server): array {
+    $hostname = trim((string) $server->get('hostname'));
+    $port = (int) $server->get('port');
+    $endpoint = $hostname !== ''
+      ? $hostname . ($port > 0 ? ':' . $port : '')
+      : (string) $this->t('Host not configured');
+
     return [
-      '#markup' => '<strong>' . Link::fromTextAndUrl($server->label(), Url::fromRoute('ai_adminops.server_edit', ['ai_adminops_server' => $server->id()]))->toString() . '</strong><div class="ai-adminops-table__secondary">' . $this->escape((string) $server->get('hostname')) . ':' . (int) $server->get('port') . '</div>',
+      '#markup' => '<strong>' . Link::fromTextAndUrl($this->serverDisplayLabel($server), Url::fromRoute('ai_adminops.server_edit', ['ai_adminops_server' => $server->id()]))->toString() . '</strong><div class="ai-adminops-table__secondary">' . $this->escape($endpoint) . '</div>',
     ];
+  }
+
+  /**
+   * Returns a visible server name even for legacy records without a label.
+   */
+  private function serverDisplayLabel(object $server): string {
+    $label = trim((string) $server->label());
+    if ($label !== '') {
+      return $label;
+    }
+
+    $id = trim((string) $server->id());
+    if ($id !== '') {
+      return ucwords(str_replace(['_', '-'], ' ', $id));
+    }
+
+    $hostname = trim((string) $server->get('hostname'));
+    return $hostname !== '' ? $hostname : (string) $this->t('Unnamed server');
   }
 
   /**

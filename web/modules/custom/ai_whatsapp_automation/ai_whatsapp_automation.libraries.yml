@@ -71,3 +71,8 @@ web_chat:
   dependencies:
     - core/drupal
     - core/drupalSettings
+
+responsive_tables:
+  css:
+    theme:
+      css/responsive-tables.css: {}

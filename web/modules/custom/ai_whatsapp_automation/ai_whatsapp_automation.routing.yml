@@ -130,6 +130,7 @@ ai_whatsapp_automation.conversation_manual_reply:
     _title: 'Manual reply'
   requirements:
     _permission: 'administer ai whatsapp automation entities'
+    _custom_access: '\Drupal\ai_whatsapp_automation\Form\ManualReplyForm::access'
   options:
     parameters:
       ai_whatsapp_conversation:

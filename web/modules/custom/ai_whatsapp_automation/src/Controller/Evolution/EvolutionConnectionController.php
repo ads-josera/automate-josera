@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\ai_whatsapp_automation\Controller\Evolution;
 
+use Drupal\ai_whatsapp_automation\Ui\ResponsiveTable;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Link;
@@ -85,6 +86,7 @@ final class EvolutionConnectionController extends ControllerBase {
       '#rows' => $rows,
       '#empty' => $this->t('No Evolution API WhatsApp accounts were found.'),
     ];
+    $build['accounts'] = ResponsiveTable::wrap($build['accounts']);
 
     return $build;
   }

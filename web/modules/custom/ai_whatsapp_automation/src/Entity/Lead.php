@@ -78,7 +78,10 @@ final class Lead extends ContentEntityBase {
         'type' => 'string_textfield',
         'weight' => 0,
       ])
+      // The name is the page title; a visible label would be rendered inside
+      // the title ("Name Mariana López").
       ->setDisplayOptions('view', [
+        'label' => 'hidden',
         'type' => 'string',
         'weight' => 0,
       ])
@@ -161,6 +164,30 @@ final class Lead extends ContentEntityBase {
       ->setDisplayOptions('view', [
         'type' => 'string',
         'weight' => 50,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['conversation'] = BaseFieldDefinition::create('entity_reference')
+      ->setLabel(t('Conversation'))
+      ->setDescription(t('Conversation that generated the lead.'))
+      ->setSetting('target_type', 'ai_whatsapp_conversation')
+      ->setSetting('handler', 'default')
+      ->setDisplayOptions('view', [
+        'type' => 'entity_reference_label',
+        'weight' => 55,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['bot'] = BaseFieldDefinition::create('entity_reference')
+      ->setLabel(t('Bot'))
+      ->setDescription(t('Bot that handled the conversation when the lead was created.'))
+      ->setSetting('target_type', 'ai_whatsapp_bot')
+      ->setSetting('handler', 'default')
+      ->setDisplayOptions('view', [
+        'type' => 'entity_reference_label',
+        'weight' => 56,
       ])
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);

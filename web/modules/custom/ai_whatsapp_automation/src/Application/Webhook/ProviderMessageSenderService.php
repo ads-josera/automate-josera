@@ -37,6 +37,7 @@ final class ProviderMessageSenderService {
     private readonly EntityTypeManagerInterface $entityTypeManager,
     LoggerChannelFactoryInterface $loggerFactory,
     private readonly QRProvider $qrProvider,
+    private readonly WhatsAppTextFormatter $textFormatter,
   ) {
     $this->logger = $loggerFactory->get('ai_whatsapp_automation');
   }
@@ -55,6 +56,8 @@ final class ProviderMessageSenderService {
     if ($text === '') {
       return ['status' => 'skipped_empty_response'];
     }
+    // Every provider below is WhatsApp, which does not render Markdown.
+    $text = $this->textFormatter->format($text);
 
     return match ($provider) {
       'twilio' => $this->sendTwilio($message, $text),

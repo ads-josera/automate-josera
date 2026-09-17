@@ -1,0 +1,16 @@
+/**
+ * Admin tables scroll inside their container instead of widening the page.
+ */
+.aiwa-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.aiwa-table-scroll > table {
+  margin-block: 0;
+}
+
+.aiwa-table-scroll th {
+  white-space: nowrap;
+}

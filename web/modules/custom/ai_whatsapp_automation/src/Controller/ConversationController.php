@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\ai_whatsapp_automation\Controller;
 
+use Drupal\ai_whatsapp_automation\Application\HumanOperator\HumanOperatorService;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\Entity\ContentEntityInterface;
@@ -25,6 +26,7 @@ final class ConversationController extends ControllerBase {
   public function __construct(
     private readonly EntityTypeManagerInterface $entityManager,
     private readonly DateFormatterInterface $dateFormatter,
+    private readonly HumanOperatorService $humanOperator,
   ) {
   }
 
@@ -35,6 +37,7 @@ final class ConversationController extends ControllerBase {
     return new static(
       $container->get('entity_type.manager'),
       $container->get('date.formatter'),
+      $container->get('ai_whatsapp_automation.human_operator'),
     );
   }
 
@@ -74,6 +77,9 @@ final class ConversationController extends ControllerBase {
         '#type' => 'container',
         '#attributes' => ['class' => ['aiwa-conversation-detail__actions']],
       ] + $this->actionLinks($conversation, $status),
+      'channel_note' => $this->humanOperator->supportsManualReply($conversation) ? [] : [
+        '#markup' => '<p class="aiwa-conversation-detail__note">' . $this->t('El chat web no permite responder manualmente: el visitante solo recibe las respuestas de la IA mientras tiene el chat abierto. Si dejó su teléfono, contáctalo por WhatsApp.') . '</p>',
+      ],
       'history' => [
         '#type' => 'container',
         '#attributes' => ['class' => ['aiwa-conversation-detail__history']],
@@ -116,7 +122,10 @@ final class ConversationController extends ControllerBase {
     $items = [];
     foreach ($messages as $message) {
       $sender = $this->fieldValue($message, 'sender');
-      $content = nl2br(htmlspecialchars($this->fieldValue($message, 'content'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
+      $content = htmlspecialchars($this->fieldValue($message, 'content'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+      // Assistants write **bold** Markdown; render it like the web widget does
+      // instead of showing the raw asterisks. The text is already escaped.
+      $content = nl2br(preg_replace('/\*\*([^*\n]+)\*\*/u', '<strong>$1</strong>', $content) ?? $content);
       $items[] = [
         '#markup' => '<article class="aiwa-conversation-detail__message aiwa-conversation-detail__message--' . $this->statusClass($sender) . '"><div class="aiwa-conversation-detail__message-meta">' . $this->senderLabel($sender) . ' · ' . $this->dateFormatter->format((int) $this->fieldValue($message, 'created'), 'short') . '</div><div class="aiwa-conversation-detail__message-body">' . $content . '</div></article>',
       ];
@@ -130,10 +139,11 @@ final class ConversationController extends ControllerBase {
    */
   private function actionLinks(ContentEntityInterface $conversation, string $status): array {
     $params = ['ai_whatsapp_conversation' => $conversation->id()];
-    $links = [
-      'reply' => $this->actionLink($this->t('Responder'), 'ai_whatsapp_automation.conversation_manual_reply', $params, TRUE),
-      'assign' => $this->actionLink($this->t('Asignar operador'), 'ai_whatsapp_automation.conversation_assign_operator', $params),
-    ];
+    $links = [];
+    if ($this->humanOperator->supportsManualReply($conversation)) {
+      $links['reply'] = $this->actionLink($this->t('Responder'), 'ai_whatsapp_automation.conversation_manual_reply', $params, TRUE);
+    }
+    $links['assign'] = $this->actionLink($this->t('Asignar operador'), 'ai_whatsapp_automation.conversation_assign_operator', $params);
     if ($status === 'AI_ACTIVE') {
       $links['stop'] = $this->actionLink($this->t('Pausar IA'), 'ai_whatsapp_automation.conversation_stop_ai', $params);
     }

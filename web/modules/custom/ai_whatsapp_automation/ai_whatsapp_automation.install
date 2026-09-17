@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use Drupal\ai_whatsapp_automation\Application\Lead\LeadContactExtractor;
+use Drupal\ai_whatsapp_automation\Application\Lead\LeadHandoffService;
+
 /**
  * Implements hook_requirements().
  */
@@ -727,6 +730,114 @@ function ai_whatsapp_automation_update_11028(): void {
   if ($config->get('options.enable_immediate_webhook_processing') === NULL) {
     $config->set('options.enable_immediate_webhook_processing', FALSE)->save();
   }
+}
+
+/**
+ * Stores the source conversation and bot on each lead.
+ *
+ * Existing leads are linked through their LEAD_HANDOFF audit record. Leads
+ * without one are left unlinked on purpose: guessing by phone number used to
+ * attribute leads to the wrong bot when a contact talked to several.
+ */
+function ai_whatsapp_automation_update_11029(): string {
+  $definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+  $fields = \Drupal::service('entity_field.manager')->getFieldStorageDefinitions('ai_whatsapp_lead');
+  foreach (['conversation', 'bot'] as $field_name) {
+    if ($definition_update_manager->getFieldStorageDefinition($field_name, 'ai_whatsapp_lead') === NULL && isset($fields[$field_name])) {
+      $definition_update_manager->installFieldStorageDefinition($field_name, 'ai_whatsapp_lead', 'ai_whatsapp_automation', $fields[$field_name]);
+    }
+  }
+
+  $entity_type_manager = \Drupal::entityTypeManager();
+  $lead_storage = $entity_type_manager->getStorage('ai_whatsapp_lead');
+  $action_storage = $entity_type_manager->getStorage('ai_whatsapp_operator_action');
+  $action_ids = $action_storage->getQuery()
+    ->accessCheck(FALSE)
+    ->condition('action', 'LEAD_HANDOFF')
+    ->sort('created', 'ASC')
+    ->execute();
+
+  $linked = 0;
+  foreach ($action_storage->loadMultiple($action_ids) as $action) {
+    if (!preg_match('/\bLead ID:\s*(\d+)\b/i', (string) $action->get('note')->value, $matches)) {
+      continue;
+    }
+    $lead = $lead_storage->load((int) $matches[1]);
+    $conversation = $action->get('conversation')->entity;
+    if ($lead === NULL || $conversation === NULL || !$lead->get('conversation')->isEmpty()) {
+      continue;
+    }
+
+    $bot_id = $conversation->get('bot')->target_id;
+    if ($bot_id === NULL && ($account = $conversation->get('whatsapp_account')->entity) !== NULL) {
+      $bot_id = $account->get('bot')->target_id;
+    }
+    $lead->set('conversation', $conversation->id());
+    $lead->set('bot', $bot_id);
+    $lead->save();
+    $linked++;
+  }
+
+  $total = (int) $lead_storage->getQuery()->accessCheck(FALSE)->count()->execute();
+
+  return (string) t('Linked @linked of @total leads to their conversation and bot.', [
+    '@linked' => $linked,
+    '@total' => $total,
+  ]);
+}
+
+/**
+ * Repairs lead names and phones stored by the legacy extractor.
+ *
+ * Only values with the legacy bug signature are touched: a field label stored
+ * as the name (e.g. "📧 Correo electrónico") or a local ten-digit number
+ * stored with a bare "+" (e.g. "+5512309140", which reads as Brazil). Values
+ * are re-extracted from the linked conversation; anything else is left as is.
+ */
+function ai_whatsapp_automation_update_11030(): string {
+  $entity_type_manager = \Drupal::entityTypeManager();
+  $extractor = new LeadContactExtractor();
+  $label_words = ['nombre', 'contacto', 'correo', 'correo electrónico', 'correo electronico', 'email', 'e-mail', 'teléfono', 'telefono', 'celular', 'whatsapp'];
+  $repaired = 0;
+
+  foreach ($entity_type_manager->getStorage('ai_whatsapp_lead')->loadMultiple() as $lead) {
+    $conversation = $lead->get('conversation')->entity;
+    if ($conversation === NULL) {
+      continue;
+    }
+
+    $name = (string) $lead->get('name')->value;
+    $normalized_name = mb_strtolower(trim(preg_replace('/^[^\p{L}\p{N}]+/u', '', $name) ?? ''));
+    $bad_name = in_array($normalized_name, $label_words, TRUE);
+    $phone = (string) $lead->get('phone')->value;
+    $bad_phone = (bool) preg_match('/^\+\d{10}$/', $phone);
+    if (!$bad_name && !$bad_phone) {
+      continue;
+    }
+
+    $message_ids = $entity_type_manager->getStorage('ai_whatsapp_message')->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('conversation', $conversation->id())
+      ->condition('created', (int) $lead->get('created')->value, '<=')
+      ->sort('id', 'ASC')
+      ->execute();
+    $lines = [];
+    foreach ($entity_type_manager->getStorage('ai_whatsapp_message')->loadMultiple($message_ids) as $message) {
+      $lines[] = $message->get('sender')->value . ': ' . $message->get('content')->value;
+    }
+    $transcript = implode("\n", $lines);
+
+    if ($bad_name) {
+      $lead->set('name', $extractor->extractName($transcript) ?: LeadHandoffService::UNKNOWN_CONTACT_NAME);
+    }
+    if ($bad_phone) {
+      $lead->set('phone', $extractor->extractPhone(substr($phone, 1)) ?: $phone);
+    }
+    $lead->save();
+    $repaired++;
+  }
+
+  return (string) t('Repaired @count leads stored by the legacy extractor.', ['@count' => $repaired]);
 }
 
 /**

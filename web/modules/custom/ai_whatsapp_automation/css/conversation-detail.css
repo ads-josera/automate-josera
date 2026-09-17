@@ -66,6 +66,13 @@
   font-size: 0.88rem;
 }
 
+.aiwa-conversation-detail__note {
+  max-width: 900px;
+  margin: -6px 0 18px;
+  color: #475467;
+  font-size: 0.88rem;
+}
+
 .aiwa-conversation-detail__history {
   max-width: 900px;
   padding: 24px;

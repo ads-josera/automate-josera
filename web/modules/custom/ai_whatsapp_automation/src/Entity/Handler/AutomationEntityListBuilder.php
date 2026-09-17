@@ -6,6 +6,7 @@ namespace Drupal\ai_whatsapp_automation\Entity\Handler;
 
 use Drupal\ai_whatsapp_automation\Form\MessageListFilterForm;
 use Drupal\ai_whatsapp_automation\Form\ConversationListFilterForm;
+use Drupal\ai_whatsapp_automation\Ui\ResponsiveTable;
 use Drupal\Component\Utility\Html;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityListBuilder;
@@ -94,8 +95,9 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
     }
 
     $row['label'] = $entity->toLink();
-    $row['status'] = $this->getFieldValue($entity, 'status');
-    $row['changed'] = $this->getFieldValue($entity, 'changed');
+    $row['status'] = $this->allowedValueLabel($entity, 'status');
+    $changed = (int) $this->getFieldValue($entity, 'changed');
+    $row['changed'] = $changed > 0 ? \Drupal::service('date.formatter')->format($changed, 'short') : '';
 
     return $row + parent::buildRow($entity);
   }
@@ -105,8 +107,9 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
    */
   public function render(): array {
     $build = parent::render();
+    $build['table'] = ResponsiveTable::wrap($build['table']);
     if ($this->entityTypeId === 'ai_whatsapp_message') {
-      $build['table']['#attributes']['class'][] = 'aiwa-message-list';
+      $build['table']['table']['#attributes']['class'][] = 'aiwa-message-list';
       return [
         '#attached' => [
           'library' => ['ai_whatsapp_automation/message_list'],
@@ -116,7 +119,7 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
       ];
     }
     if ($this->entityTypeId === 'ai_whatsapp_conversation') {
-      $build['table']['#attributes']['class'][] = 'aiwa-conversation-list';
+      $build['table']['table']['#attributes']['class'][] = 'aiwa-conversation-list';
       return [
         '#attached' => [
           'library' => ['ai_whatsapp_automation/conversation_list'],
@@ -126,7 +129,7 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
       ];
     }
     if ($this->entityTypeId === 'ai_whatsapp_lead') {
-      $build['table']['#attributes']['class'][] = 'aiwa-lead-list';
+      $build['table']['table']['#attributes']['class'][] = 'aiwa-lead-list';
       return [
         '#attached' => [
           'library' => ['ai_whatsapp_automation/lead_list'],
@@ -135,7 +138,7 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
       ];
     }
     if ($this->entityTypeId === 'ai_whatsapp_operator_action') {
-      $build['table']['#attributes']['class'][] = 'aiwa-operator-action-list';
+      $build['table']['table']['#attributes']['class'][] = 'aiwa-operator-action-list';
       return [
         '#attached' => [
           'library' => ['ai_whatsapp_automation/operator_action_list'],
@@ -144,7 +147,7 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
       ];
     }
     if ($this->entityTypeId === 'ai_whatsapp_knowledge_chunk') {
-      $build['table']['#attributes']['class'][] = 'aiwa-knowledge-chunk-list';
+      $build['table']['table']['#attributes']['class'][] = 'aiwa-knowledge-chunk-list';
       return [
         '#attached' => [
           'library' => ['ai_whatsapp_automation/knowledge_chunk_list'],
@@ -339,11 +342,13 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
       'weight' => 21,
       'url' => Url::fromRoute('ai_whatsapp_automation.conversation_assign_operator', $route_params),
     ];
-    $operations['manual_reply'] = [
-      'title' => $this->t('Manual reply'),
-      'weight' => 22,
-      'url' => Url::fromRoute('ai_whatsapp_automation.conversation_manual_reply', $route_params),
-    ];
+    if (\Drupal::service('ai_whatsapp_automation.human_operator')->supportsManualReply($entity)) {
+      $operations['manual_reply'] = [
+        'title' => $this->t('Manual reply'),
+        'weight' => 22,
+        'url' => Url::fromRoute('ai_whatsapp_automation.conversation_manual_reply', $route_params),
+      ];
+    }
     $operations['reactivate_ai'] = [
       'title' => $this->t('Reactivate AI'),
       'weight' => 23,
@@ -356,6 +361,16 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
     ];
 
     return $operations;
+  }
+
+  /**
+   * Returns the human label of a list field value, or the raw value.
+   */
+  private function allowedValueLabel(EntityInterface $entity, string $field_name): string {
+    $value = $this->getFieldValue($entity, $field_name);
+    $allowed = $entity->get($field_name)->getFieldDefinition()->getSetting('allowed_values');
+
+    return is_array($allowed) && isset($allowed[$value]) ? (string) $allowed[$value] : $value;
   }
 
   /**
@@ -386,7 +401,9 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
       : NULL;
     $channel = $conversation instanceof EntityInterface ? $this->getFieldValue($conversation, 'channel') : '';
     $provider = $conversation instanceof EntityInterface ? $this->getFieldValue($conversation, 'provider') : '';
-    $preview = preg_replace('/\s+/u', ' ', $this->getFieldValue($entity, 'content')) ?? '';
+    // Previews are plain text: drop Markdown emphasis instead of showing it.
+    $preview = str_replace(['**', '__'], '', $this->getFieldValue($entity, 'content'));
+    $preview = preg_replace('/\s+/u', ' ', $preview) ?? '';
     $preview = mb_strimwidth($preview, 0, 180, '...');
     $sender = $this->getFieldValue($entity, 'sender');
     $sender_labels = [
@@ -499,7 +516,9 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
     $name = $this->leadContactName($this->getFieldValue($entity, 'name'), $email, $phone);
     $source = $this->getFieldValue($entity, 'source');
     $conversation = $this->getLeadConversation($entity);
-    $bot = $conversation instanceof EntityInterface ? $this->getConversationBot($conversation) : NULL;
+    $bot = $entity->hasField('bot') && $entity->get('bot')->entity instanceof EntityInterface
+      ? $entity->get('bot')->entity
+      : ($conversation instanceof EntityInterface ? $this->getConversationBot($conversation) : NULL);
     $account = $conversation instanceof EntityInterface && $conversation->hasField('whatsapp_account')
       ? $conversation->get('whatsapp_account')->entity
       : NULL;
@@ -558,6 +577,16 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
    * Returns the conversation that generated a lead when it is available.
    */
   private function getLeadConversation(EntityInterface $lead): ?EntityInterface {
+    if ($lead->hasField('conversation') && !$lead->get('conversation')->isEmpty()) {
+      $conversation = $lead->get('conversation')->entity;
+      if ($conversation instanceof EntityInterface) {
+        return $conversation;
+      }
+    }
+
+    // Leads created before update 11029 may only be linked by their audit
+    // record. There is deliberately no phone-number fallback: the same phone
+    // can talk to several bots, so it attributed leads to the wrong one.
     $action_ids = \Drupal::entityTypeManager()
       ->getStorage('ai_whatsapp_operator_action')
       ->getQuery()
@@ -580,24 +609,7 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
       }
     }
 
-    $phone = $this->getFieldValue($lead, 'phone');
-    if ($phone === '') {
-      return NULL;
-    }
-
-    $conversation_ids = \Drupal::entityTypeManager()
-      ->getStorage('ai_whatsapp_conversation')
-      ->getQuery()
-      ->accessCheck(TRUE)
-      ->condition('phone', $phone)
-      ->sort('changed', 'DESC')
-      ->range(0, 1)
-      ->execute();
-    $conversation = $conversation_ids !== []
-      ? \Drupal::entityTypeManager()->getStorage('ai_whatsapp_conversation')->load(reset($conversation_ids))
-      : NULL;
-
-    return $conversation instanceof EntityInterface ? $conversation : NULL;
+    return NULL;
   }
 
   /**

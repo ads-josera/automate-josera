@@ -17,6 +17,11 @@ use Psr\Log\LoggerInterface;
 final class LeadHandoffService {
 
   /**
+   * Stored when the chat did not provide a usable contact name.
+   */
+  public const UNKNOWN_CONTACT_NAME = 'Nombre no capturado';
+
+  /**
    * The logger channel.
    */
   private readonly LoggerInterface $logger;
@@ -29,6 +34,7 @@ final class LeadHandoffService {
     private readonly ConfigFactoryInterface $configFactory,
     private readonly ProviderMessageSenderService $messageSender,
     LoggerChannelFactoryInterface $loggerFactory,
+    private readonly LeadContactExtractor $contactExtractor,
   ) {
     $this->logger = $loggerFactory->get('ai_whatsapp_automation');
   }
@@ -58,7 +64,7 @@ final class LeadHandoffService {
       return ['status' => 'already_notified'];
     }
 
-    $lead = $this->createLead($conversation, $ai_response);
+    $lead = $this->createLead($conversation, $ai_response, $bot);
     $conversation->set('status', 'HUMAN_ASSIGNED');
     $conversation->save();
     $this->auditHandoff($conversation, $lead);
@@ -344,14 +350,18 @@ final class LeadHandoffService {
   /**
    * Creates a lead from a conversation.
    */
-  private function createLead(ContentEntityInterface $conversation, string $ai_response): ContentEntityInterface {
+  private function createLead(ContentEntityInterface $conversation, string $ai_response, ?ContentEntityInterface $bot): ContentEntityInterface {
     $text = $this->recentConversationText($conversation) . "\n" . $ai_response;
-    $email = $this->extractEmail($text);
-    $name = $this->extractValue($text, ['contacto', 'nombre']) ?: 'WhatsApp lead ' . $conversation->id();
     $is_web_conversation = $conversation->hasField('provider') && $conversation->get('provider')->value === 'web';
-    $phone = (string) $conversation->get('phone')->value;
-    if ($is_web_conversation) {
-      $phone = $this->extractPhone($text);
+    // WhatsApp providers already deliver the sender's number; web visitors
+    // only have a session identifier, so their phone comes from the chat.
+    $phone = $is_web_conversation
+      ? $this->contactExtractor->extractPhone($text)
+      : (string) $conversation->get('phone')->value;
+    $name = $this->contactExtractor->extractName($text)
+      ?: $this->getFieldValue($conversation, 'name');
+    if ($name === '' || $name === 'Web visitor') {
+      $name = self::UNKNOWN_CONTACT_NAME;
     }
 
     $lead = $this->entityTypeManager
@@ -359,7 +369,11 @@ final class LeadHandoffService {
       ->create([
         'name' => $name,
         'phone' => $phone,
-        'email' => $email,
+        'email' => $this->contactExtractor->extractEmail($text),
+        // The origin is stored on the lead itself: inferring it later from
+        // audit notes or phone numbers attributed leads to the wrong bot.
+        'conversation' => $conversation->id(),
+        'bot' => $bot?->id(),
         'source' => $is_web_conversation ? 'web' : 'whatsapp',
         'status' => 'qualified',
         'tags' => ['ai-handoff', 'quote-request'],
@@ -678,57 +692,6 @@ final class LeadHandoffService {
     $value = $entity->get($field_name)->value;
 
     return is_scalar($value) ? (string) $value : '';
-  }
-
-  /**
-   * Extracts the first likely phone number from text.
-   */
-  private function extractPhone(string $text): string {
-    if (!preg_match('/(?:\+?\d[\d\s().-]{8,}\d)/u', $text, $matches)) {
-      return '';
-    }
-
-    $digits = preg_replace('/\D+/', '', $matches[0]) ?? '';
-
-    return $digits === '' ? '' : '+' . $digits;
-  }
-
-  /**
-   * Extracts the first email from text.
-   */
-  private function extractEmail(string $text): string {
-    if (preg_match('/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/i', $text, $matches)) {
-      return $matches[0];
-    }
-
-    return '';
-  }
-
-  /**
-   * Extracts a simple labeled value from recent text.
-   *
-   * @param string[] $labels
-   *   Labels to match.
-   */
-  private function extractValue(string $text, array $labels): string {
-    $text = preg_replace('/[*_`]+/u', '', $text) ?? $text;
-    foreach ($labels as $label) {
-      if (preg_match('/' . preg_quote($label, '/') . '\s*:\s*([^\n\r]+)/iu', $text, $matches)) {
-        return $this->cleanExtractedValue($matches[1]);
-      }
-    }
-
-    return '';
-  }
-
-  /**
-   * Removes Markdown artifacts from a value captured in a chat response.
-   */
-  private function cleanExtractedValue(string $value): string {
-    $value = preg_replace('/[*_`]+/u', '', $value) ?? '';
-    $value = preg_replace('/\\s+/u', ' ', $value) ?? '';
-
-    return trim($value, " \\t\\n\\r\\0\\x0B:-");
   }
 
 }

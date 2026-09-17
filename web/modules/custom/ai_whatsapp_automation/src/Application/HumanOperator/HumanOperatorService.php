@@ -57,6 +57,21 @@ final class HumanOperatorService {
   }
 
   /**
+   * Providers that can push an operator message to the contact.
+   *
+   * The web widget only receives replies to the request the visitor is making,
+   * so an operator message would be stored but never delivered.
+   */
+  private const MANUAL_REPLY_PROVIDERS = ['twilio', 'cloud_api', 'evolution'];
+
+  /**
+   * Whether an operator reply can be delivered on this conversation.
+   */
+  public function supportsManualReply(ContentEntityInterface $conversation): bool {
+    return in_array((string) $conversation->get('provider')->value, self::MANUAL_REPLY_PROVIDERS, TRUE);
+  }
+
+  /**
    * Sends and stores a manual operator reply.
    *
    * @return array<string, mixed>

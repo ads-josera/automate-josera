@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\ai_whatsapp_automation\Controller;
 
+use Drupal\ai_whatsapp_automation\Ui\ResponsiveTable;
 use Drupal\ai_whatsapp_automation\Application\Dashboard\DashboardMetricsService;
 use Drupal\ai_whatsapp_automation\Form\DashboardFilterForm;
 use Drupal\Core\Controller\ControllerBase;
@@ -45,7 +46,7 @@ final class DashboardController extends ControllerBase {
     $metrics = $this->metricsService->getMetrics($period['range']);
     $summary = $metrics['summary'];
 
-    return [
+    $build = [
       '#type' => 'container',
       '#attributes' => ['class' => ['ai-whatsapp-dashboard']],
       '#attached' => [
@@ -136,6 +137,11 @@ final class DashboardController extends ControllerBase {
         'max-age' => 0,
       ],
     ];
+    foreach (['cost_by_bot', 'cost_by_channel'] as $panel) {
+      $build['rankings'][$panel]['table'] = ResponsiveTable::wrap($build['rankings'][$panel]['table']);
+    }
+
+    return $build;
   }
 
   /**

@@ -124,7 +124,7 @@ final class WebChatController extends ControllerBase {
       return $this->jsonWithCors([], $bot, $request);
     }
 
-    if (!$this->webChat->isRequestAllowed($bot, $request)) {
+    if (!$this->webChat->isRequestAllowed($bot, $request, TRUE)) {
       return $this->jsonWithCors(['error' => 'Forbidden.'], $bot, $request, Response::HTTP_FORBIDDEN);
     }
 

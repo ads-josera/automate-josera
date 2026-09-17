@@ -101,8 +101,15 @@ final class WebChatService {
 
   /**
    * Validates domain and optional API key access.
+   *
+   * @param bool $require_origin
+   *   TRUE for the message API. Browsers always send Origin on its POST
+   *   requests, so an unidentified caller there is a script. The public chat
+   *   page and embed script are GET requests that legitimately arrive without
+   *   Referer (shared links, QR codes, no-referrer policies) and keep allowing
+   *   unidentified visitors.
    */
-  public function isRequestAllowed(ContentEntityInterface $bot, Request $request): bool {
+  public function isRequestAllowed(ContentEntityInterface $bot, Request $request, bool $require_origin = FALSE): bool {
     $api_key = $this->getFieldValue($bot, 'web_widget_api_key');
     if ($api_key !== '') {
       $provided = (string) ($request->headers->get('X-AI-WhatsApp-Key') ?: $request->query->get('key', ''));
@@ -118,7 +125,9 @@ final class WebChatService {
 
     $host = $this->requestHost($request);
     if ($host === '') {
-      return TRUE;
+      // Scripts can still forge these headers: the usage limits, not this
+      // check, are what cap consumption.
+      return !$require_origin;
     }
 
     // The embedded page is served by this Drupal site, so its fetch requests

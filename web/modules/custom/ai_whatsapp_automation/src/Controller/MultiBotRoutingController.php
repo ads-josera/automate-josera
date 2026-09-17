@@ -68,7 +68,11 @@ final class MultiBotRoutingController extends ControllerBase {
         'provider' => $this->fieldValue($account, 'provider'),
         'number' => $this->fieldValue($account, 'phone_number'),
         'status' => $this->fieldValue($account, 'status'),
-        'connection' => $this->fieldValue($account, 'connection_status'),
+        // Connection status is tracked only for Evolution instances; Twilio and
+        // Cloud API accounts keep a stale default that reads as a real state.
+        'connection' => $this->fieldValue($account, 'provider') === 'evolution'
+          ? $this->fieldValue($account, 'connection_status')
+          : $this->t('No aplica'),
         'bot' => $bot instanceof ContentEntityInterface ? $bot->toLink() : $this->t('No active bot'),
         'model' => $bot instanceof ContentEntityInterface ? ($this->botManager->getEffectiveModel($bot, $account) ?: $this->t('Default')) : '',
         'knowledge_base' => $knowledge_base instanceof ContentEntityInterface ? $knowledge_base->toLink() : $this->t('None'),

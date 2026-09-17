@@ -73,6 +73,9 @@ services:
       - '@database'
       - '@logger.factory'
 
+  ai_whatsapp_automation.whatsapp_text_formatter:
+    class: Drupal\ai_whatsapp_automation\Application\Webhook\WhatsAppTextFormatter
+
   ai_whatsapp_automation.provider_message_sender:
     class: Drupal\ai_whatsapp_automation\Application\Webhook\ProviderMessageSenderService
     arguments:
@@ -81,6 +84,7 @@ services:
       - '@entity_type.manager'
       - '@logger.factory'
       - '@ai_whatsapp_automation.evolution.qr_provider'
+      - '@ai_whatsapp_automation.whatsapp_text_formatter'
 
   ai_whatsapp_automation.human_operator:
     class: Drupal\ai_whatsapp_automation\Application\HumanOperator\HumanOperatorService
@@ -90,6 +94,9 @@ services:
       - '@current_user'
       - '@logger.factory'
 
+  ai_whatsapp_automation.lead_contact_extractor:
+    class: Drupal\ai_whatsapp_automation\Application\Lead\LeadContactExtractor
+
   ai_whatsapp_automation.lead_handoff:
     class: Drupal\ai_whatsapp_automation\Application\Lead\LeadHandoffService
     arguments:
@@ -97,6 +104,7 @@ services:
       - '@config.factory'
       - '@ai_whatsapp_automation.provider_message_sender'
       - '@logger.factory'
+      - '@ai_whatsapp_automation.lead_contact_extractor'
 
   ai_whatsapp_automation.dashboard_metrics:
     class: Drupal\ai_whatsapp_automation\Application\Dashboard\DashboardMetricsService

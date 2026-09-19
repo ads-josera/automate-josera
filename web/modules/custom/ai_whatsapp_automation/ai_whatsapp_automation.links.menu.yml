@@ -5,12 +5,14 @@ ai_whatsapp_automation.settings:
   parent: system.admin_config_services
   weight: 50
 
+# Top-level toolbar item: client users have no access to "Content", and a
+# menu item under an inaccessible parent is hidden with it.
 ai_whatsapp_automation.content:
   title: 'AI WhatsApp'
   description: 'Manage WhatsApp automation records.'
   route_name: ai_whatsapp_automation.dashboard
-  parent: system.admin_content
-  weight: 50
+  parent: system.admin
+  weight: -8
 
 ai_whatsapp_automation.dashboard:
   title: 'Dashboard'

@@ -24,14 +24,37 @@ final class AssignOperatorForm extends ConversationOperationFormBase {
   public function buildForm(array $form, FormStateInterface $form_state, mixed $ai_whatsapp_conversation = NULL): array {
     $this->conversation = $ai_whatsapp_conversation;
 
-    $form['operator'] = [
-      '#type' => 'entity_autocomplete',
-      '#title' => $this->t('Operator'),
-      '#target_type' => 'user',
-      '#required' => TRUE,
-    ];
+    $client_access = \Drupal::service('ai_whatsapp_automation.client_access');
+    if ($client_access->isAdmin($this->currentUser())) {
+      $form['operator'] = [
+        '#type' => 'entity_autocomplete',
+        '#title' => $this->t('Operator'),
+        '#target_type' => 'user',
+        '#required' => TRUE,
+      ];
+    }
+    else {
+      // Client users may only hand a conversation to someone of their client.
+      $form['operator'] = [
+        '#type' => 'select',
+        '#title' => $this->t('Operator'),
+        '#options' => $client_access->assignableOperators($this->currentUser()),
+        '#required' => TRUE,
+      ];
+    }
 
     return $this->addNoteField($form);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function validateForm(array &$form, FormStateInterface $form_state): void {
+    $client_access = \Drupal::service('ai_whatsapp_automation.client_access');
+    if (!$client_access->isAdmin($this->currentUser())
+      && !isset($client_access->assignableOperators($this->currentUser())[(int) $form_state->getValue('operator')])) {
+      $form_state->setErrorByName('operator', $this->t('Elige un operador de tu empresa.'));
+    }
   }
 
   /**

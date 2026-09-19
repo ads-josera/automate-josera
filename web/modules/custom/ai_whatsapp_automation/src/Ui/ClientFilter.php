@@ -19,6 +19,11 @@ final class ClientFilter {
    * Returns the client ID selected in the request, or 0 for all clients.
    */
   public static function selectedId(Request $request): int {
+    // Only administrators choose a client. Client users are always limited
+    // to their own client by ClientAccess, whatever the URL says.
+    if (!self::isAvailable()) {
+      return 0;
+    }
     $client_id = (int) $request->query->get('client', 0);
 
     return $client_id > 0 ? $client_id : 0;
@@ -41,10 +46,18 @@ final class ClientFilter {
 
     return [
       '#type' => 'select',
+      '#access' => self::isAvailable(),
       '#title' => new TranslatableMarkup('Cliente'),
       '#options' => $options,
       '#default_value' => $selected > 0 ? (string) $selected : '',
     ];
+  }
+
+  /**
+   * Whether the current user may filter by client (administrators only).
+   */
+  public static function isAvailable(): bool {
+    return \Drupal::service('ai_whatsapp_automation.client_access')->isAdmin(\Drupal::currentUser());
   }
 
 }

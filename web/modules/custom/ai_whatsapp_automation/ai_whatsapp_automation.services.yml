@@ -94,6 +94,17 @@ services:
       - '@current_user'
       - '@logger.factory'
 
+  ai_whatsapp_automation.client_access:
+    class: Drupal\ai_whatsapp_automation\Access\ClientAccess
+    arguments:
+      - '@entity_type.manager'
+      - '@ai_whatsapp_automation.human_operator'
+
+  ai_whatsapp_automation.client_access_route_subscriber:
+    class: Drupal\ai_whatsapp_automation\Routing\ClientAccessRouteSubscriber
+    tags:
+      - { name: event_subscriber }
+
   ai_whatsapp_automation.client_assignment:
     class: Drupal\ai_whatsapp_automation\Application\Client\ClientAssignmentService
 

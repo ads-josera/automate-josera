@@ -152,7 +152,8 @@ final class ConversationController extends ControllerBase {
     }
     $links['close'] = $this->actionLink($this->t('Cerrar conversación'), 'ai_whatsapp_automation.conversation_close', $params);
 
-    return $links;
+    // Only actions the current user may use (client users: their client).
+    return array_filter($links, static fn (array $link): bool => $link['#url']->access());
   }
 
   /**

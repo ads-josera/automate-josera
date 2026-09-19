@@ -2,6 +2,18 @@
 
 declare(strict_types=1);
 
+use Drupal\ai_whatsapp_automation\Access\ClientAccess;
+use Drupal\Core\Access\AccessResult;
+use Drupal\Core\Access\AccessResultInterface;
+use Drupal\Core\Database\Query\AlterableInterface;
+use Drupal\Core\Database\Query\SelectInterface;
+use Drupal\Core\Entity\EntityTypeInterface;
+use Drupal\Core\Field\BaseFieldDefinition;
+use Drupal\Core\Field\FieldDefinitionInterface;
+use Drupal\Core\Field\FieldItemListInterface;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Session\AccountInterface;
+use Drupal\Core\Url;
 use Drupal\ai_whatsapp_automation\Application\RAG\KnowledgeFileStorage;
 use Drupal\ai_whatsapp_automation\Entity\Handler\AutomationEntityListBuilder;
 use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
@@ -144,5 +156,160 @@ function ai_whatsapp_automation_ai_whatsapp_knowledge_document_view(array &$buil
     '#weight' => -100,
     '#cache' => ['contexts' => ['user.permissions']],
   ];
+}
+
+/**
+ * Implements hook_entity_base_field_info().
+ *
+ * The client a user belongs to. Client users only reach that client's
+ * records (see ClientAccess).
+ */
+function ai_whatsapp_automation_entity_base_field_info(EntityTypeInterface $entity_type): array {
+  if ($entity_type->id() !== 'user') {
+    return [];
+  }
+
+  return [
+    'ai_whatsapp_client' => BaseFieldDefinition::create('entity_reference')
+      ->setLabel(t('Cliente de AI WhatsApp'))
+      ->setDescription(t('Solo para usuarios de un cliente: verán únicamente sus conversaciones, mensajes, leads y dashboard. Déjalo vacío para el personal interno.'))
+      ->setSetting('target_type', 'ai_whatsapp_client')
+      ->setSetting('handler', 'default')
+      ->setDisplayOptions('form', ['type' => 'options_select', 'weight' => 20])
+      ->setDisplayConfigurable('form', TRUE),
+  ];
+}
+
+/**
+ * Implements hook_entity_field_access().
+ *
+ * Only administrators may see or change which client a user belongs to:
+ * a client user editing their own profile must not switch clients.
+ */
+function ai_whatsapp_automation_entity_field_access(string $operation, FieldDefinitionInterface $field_definition, AccountInterface $account, ?FieldItemListInterface $items = NULL): AccessResultInterface {
+  if ($field_definition->getName() !== 'ai_whatsapp_client' || $field_definition->getTargetEntityTypeId() !== 'user') {
+    return AccessResult::neutral();
+  }
+
+  return AccessResult::forbiddenIf(!$account->hasPermission('administer users') || !$account->hasPermission(ClientAccess::ADMIN_PERMISSION))
+    ->cachePerPermissions();
+}
+
+/**
+ * Implements hook_query_TAG_alter() for ai_whatsapp_conversation_access.
+ */
+function ai_whatsapp_automation_query_ai_whatsapp_conversation_access_alter(AlterableInterface $query): void {
+  _ai_whatsapp_automation_restrict_to_client($query, 'base_table.client');
+}
+
+/**
+ * Implements hook_query_TAG_alter() for ai_whatsapp_lead_access.
+ */
+function ai_whatsapp_automation_query_ai_whatsapp_lead_access_alter(AlterableInterface $query): void {
+  _ai_whatsapp_automation_restrict_to_client($query, 'base_table.client');
+}
+
+/**
+ * Implements hook_query_TAG_alter() for ai_whatsapp_bot_access.
+ */
+function ai_whatsapp_automation_query_ai_whatsapp_bot_access_alter(AlterableInterface $query): void {
+  _ai_whatsapp_automation_restrict_to_client($query, 'base_table.client');
+}
+
+/**
+ * Implements hook_query_TAG_alter() for ai_whatsapp_message_access.
+ */
+function ai_whatsapp_automation_query_ai_whatsapp_message_access_alter(AlterableInterface $query): void {
+  _ai_whatsapp_automation_restrict_to_client($query, 'ai_whatsapp_client_conversation.client', 'conversation');
+}
+
+/**
+ * Implements hook_query_TAG_alter() for ai_whatsapp_operator_action_access.
+ */
+function ai_whatsapp_automation_query_ai_whatsapp_operator_action_access_alter(AlterableInterface $query): void {
+  _ai_whatsapp_automation_restrict_to_client($query, 'ai_whatsapp_client_conversation.client', 'conversation');
+}
+
+/**
+ * Restricts an access-checked entity query to the current user's client.
+ *
+ * Administrators are not restricted. A user without the client permission or
+ * without a client gets no rows. Queries run with accessCheck(FALSE) (webhooks,
+ * services) carry no access tag and are never restricted.
+ *
+ * @param \Drupal\Core\Database\Query\AlterableInterface $query
+ *   The entity query being built.
+ * @param string $client_column
+ *   Qualified client column to compare.
+ * @param string|null $conversation_column
+ *   For records that reach their client through a conversation, the column
+ *   of the base table referencing it.
+ */
+function _ai_whatsapp_automation_restrict_to_client(AlterableInterface $query, string $client_column, ?string $conversation_column = NULL): void {
+  if (!$query instanceof SelectInterface) {
+    return;
+  }
+  $account = \Drupal::currentUser();
+  $client_access = \Drupal::service('ai_whatsapp_automation.client_access');
+  if ($client_access->isAdmin($account)) {
+    return;
+  }
+  $client_id = $account->hasPermission(ClientAccess::VIEW_PERMISSION) ? $client_access->clientId($account) : NULL;
+  if ($client_id === NULL) {
+    $query->alwaysFalse();
+    return;
+  }
+  if ($conversation_column !== NULL) {
+    $query->join('ai_whatsapp_conversation', 'ai_whatsapp_client_conversation', 'ai_whatsapp_client_conversation.id = base_table.' . $conversation_column);
+  }
+  $query->condition($client_column, $client_id);
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_view() for ai_whatsapp_lead.
+ *
+ * Follow-up happens by changing the status; the button leads to the small
+ * status form that client users are allowed to use.
+ */
+function ai_whatsapp_automation_ai_whatsapp_lead_view(array &$build, EntityInterface $entity, EntityViewDisplayInterface $display, string $view_mode): void {
+  $url = Url::fromRoute('ai_whatsapp_automation.lead_status', ['ai_whatsapp_lead' => $entity->id()]);
+  $build['status_action'] = [
+    '#type' => 'link',
+    '#title' => t('Cambiar estado'),
+    '#url' => $url,
+    '#access' => $url->access(),
+    '#attributes' => ['class' => ['button', 'button--primary']],
+    '#weight' => -100,
+    '#cache' => ['contexts' => ['user']],
+  ];
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for user_form.
+ */
+function ai_whatsapp_automation_form_user_form_alter(array &$form, FormStateInterface $form_state): void {
+  if (isset($form['ai_whatsapp_client'])) {
+    $form['#validate'][] = '_ai_whatsapp_automation_user_client_validate';
+  }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for user_register_form.
+ */
+function ai_whatsapp_automation_form_user_register_form_alter(array &$form, FormStateInterface $form_state): void {
+  ai_whatsapp_automation_form_user_form_alter($form, $form_state);
+}
+
+/**
+ * Requires a client for users with the client agent role.
+ *
+ * Without it the user logs in and sees nothing, with no hint why.
+ */
+function _ai_whatsapp_automation_user_client_validate(array &$form, FormStateInterface $form_state): void {
+  $roles = array_filter((array) $form_state->getValue('roles'));
+  $client = $form_state->getValue(['ai_whatsapp_client', 0, 'target_id']);
+  if (in_array('ai_whatsapp_client_agent', $roles, TRUE) && empty($client)) {
+    $form_state->setErrorByName('ai_whatsapp_client', t('Elige el cliente de AI WhatsApp de este usuario: con el rol «Atención a clientes» y sin cliente no vería ninguna conversación.'));
+  }
 }
 

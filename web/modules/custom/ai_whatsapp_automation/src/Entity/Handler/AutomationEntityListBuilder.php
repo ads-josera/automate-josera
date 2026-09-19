@@ -162,7 +162,7 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
         '#attached' => [
           'library' => ['ai_whatsapp_automation/lead_list'],
         ],
-        'filters' => \Drupal::formBuilder()->getForm(ClientListFilterForm::class),
+        'filters' => ClientFilter::isAvailable() ? \Drupal::formBuilder()->getForm(ClientListFilterForm::class) : [],
         'leads' => $build,
       ];
     }
@@ -172,7 +172,7 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
         '#attached' => [
           'library' => ['ai_whatsapp_automation/operator_action_list'],
         ],
-        'filters' => \Drupal::formBuilder()->getForm(ClientListFilterForm::class),
+        'filters' => ClientFilter::isAvailable() ? \Drupal::formBuilder()->getForm(ClientListFilterForm::class) : [],
         'actions' => $build,
       ];
     }
@@ -182,14 +182,14 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
         '#attached' => [
           'library' => ['ai_whatsapp_automation/knowledge_chunk_list'],
         ],
-        'filters' => \Drupal::formBuilder()->getForm(ClientListFilterForm::class),
+        'filters' => ClientFilter::isAvailable() ? \Drupal::formBuilder()->getForm(ClientListFilterForm::class) : [],
         'chunks' => $build,
       ];
     }
 
     if (isset(self::CLIENT_FIELD_PATHS[$this->entityTypeId])) {
       return [
-        'filters' => \Drupal::formBuilder()->getForm(ClientListFilterForm::class),
+        'filters' => ClientFilter::isAvailable() ? \Drupal::formBuilder()->getForm(ClientListFilterForm::class) : [],
         'list' => $build,
       ];
     }
@@ -316,6 +316,18 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
    * {@inheritdoc}
    */
   public function getDefaultOperations(EntityInterface $entity): array {
+    // Client users only get the actions their access allows; the parent
+    // operations (edit, delete) are already filtered by entity access.
+    return array_filter(
+      $this->collectOperations($entity),
+      static fn (array $operation): bool => !isset($operation['url']) || $operation['url']->access(),
+    );
+  }
+
+  /**
+   * Builds every operation of a record before access filtering.
+   */
+  private function collectOperations(EntityInterface $entity): array {
     $operations = parent::getDefaultOperations($entity);
 
     if ($entity->getEntityTypeId() === 'ai_whatsapp_account' && $this->getFieldValue($entity, 'provider') === 'evolution') {
@@ -383,6 +395,11 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
     }
 
     if ($entity->getEntityTypeId() === 'ai_whatsapp_lead') {
+      $operations['status'] = [
+        'title' => $this->t('Cambiar estado'),
+        'weight' => 4,
+        'url' => Url::fromRoute('ai_whatsapp_automation.lead_status', ['ai_whatsapp_lead' => $entity->id()]),
+      ];
       $conversation = $this->getLeadConversation($entity);
       if ($conversation instanceof EntityInterface) {
         $operations['conversation'] = [

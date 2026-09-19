@@ -6,6 +6,7 @@ namespace Drupal\Tests\ai_whatsapp_automation\Kernel\Client;
 
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\KernelTests\KernelTestBase;
+use Drupal\Tests\user\Traits\UserCreationTrait;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Symfony\Component\HttpFoundation\Request;
@@ -18,6 +19,8 @@ use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 #[Group('ai_whatsapp_automation')]
 #[RunTestsInSeparateProcesses]
 final class ClientFilterTest extends KernelTestBase {
+
+  use UserCreationTrait;
 
   /**
    * {@inheritdoc}
@@ -82,6 +85,10 @@ final class ClientFilterTest extends KernelTestBase {
    * Every filterable list returns only the selected client's records.
    */
   public function testListsFilterByClient(): void {
+    // The client filter is an administrator tool: client users are always
+    // limited to their own client (see ClientUserAccessTest).
+    $this->createUser();
+    $this->setCurrentUser($this->createUser(['administer ai whatsapp automation entities', 'administer ai whatsapp automation rag']));
     $this->selectClient($this->clientA);
     $types = [
       'ai_whatsapp_bot',

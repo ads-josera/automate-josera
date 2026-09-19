@@ -105,7 +105,7 @@ ai_whatsapp_automation.conversation_stop_ai:
     _form: '\Drupal\ai_whatsapp_automation\Form\StopAiForm'
     _title: 'Stop AI'
   requirements:
-    _permission: 'administer ai whatsapp automation entities'
+    _custom_access: 'ai_whatsapp_automation.client_access:operateConversation'
   options:
     parameters:
       ai_whatsapp_conversation:
@@ -117,7 +117,7 @@ ai_whatsapp_automation.conversation_assign_operator:
     _form: '\Drupal\ai_whatsapp_automation\Form\AssignOperatorForm'
     _title: 'Assign operator'
   requirements:
-    _permission: 'administer ai whatsapp automation entities'
+    _custom_access: 'ai_whatsapp_automation.client_access:operateConversation'
   options:
     parameters:
       ai_whatsapp_conversation:
@@ -129,8 +129,7 @@ ai_whatsapp_automation.conversation_manual_reply:
     _form: '\Drupal\ai_whatsapp_automation\Form\ManualReplyForm'
     _title: 'Manual reply'
   requirements:
-    _permission: 'administer ai whatsapp automation entities'
-    _custom_access: '\Drupal\ai_whatsapp_automation\Form\ManualReplyForm::access'
+    _custom_access: 'ai_whatsapp_automation.client_access:manualReply'
   options:
     parameters:
       ai_whatsapp_conversation:
@@ -142,7 +141,7 @@ ai_whatsapp_automation.conversation_reactivate_ai:
     _form: '\Drupal\ai_whatsapp_automation\Form\ReactivateAiForm'
     _title: 'Reactivate AI'
   requirements:
-    _permission: 'administer ai whatsapp automation entities'
+    _custom_access: 'ai_whatsapp_automation.client_access:operateConversation'
   options:
     parameters:
       ai_whatsapp_conversation:
@@ -154,8 +153,21 @@ ai_whatsapp_automation.conversation_close:
     _form: '\Drupal\ai_whatsapp_automation\Form\CloseConversationForm'
     _title: 'Close conversation'
   requirements:
-    _permission: 'administer ai whatsapp automation entities'
+    _custom_access: 'ai_whatsapp_automation.client_access:operateConversation'
   options:
     parameters:
       ai_whatsapp_conversation:
         type: entity:ai_whatsapp_conversation
+
+ai_whatsapp_automation.lead_status:
+  path: '/admin/content/ai-whatsapp/leads/{ai_whatsapp_lead}/status'
+  defaults:
+    _form: '\Drupal\ai_whatsapp_automation\Form\LeadStatusForm'
+    _title: 'Cambiar estado del lead'
+  requirements:
+    _custom_access: 'ai_whatsapp_automation.client_access:operateLead'
+  options:
+    parameters:
+      ai_whatsapp_lead:
+        type: entity:ai_whatsapp_lead
+

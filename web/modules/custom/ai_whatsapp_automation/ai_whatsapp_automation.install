@@ -6,6 +6,11 @@ use Drupal\ai_whatsapp_automation\Application\Lead\LeadContactExtractor;
 use Drupal\ai_whatsapp_automation\Application\Lead\LeadHandoffService;
 
 /**
+ * Role given to users of a client.
+ */
+const AI_WHATSAPP_AUTOMATION_CLIENT_AGENT_ROLE = 'ai_whatsapp_client_agent';
+
+/**
  * Implements hook_requirements().
  */
 function ai_whatsapp_automation_requirements(string $phase): array {
@@ -991,6 +996,50 @@ function ai_whatsapp_automation_update_11033(): string {
     '@moved' => $result['moved'],
     '@failed' => $result['failed'] === [] ? 'none' : implode(', ', $result['failed']),
   ]);
+}
+
+/**
+ * Adds the user's client field and the "client agent" role.
+ *
+ * Client users get this role and a client on their account; they only see
+ * that client's conversations, messages, leads and dashboard, without costs.
+ * The toolbar and administration theme permissions give them navigation and
+ * a way to log out on the admin pages they use.
+ */
+function ai_whatsapp_automation_update_11034(): string {
+  $definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+  if ($definition_update_manager->getFieldStorageDefinition('ai_whatsapp_client', 'user') === NULL) {
+    $field = \Drupal::service('entity_field.manager')->getFieldStorageDefinitions('user')['ai_whatsapp_client'];
+    $definition_update_manager->installFieldStorageDefinition('ai_whatsapp_client', 'user', 'ai_whatsapp_automation', $field);
+  }
+
+  $role_storage = \Drupal::entityTypeManager()->getStorage('user_role');
+  $role = $role_storage->load(AI_WHATSAPP_AUTOMATION_CLIENT_AGENT_ROLE) ?? $role_storage->create([
+    'id' => AI_WHATSAPP_AUTOMATION_CLIENT_AGENT_ROLE,
+    'label' => 'Atención a clientes (AI WhatsApp)',
+  ]);
+  foreach (ai_whatsapp_automation_client_agent_permissions() as $permission) {
+    $role->grantPermission($permission);
+  }
+  $role->save();
+
+  return (string) t('Client user field installed; role "@role" ready.', ['@role' => $role->label()]);
+}
+
+/**
+ * Returns the permissions of the client agent role.
+ *
+ * @return string[]
+ *   Permission machine names.
+ */
+function ai_whatsapp_automation_client_agent_permissions(): array {
+  return [
+    'access own client ai whatsapp records',
+    'operate own client ai whatsapp conversations',
+    'view ai whatsapp automation dashboard',
+    'access toolbar',
+    'view the administration theme',
+  ];
 }
 
 /**

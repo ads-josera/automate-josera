@@ -45,7 +45,13 @@ final class DashboardController extends ControllerBase {
   public function dashboard(): array {
     $period = $this->periodRange();
     $request = $this->requestStack->getCurrentRequest();
-    $metrics = $this->metricsService->getMetrics($period['range'], $request ? ClientFilter::selectedId($request) : 0);
+    $client_access = \Drupal::service('ai_whatsapp_automation.client_access');
+    $is_admin = $client_access->isAdmin($this->currentUser());
+    // Client users always see their own client; -1 (no client) matches nothing.
+    $client_id = $is_admin
+      ? ($request ? ClientFilter::selectedId($request) : 0)
+      : ($client_access->clientId($this->currentUser()) ?? -1);
+    $metrics = $this->metricsService->getMetrics($period['range'], $client_id);
     $summary = $metrics['summary'];
 
     $build = [
@@ -70,9 +76,9 @@ final class DashboardController extends ControllerBase {
           '#type' => 'html_tag',
           '#tag' => 'p',
           '#attributes' => ['class' => ['ai-whatsapp-dashboard__lead']],
-          '#value' => $this->t('Metrics for @period, including conversations, messages, leads, tokens, and estimated OpenAI cost.', [
-            '@period' => $period['label'],
-          ]),
+          '#value' => $is_admin
+            ? $this->t('Metrics for @period, including conversations, messages, leads, tokens, and estimated OpenAI cost.', ['@period' => $period['label']])
+            : $this->t('Métricas de @period: conversaciones, mensajes y leads de tu empresa.', ['@period' => $period['label']]),
         ],
       ],
       'summary' => [
@@ -141,6 +147,13 @@ final class DashboardController extends ControllerBase {
     ];
     foreach (['cost_by_bot', 'cost_by_channel'] as $panel) {
       $build['rankings'][$panel]['table'] = ResponsiveTable::wrap($build['rankings'][$panel]['table']);
+    }
+
+    // Costs and tokens are for the administrator only: clients are billed by
+    // plan, not by consumption.
+    if (!$is_admin) {
+      unset($build['summary']['tokens_consumed'], $build['summary']['openai_cost'], $build['rankings']);
+      $build['#cache']['contexts'][] = 'user';
     }
 
     return $build;

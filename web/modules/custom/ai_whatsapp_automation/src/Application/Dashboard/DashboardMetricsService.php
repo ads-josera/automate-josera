@@ -199,10 +199,10 @@ final class DashboardMetricsService {
    * Applies an inclusive/exclusive timestamp range to a database query.
    */
   /**
-   * Restricts a query to one client; 0 means all clients.
+   * Restricts a query to one client; 0 means all clients, -1 none.
    */
   private function applyClient(SelectInterface $query, string $column, int $client_id): void {
-    if ($client_id > 0) {
+    if ($client_id !== 0) {
       $query->condition($column, $client_id);
     }
   }
@@ -211,7 +211,7 @@ final class DashboardMetricsService {
    * Restricts a message query to one client through its conversation.
    */
   private function applyMessageClient(SelectInterface $query, int $client_id): void {
-    if ($client_id > 0) {
+    if ($client_id !== 0) {
       $query->join('ai_whatsapp_conversation', 'mc', 'm.conversation = mc.id');
       $query->condition('mc.client', $client_id);
     }

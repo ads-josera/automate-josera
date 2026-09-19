@@ -29,11 +29,11 @@
 .ai-whatsapp-routing-guide__steps {
   display: grid;
   gap: 16px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .ai-whatsapp-routing-step {
-  align-items: flex-start;
+  align-items: stretch;
   border-top: 1px solid #dbe3ef;
   display: flex;
   gap: 14px;
@@ -54,8 +54,22 @@
   justify-content: center;
 }
 
+.ai-whatsapp-routing-step__number {
+  align-self: flex-start;
+}
+
+/* Column layout so every step's button sits on the same line even when the
+   descriptions have different lengths. */
 .ai-whatsapp-routing-step__content {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
   min-width: 0;
+}
+
+.ai-whatsapp-routing-step__content > .button {
+  align-self: flex-start;
+  margin-top: auto;
 }
 
 .ai-whatsapp-routing-step h3 {
@@ -95,4 +109,13 @@
   .ai-whatsapp-routing-guide__steps {
     grid-template-columns: 1fr;
   }
+}
+
+/* An account that is neither active nor connected stores incoming messages
+   without replying: make that visible in the assignments table. */
+.ai-whatsapp-routing-table__warning {
+  color: #b42318;
+  font-weight: 700;
+  hyphens: none;
+  white-space: nowrap;
 }

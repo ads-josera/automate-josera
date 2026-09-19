@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\ai_whatsapp_automation\Form;
 
 use Drupal\Core\Entity\ContentEntityForm;
+use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Url;
 
@@ -17,8 +18,18 @@ final class AutomationEntityForm extends ContentEntityForm {
    * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state): array {
-    $form = parent::buildForm($form, $form_state);
     $entity = $this->getEntity();
+    $this->prefillFromQuery($entity);
+    $form = parent::buildForm($form, $form_state);
+
+    // Bots and knowledge bases always belong to a client. Accounts may leave
+    // it empty: they inherit their bot's client.
+    if (in_array($entity->getEntityTypeId(), ['ai_whatsapp_bot', 'ai_whatsapp_knowledge_base'], TRUE) && isset($form['client']['widget'])) {
+      $form['client']['widget']['#required'] = TRUE;
+    }
+    if ($entity->getEntityTypeId() === 'ai_whatsapp_account') {
+      $this->showProviderFields($form);
+    }
 
     if ($entity->getEntityTypeId() === 'ai_whatsapp_bot') {
       $this->organizeBotForm($form, $entity->isNew());
@@ -39,6 +50,63 @@ final class AutomationEntityForm extends ContentEntityForm {
     }
 
     return $form;
+  }
+
+  /**
+   * Prefills the parent record passed by the setup flow's "next step" links.
+   *
+   * ?client= on a new bot or knowledge base, ?bot= on a new account.
+   */
+  private function prefillFromQuery(ContentEntityInterface $entity): void {
+    if (!$entity->isNew()) {
+      return;
+    }
+    $query = $this->getRequest()->query;
+    $parameters = [
+      'ai_whatsapp_bot' => ['client' => 'ai_whatsapp_client'],
+      'ai_whatsapp_knowledge_base' => ['client' => 'ai_whatsapp_client'],
+      'ai_whatsapp_account' => ['bot' => 'ai_whatsapp_bot'],
+    ];
+    foreach ($parameters[$entity->getEntityTypeId()] ?? [] as $field_name => $target_type) {
+      $id = (int) $query->get($field_name, 0);
+      if ($id > 0 && $entity->get($field_name)->isEmpty() && $this->entityTypeManager->getStorage($target_type)->load($id) !== NULL) {
+        $entity->set($field_name, $id);
+      }
+    }
+  }
+
+  /**
+   * Shows only the fields that apply to the selected WhatsApp provider.
+   *
+   * Twilio credentials and templates for Twilio; instance and connection
+   * status for Evolution (the connection status is set by its QR flow).
+   */
+  private function showProviderFields(array &$form): void {
+    $provider_fields = [
+      'twilio' => ['twilio_account_sid', 'twilio_auth_token', 'lead_notification_template_sid', 'lead_notification_template_variables'],
+      'evolution' => ['evolution_instance_name', 'connection_status'],
+    ];
+    foreach ($provider_fields as $provider => $field_names) {
+      foreach ($field_names as $field_name) {
+        if (isset($form[$field_name])) {
+          $form[$field_name]['#states'] = [
+            'visible' => [':input[name="provider"]' => ['value' => $provider]],
+          ];
+        }
+      }
+    }
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function validateForm(array &$form, FormStateInterface $form_state): ContentEntityInterface {
+    $entity = parent::validateForm($form, $form_state);
+    foreach (\Drupal::service('ai_whatsapp_automation.client_consistency')->conflicts($entity) as $field_name => $message) {
+      $form_state->setErrorByName($field_name, $message);
+    }
+
+    return $entity;
   }
 
   /**
@@ -178,15 +246,45 @@ final class AutomationEntityForm extends ContentEntityForm {
       }
     }
 
+    $is_new = $entity->isNew();
     $result = parent::save($form, $form_state);
 
     $this->messenger()->addStatus($this->t('Saved %label.', [
       '%label' => $entity->label(),
     ]));
+    $this->addNextStepMessage($entity, $is_new);
 
     $form_state->setRedirectUrl($entity->toUrl('collection'));
 
     return $result;
+  }
+
+  /**
+   * Guides the setup order: client, bot, WhatsApp number.
+   *
+   * Also warns when an account cannot answer: incoming messages are only
+   * routed to accounts that are active or connected, so an inactive account
+   * silently stores messages without replying.
+   */
+  private function addNextStepMessage(ContentEntityInterface $entity, bool $is_new): void {
+    $type = $entity->getEntityTypeId();
+    if ($is_new && $type === 'ai_whatsapp_client') {
+      $this->messenger()->addStatus($this->t('Siguiente paso: <a href=":url">crea el bot de %client</a>.', [
+        ':url' => Url::fromRoute('entity.ai_whatsapp_bot.add_form', [], ['query' => ['client' => $entity->id()]])->toString(),
+        '%client' => $entity->label(),
+      ]));
+    }
+    if ($is_new && $type === 'ai_whatsapp_bot') {
+      $this->messenger()->addStatus($this->t('Siguiente paso: <a href=":account">conecta su número de WhatsApp</a>. Para el chat de su sitio web usa <a href=":web">Integración web</a>.', [
+        ':account' => Url::fromRoute('entity.ai_whatsapp_account.add_form', [], ['query' => ['bot' => $entity->id()]])->toString(),
+        ':web' => Url::fromRoute('ai_whatsapp_automation.bot_web_integration', ['ai_whatsapp_bot' => $entity->id()])->toString(),
+      ]));
+    }
+    if ($type === 'ai_whatsapp_account' && $entity->get('status')->value !== 'active' && $entity->get('connection_status')->value !== 'CONNECTED') {
+      $this->messenger()->addWarning($this->t('La cuenta %account está inactiva: los mensajes que lleguen a su número no se responderán. Cambia su Estado a «Active» cuando tenga sus credenciales.', [
+        '%account' => $entity->label(),
+      ]));
+    }
   }
 
 }

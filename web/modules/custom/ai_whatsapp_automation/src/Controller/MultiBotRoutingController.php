@@ -63,11 +63,17 @@ final class MultiBotRoutingController extends ControllerBase {
         ? $this->botManager->getEffectiveKnowledgeBase($bot, $account)
         : NULL;
 
+      $client = $account->get('client')->entity ?? ($bot instanceof ContentEntityInterface ? $bot->get('client')->entity : NULL);
+      // Incoming messages are only routed to active or connected accounts.
+      $answers = $this->fieldValue($account, 'status') === 'active' || $this->fieldValue($account, 'connection_status') === 'CONNECTED';
       $rows[] = [
+        'client' => $client instanceof ContentEntityInterface ? $client->label() : $this->t('Sin cliente'),
         'account' => $account->toLink(),
         'provider' => $this->fieldValue($account, 'provider'),
         'number' => $this->fieldValue($account, 'phone_number'),
-        'status' => $this->fieldValue($account, 'status'),
+        'status' => $answers
+          ? $this->fieldValue($account, 'status')
+          : ['data' => ['#markup' => '<strong class="ai-whatsapp-routing-table__warning">' . $this->t('Inactiva: no responde') . '</strong>']],
         // Connection status is tracked only for Evolution instances; Twilio and
         // Cloud API accounts keep a stale default that reads as a real state.
         'connection' => $this->fieldValue($account, 'provider') === 'evolution'
@@ -96,77 +102,64 @@ final class MultiBotRoutingController extends ControllerBase {
     $build['setup_guide']['heading']['title'] = [
       '#type' => 'html_tag',
       '#tag' => 'h2',
-      '#value' => $this->t('Set up a WhatsApp bot'),
+      '#value' => $this->t('Configura un cliente nuevo'),
     ];
     $build['setup_guide']['heading']['description'] = [
       '#type' => 'html_tag',
       '#tag' => 'p',
-      '#value' => $this->t('Create the bot first, then connect its WhatsApp number and assign it to that bot.'),
+      '#value' => $this->t('Sigue este orden. Cada paso te lleva al siguiente con el dato ya elegido.'),
     ];
     $build['setup_guide']['steps'] = [
       '#type' => 'container',
       '#attributes' => ['class' => ['ai-whatsapp-routing-guide__steps']],
     ];
-    $build['setup_guide']['steps']['bot'] = [
-      '#type' => 'container',
-      '#attributes' => ['class' => ['ai-whatsapp-routing-step']],
+    $steps = [
+      'client' => [
+        'title' => $this->t('Crea el cliente'),
+        'description' => $this->t('La empresa a la que das el servicio. Todo lo demás le pertenece.'),
+        'label' => $this->t('Agregar cliente'),
+        'route' => 'entity.ai_whatsapp_client.add_form',
+      ],
+      'bot' => [
+        'title' => $this->t('Crea y configura su bot'),
+        'description' => $this->t('Elige el cliente y define instrucciones, modelo, base de conocimiento, límites y notificaciones de leads.'),
+        'label' => $this->t('Agregar bot'),
+        'route' => 'entity.ai_whatsapp_bot.add_form',
+      ],
+      'account' => [
+        'title' => $this->t('Conecta su número de WhatsApp'),
+        'description' => $this->t('Credenciales del proveedor y número; elige el bot del paso 2. Déjala activa para que responda.'),
+        'label' => $this->t('Conectar número de WhatsApp'),
+        'route' => 'entity.ai_whatsapp_account.add_form',
+      ],
     ];
-    $build['setup_guide']['steps']['bot']['number'] = [
-      '#type' => 'html_tag',
-      '#tag' => 'span',
-      '#value' => '1',
-      '#attributes' => ['class' => ['ai-whatsapp-routing-step__number']],
-    ];
-    $build['setup_guide']['steps']['bot']['content'] = [
-      '#type' => 'container',
-      '#attributes' => ['class' => ['ai-whatsapp-routing-step__content']],
-    ];
-    $build['setup_guide']['steps']['bot']['content']['title'] = [
-      '#type' => 'html_tag',
-      '#tag' => 'h3',
-      '#value' => $this->t('Create and configure the bot'),
-    ];
-    $build['setup_guide']['steps']['bot']['content']['description'] = [
-      '#type' => 'html_tag',
-      '#tag' => 'p',
-      '#value' => $this->t('Define its instructions, model, knowledge base, limits, and lead notifications.'),
-    ];
-    $build['setup_guide']['steps']['bot']['content']['action'] = [
-      '#type' => 'link',
-      '#title' => $this->t('Create bot'),
-      '#url' => Url::fromRoute('entity.ai_whatsapp_bot.add_form'),
-      '#attributes' => ['class' => ['button', 'button--primary']],
-    ];
-    $build['setup_guide']['steps']['account'] = [
-      '#type' => 'container',
-      '#attributes' => ['class' => ['ai-whatsapp-routing-step']],
-    ];
-    $build['setup_guide']['steps']['account']['number'] = [
-      '#type' => 'html_tag',
-      '#tag' => 'span',
-      '#value' => '2',
-      '#attributes' => ['class' => ['ai-whatsapp-routing-step__number']],
-    ];
-    $build['setup_guide']['steps']['account']['content'] = [
-      '#type' => 'container',
-      '#attributes' => ['class' => ['ai-whatsapp-routing-step__content']],
-    ];
-    $build['setup_guide']['steps']['account']['content']['title'] = [
-      '#type' => 'html_tag',
-      '#tag' => 'h3',
-      '#value' => $this->t('Connect the WhatsApp number'),
-    ];
-    $build['setup_guide']['steps']['account']['content']['description'] = [
-      '#type' => 'html_tag',
-      '#tag' => 'p',
-      '#value' => $this->t('Add the provider credentials and number, then select the bot created in step 1.'),
-    ];
-    $build['setup_guide']['steps']['account']['content']['action'] = [
-      '#type' => 'link',
-      '#title' => $this->t('Connect WhatsApp number'),
-      '#url' => Url::fromRoute('entity.ai_whatsapp_account.add_form'),
-      '#attributes' => ['class' => ['button']],
-    ];
+    $number = 0;
+    foreach ($steps as $key => $step) {
+      $number++;
+      $build['setup_guide']['steps'][$key] = [
+        '#type' => 'container',
+        '#attributes' => ['class' => ['ai-whatsapp-routing-step']],
+        'number' => [
+          '#type' => 'html_tag',
+          '#tag' => 'span',
+          '#value' => (string) $number,
+          '#attributes' => ['class' => ['ai-whatsapp-routing-step__number']],
+        ],
+        'content' => [
+          '#type' => 'container',
+          '#attributes' => ['class' => ['ai-whatsapp-routing-step__content']],
+          'title' => ['#type' => 'html_tag', '#tag' => 'h3', '#value' => $step['title']],
+          'description' => ['#type' => 'html_tag', '#tag' => 'p', '#value' => $step['description']],
+          'action' => [
+            '#type' => 'link',
+            '#title' => $step['label'],
+            '#url' => Url::fromRoute($step['route']),
+            // Only the first step is the primary action of the page.
+            '#attributes' => ['class' => $number === 1 ? ['button', 'button--primary'] : ['button']],
+          ],
+        ],
+      ];
+    }
 
     $build['assignments_title'] = [
       '#type' => 'html_tag',
@@ -182,6 +175,7 @@ final class MultiBotRoutingController extends ControllerBase {
       '#type' => 'table',
       '#attributes' => ['class' => ['ai-whatsapp-routing-table']],
       '#header' => [
+        $this->t('Cliente'),
         $this->t('Account'),
         $this->t('Provider'),
         $this->t('Number'),
@@ -194,7 +188,7 @@ final class MultiBotRoutingController extends ControllerBase {
         $this->t('Operations'),
       ],
       '#rows' => $rows,
-      '#empty' => $this->t('No WhatsApp accounts were found. Start with step 1 to create a bot.'),
+      '#empty' => $this->t('Todavía no hay números de WhatsApp. Empieza por el paso 1: crea el cliente.'),
     ];
 
     return $build;

@@ -143,10 +143,64 @@
     container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
   }
 
+  // Renders the assistant's Markdown subset: paragraphs, "- " bullet lists,
+  // "1. " numbered lists and **bold**. Every text fragment is escaped before
+  // any tag is added, so model output can never inject HTML.
   function formatAssistantText(text) {
-    return escapeHtml(text)
-      .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
-      .replace(/\n/g, '<br>');
+    var lines = String(text).replace(/\r\n?/g, '\n').split('\n');
+    var blocks = [];
+    var paragraph = [];
+    var list = null;
+
+    function inline(value) {
+      return escapeHtml(value).replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+    }
+
+    function flushParagraph() {
+      if (paragraph.length) {
+        blocks.push('<p>' + paragraph.join('<br>') + '</p>');
+        paragraph = [];
+      }
+    }
+
+    function flushList() {
+      if (list) {
+        var start = list.tag === 'ol' && list.start > 1 ? ' start="' + list.start + '"' : '';
+        blocks.push('<' + list.tag + start + '>' + list.items.join('') + '</' + list.tag + '>');
+        list = null;
+      }
+    }
+
+    lines.forEach(function (rawLine) {
+      var line = rawLine.trim();
+      var bullet = line.match(/^[-*•]\s+(.+)$/);
+      var numbered = line.match(/^(\d+)[.)]\s+(.+)$/);
+
+      if (bullet || numbered) {
+        var tag = bullet ? 'ul' : 'ol';
+        flushParagraph();
+        if (list && list.tag !== tag) {
+          flushList();
+        }
+        if (!list) {
+          list = { tag: tag, start: numbered ? parseInt(numbered[1], 10) : 1, items: [] };
+        }
+        list.items.push('<li>' + inline(bullet ? bullet[1] : numbered[2]) + '</li>');
+        return;
+      }
+
+      flushList();
+      if (line === '') {
+        flushParagraph();
+        return;
+      }
+      paragraph.push(inline(line));
+    });
+
+    flushParagraph();
+    flushList();
+
+    return blocks.join('');
   }
 
   function escapeHtml(text) {

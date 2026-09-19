@@ -135,6 +135,30 @@ body {
   background: #fff;
 }
 
+/* Assistant replies are rendered as paragraphs and lists (web-chat.js), so
+   pre-wrap would add the source whitespace on top of that structure. */
+.aiwa-message--ai:not(.aiwa-message--typing) {
+  white-space: normal;
+}
+
+.aiwa-message--ai p {
+  margin: 0 0 8px;
+}
+
+.aiwa-message--ai ul,
+.aiwa-message--ai ol {
+  margin: 0 0 8px;
+  padding-left: 20px;
+}
+
+.aiwa-message--ai li {
+  margin: 2px 0;
+}
+
+.aiwa-message--ai > :last-child {
+  margin-bottom: 0;
+}
+
 .aiwa-message--ai strong {
   color: #102d60;
   font-weight: 750;

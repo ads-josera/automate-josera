@@ -1,0 +1,26 @@
+# "Add" buttons on the admin lists. Creating records by URL only was the
+# sole way before; a client is created first, then its bots, accounts and
+# knowledge bases.
+entity.ai_whatsapp_client.add_form:
+  route_name: entity.ai_whatsapp_client.add_form
+  title: 'Agregar cliente'
+  appears_on:
+    - entity.ai_whatsapp_client.collection
+
+entity.ai_whatsapp_bot.add_form:
+  route_name: entity.ai_whatsapp_bot.add_form
+  title: 'Agregar bot'
+  appears_on:
+    - entity.ai_whatsapp_bot.collection
+
+entity.ai_whatsapp_account.add_form:
+  route_name: entity.ai_whatsapp_account.add_form
+  title: 'Agregar cuenta de WhatsApp'
+  appears_on:
+    - entity.ai_whatsapp_account.collection
+
+entity.ai_whatsapp_knowledge_base.add_form:
+  route_name: entity.ai_whatsapp_knowledge_base.add_form
+  title: 'Agregar base de conocimiento'
+  appears_on:
+    - entity.ai_whatsapp_knowledge_base.collection

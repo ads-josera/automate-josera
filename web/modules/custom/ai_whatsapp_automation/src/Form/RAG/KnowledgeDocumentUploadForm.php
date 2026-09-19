@@ -32,6 +32,24 @@ final class KnowledgeDocumentUploadForm extends FormBase {
       '#description' => $this->t('Select an existing knowledge base or leave empty to create one from the title.'),
     ];
 
+    // A knowledge base created here must belong to a client, like one
+    // created from its own form. Ignored when an existing base is selected.
+    $client_options = [];
+    $client_storage = \Drupal::entityTypeManager()->getStorage('ai_whatsapp_client');
+    foreach ($client_storage->loadMultiple($client_storage->getQuery()->accessCheck(TRUE)->sort('name')->execute()) as $client) {
+      $client_options[(string) $client->id()] = $client->label();
+    }
+    $form['client'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Cliente de la nueva base de conocimiento'),
+      '#options' => $client_options,
+      '#empty_option' => $this->t('- Elige un cliente -'),
+      '#description' => $this->t('Solo se usa si no eliges una base de conocimiento existente.'),
+      '#states' => [
+        'visible' => [':input[name="knowledge_base"]' => ['value' => '']],
+      ],
+    ];
+
     $form['title'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Title'),
@@ -64,11 +82,20 @@ final class KnowledgeDocumentUploadForm extends FormBase {
   /**
    * {@inheritdoc}
    */
+  public function validateForm(array &$form, FormStateInterface $form_state): void {
+    if (!$form_state->getValue('knowledge_base') && !$form_state->getValue('client')) {
+      $form_state->setErrorByName('client', $this->t('Elige el cliente al que pertenece la nueva base de conocimiento, o selecciona una base existente.'));
+    }
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function submitForm(array &$form, FormStateInterface $form_state): void {
     $file_ids = $form_state->getValue('document');
     $file_id = is_array($file_ids) ? reset($file_ids) : NULL;
     $file = $file_id ? \Drupal::entityTypeManager()->getStorage('file')->load($file_id) : NULL;
-    $knowledge_base = $this->resolveKnowledgeBase((string) $form_state->getValue('title'), $form_state->getValue('knowledge_base'));
+    $knowledge_base = $this->resolveKnowledgeBase((string) $form_state->getValue('title'), $form_state->getValue('knowledge_base'), $form_state->getValue('client'));
 
     if (!$file instanceof FileInterface || !$knowledge_base) {
       $this->messenger()->addError($this->t('The document could not be indexed.'));
@@ -103,7 +130,7 @@ final class KnowledgeDocumentUploadForm extends FormBase {
   /**
    * Loads the selected knowledge base or creates one from the document title.
    */
-  private function resolveKnowledgeBase(string $title, mixed $knowledge_base_id): ?ContentEntityInterface {
+  private function resolveKnowledgeBase(string $title, mixed $knowledge_base_id, mixed $client_id): ?ContentEntityInterface {
     $storage = \Drupal::entityTypeManager()->getStorage('ai_whatsapp_knowledge_base');
     if ($knowledge_base_id) {
       $knowledge_base = $storage->load($knowledge_base_id);
@@ -116,6 +143,7 @@ final class KnowledgeDocumentUploadForm extends FormBase {
       'description' => (string) $this->t('Created while uploading @title.', ['@title' => $title]),
       'embedding_model' => 'text-embedding-3-small',
       'status' => 'active',
+      'client' => $client_id ?: NULL,
     ]);
     $knowledge_base->save();
 

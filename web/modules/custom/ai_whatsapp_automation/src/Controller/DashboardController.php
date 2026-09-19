@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\ai_whatsapp_automation\Controller;
 
+use Drupal\ai_whatsapp_automation\Ui\ClientFilter;
 use Drupal\ai_whatsapp_automation\Ui\ResponsiveTable;
 use Drupal\ai_whatsapp_automation\Application\Dashboard\DashboardMetricsService;
 use Drupal\ai_whatsapp_automation\Form\DashboardFilterForm;
@@ -43,7 +44,8 @@ final class DashboardController extends ControllerBase {
    */
   public function dashboard(): array {
     $period = $this->periodRange();
-    $metrics = $this->metricsService->getMetrics($period['range']);
+    $request = $this->requestStack->getCurrentRequest();
+    $metrics = $this->metricsService->getMetrics($period['range'], $request ? ClientFilter::selectedId($request) : 0);
     $summary = $metrics['summary'];
 
     $build = [

@@ -70,6 +70,8 @@ final class Lead extends ContentEntityBase {
   public static function baseFieldDefinitions(EntityTypeInterface $entity_type): array {
     $fields = parent::baseFieldDefinitions($entity_type);
 
+    $fields['client'] = Client::referenceField(t('Set automatically from the conversation that generated the lead.'));
+
     $fields['name'] = BaseFieldDefinition::create('string')
       ->setLabel(t('Name'))
       ->setRequired(TRUE)

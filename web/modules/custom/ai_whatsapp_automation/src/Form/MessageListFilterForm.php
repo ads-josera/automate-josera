@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\ai_whatsapp_automation\Form;
 
+use Drupal\ai_whatsapp_automation\Ui\ClientFilter;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Url;
@@ -29,6 +30,7 @@ final class MessageListFilterForm extends FormBase {
     $form['#action'] = Url::fromRoute('entity.ai_whatsapp_message.collection')->toString();
     $form['#attributes']['class'][] = 'aiwa-message-filters';
 
+    $form['client'] = ClientFilter::element($request);
     $form['q'] = [
       '#type' => 'search',
       '#title' => $this->t('Buscar mensajes'),

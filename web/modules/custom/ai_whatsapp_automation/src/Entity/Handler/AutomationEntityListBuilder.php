@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Drupal\ai_whatsapp_automation\Entity\Handler;
 
 use Drupal\ai_whatsapp_automation\Form\MessageListFilterForm;
+use Drupal\ai_whatsapp_automation\Form\ClientListFilterForm;
 use Drupal\ai_whatsapp_automation\Form\ConversationListFilterForm;
+use Drupal\ai_whatsapp_automation\Ui\ClientFilter;
 use Drupal\ai_whatsapp_automation\Ui\ResponsiveTable;
 use Drupal\Component\Utility\Html;
 use Drupal\Core\Entity\EntityInterface;
@@ -18,6 +20,24 @@ use Drupal\Core\Url;
  * Provides list tables for AI WhatsApp Automation content entities.
  */
 final class AutomationEntityListBuilder extends EntityListBuilder {
+
+  /**
+   * Field path from each entity type to its client, for the list filter.
+   *
+   * Messages, audit records and knowledge files reach it through the record
+   * they belong to.
+   */
+  private const CLIENT_FIELD_PATHS = [
+    'ai_whatsapp_bot' => 'client',
+    'ai_whatsapp_account' => 'client',
+    'ai_whatsapp_knowledge_base' => 'client',
+    'ai_whatsapp_conversation' => 'client',
+    'ai_whatsapp_lead' => 'client',
+    'ai_whatsapp_message' => 'conversation.entity.client',
+    'ai_whatsapp_operator_action' => 'conversation.entity.client',
+    'ai_whatsapp_knowledge_document' => 'knowledge_base.entity.client',
+    'ai_whatsapp_knowledge_chunk' => 'knowledge_base.entity.client',
+  ];
 
   /**
    * {@inheritdoc}
@@ -68,6 +88,9 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
     }
 
     $header['label'] = $this->t('Label');
+    if ((self::CLIENT_FIELD_PATHS[$this->entityTypeId] ?? '') === 'client') {
+      $header['client'] = $this->t('Cliente');
+    }
     $header['status'] = $this->t('Status');
     $header['changed'] = $this->t('Updated');
 
@@ -95,6 +118,10 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
     }
 
     $row['label'] = $entity->toLink();
+    if ((self::CLIENT_FIELD_PATHS[$this->entityTypeId] ?? '') === 'client') {
+      $client = $entity->get('client')->entity;
+      $row['client'] = $client instanceof EntityInterface ? $client->label() : (string) $this->t('Sin cliente');
+    }
     $row['status'] = $this->allowedValueLabel($entity, 'status');
     $changed = (int) $this->getFieldValue($entity, 'changed');
     $row['changed'] = $changed > 0 ? \Drupal::service('date.formatter')->format($changed, 'short') : '';
@@ -134,6 +161,7 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
         '#attached' => [
           'library' => ['ai_whatsapp_automation/lead_list'],
         ],
+        'filters' => \Drupal::formBuilder()->getForm(ClientListFilterForm::class),
         'leads' => $build,
       ];
     }
@@ -143,6 +171,7 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
         '#attached' => [
           'library' => ['ai_whatsapp_automation/operator_action_list'],
         ],
+        'filters' => \Drupal::formBuilder()->getForm(ClientListFilterForm::class),
         'actions' => $build,
       ];
     }
@@ -152,7 +181,15 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
         '#attached' => [
           'library' => ['ai_whatsapp_automation/knowledge_chunk_list'],
         ],
+        'filters' => \Drupal::formBuilder()->getForm(ClientListFilterForm::class),
         'chunks' => $build,
+      ];
+    }
+
+    if (isset(self::CLIENT_FIELD_PATHS[$this->entityTypeId])) {
+      return [
+        'filters' => \Drupal::formBuilder()->getForm(ClientListFilterForm::class),
+        'list' => $build,
       ];
     }
 
@@ -160,9 +197,28 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
   }
 
   /**
+   * Restricts a list query to the client selected in the request, if any.
+   */
+  private function applyClientFilter(QueryInterface $query): QueryInterface {
+    $client_id = ClientFilter::selectedId(\Drupal::request());
+    if ($client_id > 0 && isset(self::CLIENT_FIELD_PATHS[$this->entityTypeId])) {
+      $query->condition(self::CLIENT_FIELD_PATHS[$this->entityTypeId], $client_id);
+    }
+
+    return $query;
+  }
+
+  /**
    * {@inheritdoc}
    */
   protected function getEntityListQuery(): QueryInterface {
+    return $this->applyClientFilter($this->buildEntityListQuery());
+  }
+
+  /**
+   * Builds the list query with the per-type sorting and filters.
+   */
+  private function buildEntityListQuery(): QueryInterface {
     if ($this->entityTypeId === 'ai_whatsapp_lead') {
       $query = $this->getStorage()->getQuery()
         ->accessCheck(TRUE)

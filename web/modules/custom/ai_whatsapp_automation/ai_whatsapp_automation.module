@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Drupal\Core\Entity\EntityInterface;
+
 /**
  * Implements hook_cron().
  */
@@ -68,4 +70,25 @@ function ai_whatsapp_automation_custom_theme(): ?string {
     'tfa.entry' => 'josera_access',
     default => NULL,
   };
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_presave() for ai_whatsapp_account.
+ */
+function ai_whatsapp_automation_ai_whatsapp_account_presave(EntityInterface $entity): void {
+  \Drupal::service('ai_whatsapp_automation.client_assignment')->assign($entity);
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_presave() for ai_whatsapp_conversation.
+ */
+function ai_whatsapp_automation_ai_whatsapp_conversation_presave(EntityInterface $entity): void {
+  \Drupal::service('ai_whatsapp_automation.client_assignment')->assign($entity);
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_presave() for ai_whatsapp_lead.
+ */
+function ai_whatsapp_automation_ai_whatsapp_lead_presave(EntityInterface $entity): void {
+  \Drupal::service('ai_whatsapp_automation.client_assignment')->assign($entity);
 }

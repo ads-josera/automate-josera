@@ -94,6 +94,9 @@ services:
       - '@current_user'
       - '@logger.factory'
 
+  ai_whatsapp_automation.client_assignment:
+    class: Drupal\ai_whatsapp_automation\Application\Client\ClientAssignmentService
+
   ai_whatsapp_automation.lead_contact_extractor:
     class: Drupal\ai_whatsapp_automation\Application\Lead\LeadContactExtractor
 

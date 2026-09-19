@@ -1,0 +1,36 @@
+/**
+ * Client filter shown above admin lists (ClientListFilterForm).
+ */
+.aiwa-list-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 14px;
+  margin: 0 0 20px;
+  padding: 16px;
+  border: 1px solid #d7deea;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.aiwa-list-filters .form-item {
+  min-width: 220px;
+  margin: 0;
+}
+
+.aiwa-list-filters .form-actions {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+}
+
+@media (max-width: 700px) {
+  .aiwa-list-filters {
+    display: block;
+  }
+
+  .aiwa-list-filters .form-item,
+  .aiwa-list-filters .form-actions {
+    margin: 0 0 12px;
+  }
+}

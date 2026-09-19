@@ -76,3 +76,8 @@ responsive_tables:
   css:
     theme:
       css/responsive-tables.css: {}
+
+list_filters:
+  css:
+    theme:
+      css/list-filters.css: {}

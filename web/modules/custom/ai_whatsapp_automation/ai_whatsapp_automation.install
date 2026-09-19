@@ -866,6 +866,97 @@ function ai_whatsapp_automation_update_11031(): string {
 }
 
 /**
+ * Creates clients from the existing bots and assigns every record to one.
+ *
+ * One client per bot, named after the bot. Accounts, knowledge bases,
+ * conversations and leads get the client of the bot or account they belong
+ * to. A knowledge base used by several clients, or by none, is left
+ * unassigned and reported: it is never guessed.
+ *
+ * Values are written with SQL on purpose: saving the entities would bump
+ * their "changed" dates, which order the inbox and drive the automatic
+ * closing of inactive conversations. Safe to run more than once.
+ */
+function ai_whatsapp_automation_update_11032(): string {
+  $entity_type_manager = \Drupal::entityTypeManager();
+  $definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+  $database = \Drupal::database();
+
+  if ($definition_update_manager->getEntityType('ai_whatsapp_client') === NULL) {
+    $definition_update_manager->installEntityType($entity_type_manager->getDefinition('ai_whatsapp_client'));
+  }
+  $owned_types = [
+    'ai_whatsapp_bot',
+    'ai_whatsapp_account',
+    'ai_whatsapp_knowledge_base',
+    'ai_whatsapp_conversation',
+    'ai_whatsapp_lead',
+  ];
+  foreach ($owned_types as $entity_type_id) {
+    if ($definition_update_manager->getFieldStorageDefinition('client', $entity_type_id) === NULL) {
+      $field = \Drupal::service('entity_field.manager')->getFieldStorageDefinitions($entity_type_id)['client'];
+      $definition_update_manager->installFieldStorageDefinition('client', $entity_type_id, 'ai_whatsapp_automation', $field);
+    }
+  }
+
+  // One client per bot without one.
+  $created = 0;
+  $client_storage = $entity_type_manager->getStorage('ai_whatsapp_client');
+  $bots = $database->select('ai_whatsapp_bot', 'b')
+    ->fields('b', ['id', 'name'])
+    ->isNull('b.client')
+    ->orderBy('b.id')
+    ->execute()
+    ->fetchAllKeyed();
+  foreach ($bots as $bot_id => $bot_name) {
+    $client = $client_storage->create(['name' => $bot_name, 'status' => 'active']);
+    $client->save();
+    $database->update('ai_whatsapp_bot')->fields(['client' => $client->id()])->condition('id', $bot_id)->execute();
+    $created++;
+  }
+
+  // Accounts, then conversations and leads, from the record they belong to.
+  $database->query('UPDATE {ai_whatsapp_account} SET client = (SELECT {ai_whatsapp_bot}.client FROM {ai_whatsapp_bot} WHERE {ai_whatsapp_bot}.id = {ai_whatsapp_account}.bot) WHERE client IS NULL AND bot IS NOT NULL');
+  $database->query('UPDATE {ai_whatsapp_conversation} SET client = (SELECT {ai_whatsapp_bot}.client FROM {ai_whatsapp_bot} WHERE {ai_whatsapp_bot}.id = {ai_whatsapp_conversation}.bot) WHERE client IS NULL AND bot IS NOT NULL');
+  $database->query('UPDATE {ai_whatsapp_conversation} SET client = (SELECT {ai_whatsapp_account}.client FROM {ai_whatsapp_account} WHERE {ai_whatsapp_account}.id = {ai_whatsapp_conversation}.whatsapp_account) WHERE client IS NULL AND whatsapp_account IS NOT NULL');
+  $database->query('UPDATE {ai_whatsapp_lead} SET client = (SELECT {ai_whatsapp_conversation}.client FROM {ai_whatsapp_conversation} WHERE {ai_whatsapp_conversation}.id = {ai_whatsapp_lead}.conversation) WHERE client IS NULL AND conversation IS NOT NULL');
+  $database->query('UPDATE {ai_whatsapp_lead} SET client = (SELECT {ai_whatsapp_bot}.client FROM {ai_whatsapp_bot} WHERE {ai_whatsapp_bot}.id = {ai_whatsapp_lead}.bot) WHERE client IS NULL AND bot IS NOT NULL');
+
+  // Knowledge bases: only when every bot and account using it agree.
+  $unassigned = [];
+  $knowledge_bases = $database->select('ai_whatsapp_knowledge_base', 'k')
+    ->fields('k', ['id', 'name'])
+    ->isNull('k.client')
+    ->execute()
+    ->fetchAllKeyed();
+  foreach ($knowledge_bases as $kb_id => $kb_name) {
+    $clients = array_merge(
+      $database->select('ai_whatsapp_bot', 'b')->fields('b', ['client'])->condition('b.knowledge_base', $kb_id)->isNotNull('b.client')->execute()->fetchCol(),
+      $database->select('ai_whatsapp_account', 'a')->fields('a', ['client'])->condition('a.knowledge_base', $kb_id)->isNotNull('a.client')->execute()->fetchCol(),
+    );
+    $clients = array_values(array_unique($clients));
+    if (count($clients) === 1) {
+      $database->update('ai_whatsapp_knowledge_base')->fields(['client' => $clients[0]])->condition('id', $kb_id)->execute();
+      continue;
+    }
+    $unassigned[] = $kb_name . ' (' . (count($clients) === 0 ? 'sin uso' : 'usada por ' . count($clients) . ' clientes') . ')';
+  }
+
+  foreach ($owned_types as $entity_type_id) {
+    $entity_type_manager->getStorage($entity_type_id)->resetCache();
+    $remaining = (int) $database->select($entity_type_id === 'ai_whatsapp_knowledge_base' ? 'ai_whatsapp_knowledge_base' : $entity_type_id, 't')->isNull('t.client')->countQuery()->execute()->fetchField();
+    if ($remaining > 0 && $entity_type_id !== 'ai_whatsapp_knowledge_base') {
+      $unassigned[] = $remaining . ' × ' . $entity_type_id;
+    }
+  }
+
+  return (string) t('Created @created clients. Unassigned, review manually: @unassigned.', [
+    '@created' => $created,
+    '@unassigned' => $unassigned === [] ? 'none' : implode('; ', $unassigned),
+  ]);
+}
+
+/**
  * Returns the entity type IDs provided by this module.
  *
  * @return string[]
@@ -873,6 +964,7 @@ function ai_whatsapp_automation_update_11031(): string {
  */
 function ai_whatsapp_automation_entity_type_ids(): array {
   return [
+    'ai_whatsapp_client',
     'ai_whatsapp_bot',
     'ai_whatsapp_account',
     'ai_whatsapp_conversation',

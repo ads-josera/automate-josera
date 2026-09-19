@@ -26,6 +26,13 @@ ai_whatsapp_automation.dashboard_reports:
   parent: system.admin_reports
   weight: 50
 
+entity.ai_whatsapp_client.collection:
+  title: 'Clients'
+  description: 'Companies that own bots, WhatsApp accounts and knowledge bases.'
+  route_name: entity.ai_whatsapp_client.collection
+  parent: ai_whatsapp_automation.content
+  weight: -5
+
 entity.ai_whatsapp_conversation.collection:
   title: 'Conversations'
   description: 'Manage WhatsApp conversations.'

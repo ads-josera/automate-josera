@@ -88,6 +88,8 @@ final class Conversation extends ContentEntityBase {
   public static function baseFieldDefinitions(EntityTypeInterface $entity_type): array {
     $fields = parent::baseFieldDefinitions($entity_type);
 
+    $fields['client'] = Client::referenceField(t('Set automatically from the bot or WhatsApp account when the conversation is saved.'));
+
     $fields['phone'] = BaseFieldDefinition::create('string')
       ->setLabel(t('Phone'))
       ->setRequired(TRUE)

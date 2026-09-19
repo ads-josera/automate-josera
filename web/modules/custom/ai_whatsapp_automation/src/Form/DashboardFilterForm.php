@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\ai_whatsapp_automation\Form;
 
+use Drupal\ai_whatsapp_automation\Ui\ClientFilter;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Url;
@@ -29,6 +30,7 @@ final class DashboardFilterForm extends FormBase {
     $form['#action'] = Url::fromRoute('ai_whatsapp_automation.dashboard')->toString();
     $form['#attributes']['class'][] = 'ai-whatsapp-dashboard__filters';
 
+    $form['client'] = ClientFilter::element($request);
     $form['period'] = [
       '#type' => 'select',
       '#title' => $this->t('View'),

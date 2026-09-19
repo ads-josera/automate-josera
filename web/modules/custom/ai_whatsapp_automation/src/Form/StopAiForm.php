@@ -32,7 +32,7 @@ final class StopAiForm extends ConversationOperationFormBase {
    */
   public function submitForm(array &$form, FormStateInterface $form_state): void {
     $this->humanOperator->stopAi($this->conversation, (string) $form_state->getValue('note'));
-    $this->messenger()->addStatus($this->t('AI has been stopped for the conversation.'));
+    $this->messenger()->addStatus($this->t('IA pausada: la conversación queda en atención humana.'));
     $this->redirectToCollection($form_state);
   }
 
@@ -40,7 +40,7 @@ final class StopAiForm extends ConversationOperationFormBase {
    * {@inheritdoc}
    */
   protected function getSubmitLabel(): string|\Stringable {
-    return $this->t('Stop AI');
+    return $this->t('Pausar IA');
   }
 
 }

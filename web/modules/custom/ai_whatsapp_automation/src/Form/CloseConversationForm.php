@@ -32,7 +32,7 @@ final class CloseConversationForm extends ConversationOperationFormBase {
    */
   public function submitForm(array &$form, FormStateInterface $form_state): void {
     $this->humanOperator->closeConversation($this->conversation, (string) $form_state->getValue('note'));
-    $this->messenger()->addStatus($this->t('The conversation has been closed.'));
+    $this->messenger()->addStatus($this->t('Conversación cerrada.'));
     $this->redirectToCollection($form_state);
   }
 
@@ -40,7 +40,7 @@ final class CloseConversationForm extends ConversationOperationFormBase {
    * {@inheritdoc}
    */
   protected function getSubmitLabel(): string|\Stringable {
-    return $this->t('Close conversation');
+    return $this->t('Cerrar conversación');
   }
 
 }

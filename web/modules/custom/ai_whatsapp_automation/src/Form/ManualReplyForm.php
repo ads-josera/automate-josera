@@ -26,7 +26,7 @@ final class ManualReplyForm extends ConversationOperationFormBase {
 
     $form['reply'] = [
       '#type' => 'textarea',
-      '#title' => $this->t('Reply'),
+      '#title' => $this->t('Respuesta'),
       '#rows' => 5,
       '#required' => TRUE,
     ];
@@ -68,7 +68,7 @@ final class ManualReplyForm extends ConversationOperationFormBase {
    * {@inheritdoc}
    */
   protected function getSubmitLabel(): string|\Stringable {
-    return $this->t('Send reply');
+    return $this->t('Enviar respuesta');
   }
 
 }

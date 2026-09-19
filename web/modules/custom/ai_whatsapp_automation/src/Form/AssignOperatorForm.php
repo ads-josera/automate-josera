@@ -28,7 +28,7 @@ final class AssignOperatorForm extends ConversationOperationFormBase {
     if ($client_access->isAdmin($this->currentUser())) {
       $form['operator'] = [
         '#type' => 'entity_autocomplete',
-        '#title' => $this->t('Operator'),
+        '#title' => $this->t('Operador'),
         '#target_type' => 'user',
         '#required' => TRUE,
       ];
@@ -37,7 +37,7 @@ final class AssignOperatorForm extends ConversationOperationFormBase {
       // Client users may only hand a conversation to someone of their client.
       $form['operator'] = [
         '#type' => 'select',
-        '#title' => $this->t('Operator'),
+        '#title' => $this->t('Operador'),
         '#options' => $client_access->assignableOperators($this->currentUser()),
         '#required' => TRUE,
       ];
@@ -66,7 +66,7 @@ final class AssignOperatorForm extends ConversationOperationFormBase {
       (string) $form_state->getValue('operator'),
       (string) $form_state->getValue('note')
     );
-    $this->messenger()->addStatus($this->t('The operator has been assigned.'));
+    $this->messenger()->addStatus($this->t('Operador asignado.'));
     $this->redirectToCollection($form_state);
   }
 
@@ -74,7 +74,7 @@ final class AssignOperatorForm extends ConversationOperationFormBase {
    * {@inheritdoc}
    */
   protected function getSubmitLabel(): string|\Stringable {
-    return $this->t('Assign operator');
+    return $this->t('Asignar operador');
   }
 
 }

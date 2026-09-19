@@ -43,7 +43,7 @@ abstract class ConversationOperationFormBase extends FormBase {
   protected function addNoteField(array $form): array {
     $form['note'] = [
       '#type' => 'textarea',
-      '#title' => $this->t('Note'),
+      '#title' => $this->t('Nota interna (opcional)'),
       '#rows' => 3,
     ];
 

@@ -103,7 +103,7 @@ ai_whatsapp_automation.conversation_stop_ai:
   path: '/admin/content/ai-whatsapp/conversations/{ai_whatsapp_conversation}/stop-ai'
   defaults:
     _form: '\Drupal\ai_whatsapp_automation\Form\StopAiForm'
-    _title: 'Stop AI'
+    _title: 'Pausar IA'
   requirements:
     _custom_access: 'ai_whatsapp_automation.client_access:operateConversation'
   options:
@@ -115,7 +115,7 @@ ai_whatsapp_automation.conversation_assign_operator:
   path: '/admin/content/ai-whatsapp/conversations/{ai_whatsapp_conversation}/assign-operator'
   defaults:
     _form: '\Drupal\ai_whatsapp_automation\Form\AssignOperatorForm'
-    _title: 'Assign operator'
+    _title: 'Asignar operador'
   requirements:
     _custom_access: 'ai_whatsapp_automation.client_access:operateConversation'
   options:
@@ -127,7 +127,7 @@ ai_whatsapp_automation.conversation_manual_reply:
   path: '/admin/content/ai-whatsapp/conversations/{ai_whatsapp_conversation}/manual-reply'
   defaults:
     _form: '\Drupal\ai_whatsapp_automation\Form\ManualReplyForm'
-    _title: 'Manual reply'
+    _title: 'Responder por WhatsApp'
   requirements:
     _custom_access: 'ai_whatsapp_automation.client_access:manualReply'
   options:
@@ -139,7 +139,7 @@ ai_whatsapp_automation.conversation_reactivate_ai:
   path: '/admin/content/ai-whatsapp/conversations/{ai_whatsapp_conversation}/reactivate-ai'
   defaults:
     _form: '\Drupal\ai_whatsapp_automation\Form\ReactivateAiForm'
-    _title: 'Reactivate AI'
+    _title: 'Reactivar IA'
   requirements:
     _custom_access: 'ai_whatsapp_automation.client_access:operateConversation'
   options:
@@ -151,7 +151,7 @@ ai_whatsapp_automation.conversation_close:
   path: '/admin/content/ai-whatsapp/conversations/{ai_whatsapp_conversation}/close'
   defaults:
     _form: '\Drupal\ai_whatsapp_automation\Form\CloseConversationForm'
-    _title: 'Close conversation'
+    _title: 'Cerrar conversación'
   requirements:
     _custom_access: 'ai_whatsapp_automation.client_access:operateConversation'
   options:

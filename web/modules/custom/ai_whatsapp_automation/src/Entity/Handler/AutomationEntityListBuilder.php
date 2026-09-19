@@ -362,6 +362,11 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
     }
 
     if ($entity->getEntityTypeId() === 'ai_whatsapp_message') {
+      // The message record page shows technical provider data: client users
+      // follow the conversation instead.
+      if (!\Drupal::service('ai_whatsapp_automation.client_access')->isAdmin(\Drupal::currentUser())) {
+        unset($operations['view']);
+      }
       $conversation = $entity->hasField('conversation') ? $entity->get('conversation')->entity : NULL;
       if ($conversation instanceof EntityInterface) {
         $operations['conversation'] = [
@@ -416,31 +421,37 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
       return $operations;
     }
 
+    // Same actions and labels as the buttons on the conversation page: only
+    // the one that applies to the current status (pause or reactivate).
     $route_params = ['ai_whatsapp_conversation' => $entity->id()];
-    $operations['stop_ai'] = [
-      'title' => $this->t('Stop AI'),
-      'weight' => 20,
-      'url' => Url::fromRoute('ai_whatsapp_automation.conversation_stop_ai', $route_params),
-    ];
-    $operations['assign_operator'] = [
-      'title' => $this->t('Assign operator'),
-      'weight' => 21,
-      'url' => Url::fromRoute('ai_whatsapp_automation.conversation_assign_operator', $route_params),
-    ];
     if (\Drupal::service('ai_whatsapp_automation.human_operator')->supportsManualReply($entity)) {
       $operations['manual_reply'] = [
-        'title' => $this->t('Manual reply'),
-        'weight' => 22,
+        'title' => $this->t('Responder'),
+        'weight' => 20,
         'url' => Url::fromRoute('ai_whatsapp_automation.conversation_manual_reply', $route_params),
       ];
     }
-    $operations['reactivate_ai'] = [
-      'title' => $this->t('Reactivate AI'),
-      'weight' => 23,
-      'url' => Url::fromRoute('ai_whatsapp_automation.conversation_reactivate_ai', $route_params),
+    $operations['assign_operator'] = [
+      'title' => $this->t('Asignar operador'),
+      'weight' => 21,
+      'url' => Url::fromRoute('ai_whatsapp_automation.conversation_assign_operator', $route_params),
     ];
+    if ($this->getFieldValue($entity, 'status') === 'AI_ACTIVE') {
+      $operations['stop_ai'] = [
+        'title' => $this->t('Pausar IA'),
+        'weight' => 22,
+        'url' => Url::fromRoute('ai_whatsapp_automation.conversation_stop_ai', $route_params),
+      ];
+    }
+    else {
+      $operations['reactivate_ai'] = [
+        'title' => $this->t('Reactivar IA'),
+        'weight' => 22,
+        'url' => Url::fromRoute('ai_whatsapp_automation.conversation_reactivate_ai', $route_params),
+      ];
+    }
     $operations['close'] = [
-      'title' => $this->t('Close'),
+      'title' => $this->t('Cerrar conversación'),
       'weight' => 24,
       'url' => Url::fromRoute('ai_whatsapp_automation.conversation_close', $route_params),
     ];

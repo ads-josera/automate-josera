@@ -32,7 +32,7 @@ final class ReactivateAiForm extends ConversationOperationFormBase {
    */
   public function submitForm(array &$form, FormStateInterface $form_state): void {
     $this->humanOperator->reactivateAi($this->conversation, (string) $form_state->getValue('note'));
-    $this->messenger()->addStatus($this->t('AI has been reactivated.'));
+    $this->messenger()->addStatus($this->t('La IA volvió a atender esta conversación.'));
     $this->redirectToCollection($form_state);
   }
 
@@ -40,7 +40,7 @@ final class ReactivateAiForm extends ConversationOperationFormBase {
    * {@inheritdoc}
    */
   protected function getSubmitLabel(): string|\Stringable {
-    return $this->t('Reactivate AI');
+    return $this->t('Reactivar IA');
   }
 
 }

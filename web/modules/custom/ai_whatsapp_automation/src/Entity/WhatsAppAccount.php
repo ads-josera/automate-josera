@@ -81,6 +81,7 @@ final class WhatsAppAccount extends ContentEntityBase {
         'weight' => 0,
       ])
       ->setDisplayOptions('view', [
+        'label' => 'hidden',
         'type' => 'string',
         'weight' => 0,
       ])

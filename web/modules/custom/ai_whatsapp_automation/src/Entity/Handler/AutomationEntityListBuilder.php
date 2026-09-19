@@ -15,6 +15,7 @@ use Drupal\Core\Entity\EntityListBuilder;
 use Drupal\Core\Entity\Query\QueryInterface;
 use Drupal\Core\Link;
 use Drupal\Core\Url;
+use Drupal\file\FileInterface;
 
 /**
  * Provides list tables for AI WhatsApp Automation content entities.
@@ -327,6 +328,17 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
       ];
     }
 
+    if ($entity->getEntityTypeId() === 'ai_whatsapp_knowledge_document') {
+      $download = self::documentDownloadUrl($entity);
+      if ($download instanceof Url) {
+        $operations['download'] = [
+          'title' => $this->t('Descargar'),
+          'weight' => -10,
+          'url' => $download,
+        ];
+      }
+    }
+
     if ($entity->getEntityTypeId() === 'ai_whatsapp_bot') {
       $operations['web_integration'] = [
         'title' => $this->t('Web integration'),
@@ -427,6 +439,22 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
     $allowed = $entity->get($field_name)->getFieldDefinition()->getSetting('allowed_values');
 
     return is_array($allowed) && isset($allowed[$value]) ? (string) $allowed[$value] : $value;
+  }
+
+  /**
+   * Returns the download URL of a knowledge document's file, if allowed.
+   *
+   * Files have no page of their own, so the document list and detail page
+   * link the file directly. Private files are served by /system/files, which
+   * only knowledge administrators may use (hook_file_download).
+   */
+  public static function documentDownloadUrl(EntityInterface $document): ?Url {
+    $file = $document->get('file')->entity;
+    if (!$file instanceof FileInterface || !\Drupal::currentUser()->hasPermission('administer ai whatsapp automation rag')) {
+      return NULL;
+    }
+
+    return \Drupal::service('file_url_generator')->generate($file->getFileUri());
   }
 
   /**

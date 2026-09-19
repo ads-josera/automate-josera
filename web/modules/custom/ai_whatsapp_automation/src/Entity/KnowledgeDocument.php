@@ -75,7 +75,7 @@ final class KnowledgeDocument extends ContentEntityBase {
       ->setRequired(TRUE)
       ->setSetting('max_length', 255)
       ->setDisplayOptions('form', ['type' => 'string_textfield', 'weight' => 10])
-      ->setDisplayOptions('view', ['type' => 'string', 'weight' => 10])
+      ->setDisplayOptions('view', ['label' => 'hidden', 'type' => 'string', 'weight' => 10])
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 

@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use Drupal\ai_whatsapp_automation\Application\RAG\KnowledgeFileStorage;
+use Drupal\ai_whatsapp_automation\Entity\Handler\AutomationEntityListBuilder;
+use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\file\FileInterface;
 
@@ -120,6 +122,27 @@ function ai_whatsapp_automation_file_download(string $uri): array|int|null {
     'Content-Length' => (string) $file->getSize(),
     'Content-Disposition' => 'attachment; filename="' . str_replace('"', '', $file->getFilename()) . '"',
     'Cache-Control' => 'private',
+  ];
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_view() for ai_whatsapp_knowledge_document.
+ *
+ * Adds a download button: the file field alone shows the file name as plain
+ * text because files have no page of their own.
+ */
+function ai_whatsapp_automation_ai_whatsapp_knowledge_document_view(array &$build, EntityInterface $entity, EntityViewDisplayInterface $display, string $view_mode): void {
+  $url = AutomationEntityListBuilder::documentDownloadUrl($entity);
+  if ($url === NULL) {
+    return;
+  }
+  $build['download'] = [
+    '#type' => 'link',
+    '#title' => t('Descargar documento'),
+    '#url' => $url,
+    '#attributes' => ['class' => ['button', 'button--primary']],
+    '#weight' => -100,
+    '#cache' => ['contexts' => ['user.permissions']],
   ];
 }
 

@@ -29,6 +29,7 @@ GitHub (main) ──git pull──▶ ~/app.josera.com.mx/_repo ──rsync─�
 | PHP de la terminal SSH | **8.1** por defecto: no sirve para Drupal 11.4 |
 | PHP 8.4 para la terminal | `/opt/cpanel/ea-php84/root/usr/bin/php` |
 | Composer | `/usr/local/bin/composer` (script PHP) |
+| Archivos privados | `/home/josera/app.josera.com.mx/private` (fuera de `web/`) |
 
 ### Trampas conocidas
 
@@ -41,6 +42,14 @@ GitHub (main) ──git pull──▶ ~/app.josera.com.mx/_repo ──rsync─�
     `web/.htaccess`) hay que confirmar `grep -c ea-php84 web/.htaccess` (debe
     ser `2`) y, si falta, restaurar el bloque desde un respaldo o desde
     MultiPHP Manager.
+- **Archivos privados (documentos de conocimiento de los clientes).** Viven
+  en `private/`, junto a `web/`, configurados en `settings.php` con
+  `$settings['file_private_path'] = $app_root . '/../private';` (servidor y
+  DDEV usan la misma línea). La carpeta no está en git (`/private/` en
+  `.gitignore`) y el `rsync` no la toca porque no usa `--delete`. Drupal crea
+  `private/.htaccess` de solo lectura: forzar su reescritura da un falso error
+  «Couldn't write .htaccess». El reporte de estado muestra «AI WhatsApp
+  Automation knowledge documents: Private» cuando todo está bien.
 - **`php` en SSH es 8.1.** Composer y Drush fallan con
   `Your Composer dependencies require a PHP version ">= 8.3.0"`. Solución:
   PHP 8.4 primero en el `PATH` (ver «Preparar la sesión»). Pasar solo el
@@ -63,6 +72,7 @@ GitHub (main) ──git pull──▶ ~/app.josera.com.mx/_repo ──rsync─�
 - `web/sites/default/settings.php`, `settings.local.php`, `settings.ddev.php`
 - `web/sites/default/services.yml`
 - `web/sites/default/files/`
+- `private/` (documentos de clientes; incluirla en los respaldos del servidor)
 - respaldos SQL, zips, logs y dumps
 
 ## 1. Local: probar, commit y push

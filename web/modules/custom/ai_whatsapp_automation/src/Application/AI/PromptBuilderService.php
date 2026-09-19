@@ -113,8 +113,19 @@ final class PromptBuilderService {
       'options' => [
         'instructions' => $this->buildInstructions($bot, $account),
         'metadata' => $this->stringifyMetadata($metadata),
+        // OpenAIService drops this for models that do not reason.
+        'reasoning' => ['effort' => $this->reasoningEffort($bot)],
       ],
     ];
+  }
+
+  /**
+   * Returns the bot's reasoning effort, "low" when not configured.
+   */
+  private function reasoningEffort(ContentEntityInterface $bot): string {
+    $effort = $bot->hasField('reasoning_effort') ? (string) $bot->get('reasoning_effort')->value : '';
+
+    return in_array($effort, ['low', 'medium', 'high'], TRUE) ? $effort : 'low';
   }
 
   /**

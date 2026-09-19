@@ -136,6 +136,29 @@ final class Bot extends ContentEntityBase {
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
+    $fields['reasoning_effort'] = BaseFieldDefinition::create('list_string')
+      ->setLabel(t('Reasoning effort'))
+      ->setDescription(t('How long GPT-5 models think before answering. Low answers in about 4 seconds; medium took about 18 seconds in production, over Twilio\'s 15-second webhook timeout. Ignored by models without reasoning.'))
+      ->setRequired(TRUE)
+      ->setDefaultValue('low')
+      ->setSettings([
+        'allowed_values' => [
+          'low' => 'Low (fast, recommended)',
+          'medium' => 'Medium',
+          'high' => 'High (slow)',
+        ],
+      ])
+      ->setDisplayOptions('form', [
+        'type' => 'options_select',
+        'weight' => 35,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'list_default',
+        'weight' => 35,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
     $fields['temperature'] = BaseFieldDefinition::create('decimal')
       ->setLabel(t('Temperature'))
       ->setDefaultValue('0.70')

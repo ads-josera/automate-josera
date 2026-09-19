@@ -841,6 +841,31 @@ function ai_whatsapp_automation_update_11030(): string {
 }
 
 /**
+ * Adds a per-bot reasoning effort and sets existing bots to "low".
+ *
+ * Without it GPT-5 models used their default (medium) effort: 18.3 s per
+ * reply in production versus 3.8 s with "low".
+ */
+function ai_whatsapp_automation_update_11031(): string {
+  $definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+  $fields = \Drupal::service('entity_field.manager')->getFieldStorageDefinitions('ai_whatsapp_bot');
+  if ($definition_update_manager->getFieldStorageDefinition('reasoning_effort', 'ai_whatsapp_bot') === NULL && isset($fields['reasoning_effort'])) {
+    $definition_update_manager->installFieldStorageDefinition('reasoning_effort', 'ai_whatsapp_bot', 'ai_whatsapp_automation', $fields['reasoning_effort']);
+  }
+
+  $updated = 0;
+  foreach (\Drupal::entityTypeManager()->getStorage('ai_whatsapp_bot')->loadMultiple() as $bot) {
+    if ($bot->get('reasoning_effort')->isEmpty()) {
+      $bot->set('reasoning_effort', 'low');
+      $bot->save();
+      $updated++;
+    }
+  }
+
+  return (string) t('Set reasoning effort "low" on @count bots.', ['@count' => $updated]);
+}
+
+/**
  * Returns the entity type IDs provided by this module.
  *
  * @return string[]

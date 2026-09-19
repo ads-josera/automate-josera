@@ -266,6 +266,11 @@ final class OpenAIService implements OpenAIServiceInterface {
         $payload[$key] = $options[$key];
       }
     }
+    // Only GPT-5 family models accept a reasoning effort; others reject the
+    // whole request when it is present.
+    if (!str_starts_with($model, 'gpt-5')) {
+      unset($payload['reasoning']);
+    }
 
     return $payload;
   }

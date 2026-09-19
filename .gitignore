@@ -49,3 +49,6 @@ Thumbs.db
 *.bak
 *.backup
 
+
+# Private files (client documents): never in git.
+/private/

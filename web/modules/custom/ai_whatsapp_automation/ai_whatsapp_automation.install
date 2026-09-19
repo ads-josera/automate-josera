@@ -29,6 +29,21 @@ function ai_whatsapp_automation_requirements(string $phase): array {
     $requirements['ai_whatsapp_automation_pdftotext']['description'] = t('PDF extraction for RAG requires the poppler-utils package. TXT and DOCX indexing will still work.');
   }
 
+  $knowledge_files = \Drupal::service('ai_whatsapp_automation.knowledge_file_storage');
+  $public_documents = $knowledge_files->countPublicDocuments();
+  $requirements['ai_whatsapp_automation_private_files'] = [
+    'title' => t('AI WhatsApp Automation knowledge documents'),
+    'value' => t('Private'),
+    'severity' => REQUIREMENT_OK,
+  ];
+  if (!$knowledge_files->isPrivateAvailable() || $public_documents > 0) {
+    $requirements['ai_whatsapp_automation_private_files']['value'] = t('@count documents are public', ['@count' => $public_documents]);
+    $requirements['ai_whatsapp_automation_private_files']['severity'] = REQUIREMENT_ERROR;
+    $requirements['ai_whatsapp_automation_private_files']['description'] = $knowledge_files->isPrivateAvailable()
+      ? t('Move them with: drush php:eval "\\Drupal::service(\'ai_whatsapp_automation.knowledge_file_storage\')->moveDocumentsToPrivate();". A document whose file is missing on disk cannot be moved: upload it again.')
+      : t('Client documents can be downloaded by anyone with their URL. Set $settings[\'file_private_path\'] in settings.php to a directory outside the web root and run the database updates.');
+  }
+
   return $requirements;
 }
 
@@ -953,6 +968,28 @@ function ai_whatsapp_automation_update_11032(): string {
   return (string) t('Created @created clients. Unassigned, review manually: @unassigned.', [
     '@created' => $created,
     '@unassigned' => $unassigned === [] ? 'none' : implode('; ', $unassigned),
+  ]);
+}
+
+/**
+ * Moves knowledge documents from public to private file storage.
+ *
+ * Requires $settings['file_private_path']. Without it nothing is moved and
+ * the status report keeps flagging the public documents; the move can then be
+ * run later with the knowledge_file_storage service.
+ */
+function ai_whatsapp_automation_update_11033(): string {
+  $knowledge_files = \Drupal::service('ai_whatsapp_automation.knowledge_file_storage');
+  if (!$knowledge_files->isPrivateAvailable()) {
+    return (string) t('Private file storage is not configured: @count knowledge documents stay public. Set file_private_path in settings.php.', [
+      '@count' => $knowledge_files->countPublicDocuments(),
+    ]);
+  }
+  $result = $knowledge_files->moveDocumentsToPrivate();
+
+  return (string) t('Moved @moved knowledge documents to private storage. Failed: @failed.', [
+    '@moved' => $result['moved'],
+    '@failed' => $result['failed'] === [] ? 'none' : implode(', ', $result['failed']),
   ]);
 }
 

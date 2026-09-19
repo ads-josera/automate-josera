@@ -122,6 +122,14 @@ services:
     arguments:
       - '@file_system'
 
+  ai_whatsapp_automation.knowledge_file_storage:
+    class: Drupal\ai_whatsapp_automation\Application\RAG\KnowledgeFileStorage
+    arguments:
+      - '@entity_type.manager'
+      - '@stream_wrapper_manager'
+      - '@file.repository'
+      - '@file_system'
+
   ai_whatsapp_automation.embedding:
     class: Drupal\ai_whatsapp_automation\Application\RAG\EmbeddingService
     arguments:

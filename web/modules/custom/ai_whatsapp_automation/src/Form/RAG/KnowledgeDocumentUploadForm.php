@@ -60,10 +60,14 @@ final class KnowledgeDocumentUploadForm extends FormBase {
     $form['document'] = [
       '#type' => 'managed_file',
       '#title' => $this->t('Document'),
-      '#upload_location' => 'public://ai-whatsapp-knowledge',
+      // Private when file_private_path is configured: client documents must
+      // not be downloadable by URL.
+      '#upload_location' => \Drupal::service('ai_whatsapp_automation.knowledge_file_storage')->uploadLocation(),
       '#upload_validators' => [
         'FileExtension' => ['extensions' => 'txt docx pdf'],
+        'FileSizeLimit' => ['fileLimit' => 20 * 1024 * 1024],
       ],
+      '#description' => $this->t('TXT, DOCX o PDF de hasta 20 MB.'),
       '#required' => TRUE,
     ];
 

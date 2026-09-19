@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use Drupal\ai_whatsapp_automation\Application\RAG\KnowledgeFileStorage;
 use Drupal\Core\Entity\EntityInterface;
+use Drupal\file\FileInterface;
 
 /**
  * Implements hook_cron().
@@ -92,3 +94,32 @@ function ai_whatsapp_automation_ai_whatsapp_conversation_presave(EntityInterface
 function ai_whatsapp_automation_ai_whatsapp_lead_presave(EntityInterface $entity): void {
   \Drupal::service('ai_whatsapp_automation.client_assignment')->assign($entity);
 }
+
+/**
+ * Implements hook_file_download().
+ *
+ * Knowledge documents are client files: only knowledge administrators may
+ * download them. Denying here also covers private files that no other module
+ * claims.
+ */
+function ai_whatsapp_automation_file_download(string $uri): array|int|null {
+  if (!str_starts_with($uri, 'private://' . KnowledgeFileStorage::DIRECTORY . '/')) {
+    return NULL;
+  }
+  if (!\Drupal::currentUser()->hasPermission('administer ai whatsapp automation rag')) {
+    return -1;
+  }
+  $files = \Drupal::entityTypeManager()->getStorage('file')->loadByProperties(['uri' => $uri]);
+  $file = reset($files);
+  if (!$file instanceof FileInterface) {
+    return -1;
+  }
+
+  return [
+    'Content-Type' => $file->getMimeType(),
+    'Content-Length' => (string) $file->getSize(),
+    'Content-Disposition' => 'attachment; filename="' . str_replace('"', '', $file->getFilename()) . '"',
+    'Cache-Control' => 'private',
+  ];
+}
+

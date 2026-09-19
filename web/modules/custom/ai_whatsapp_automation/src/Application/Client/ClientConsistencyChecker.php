@@ -6,7 +6,6 @@ namespace Drupal\ai_whatsapp_automation\Application\Client;
 
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
 
 /**
  * Detects references from a bot or account to another client's records.

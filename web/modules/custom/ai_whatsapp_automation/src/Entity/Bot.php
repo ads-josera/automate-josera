@@ -354,6 +354,20 @@ final class Bot extends ContentEntityBase {
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
+    $fields['media_reply_text'] = BaseFieldDefinition::create('string_long')
+      ->setLabel(t('Reply to a voice note or an attachment'))
+      ->setDescription(t('Sent once when the contact sends audio, a photo or a file, which the AI cannot read. Leave empty to use the global fallback.'))
+      ->setDisplayOptions('form', [
+        'type' => 'string_textarea',
+        'weight' => 55,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'basic_string',
+        'weight' => 55,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
     $fields['web_widget_enabled'] = BaseFieldDefinition::create('boolean')
       ->setLabel(t('Enable web widget'))
       ->setDescription(t('Allow this bot to be embedded as a public web chat widget.'))

@@ -31,3 +31,4 @@ options:
   notification_recipient_reply_text: 'Este número es exclusivo para notificaciones del sistema. No responde mensajes ni solicitudes.'
   unintelligible_reply_text: 'No logré entender tu mensaje 🤔 ¿Me lo escribes de nuevo, por favor?'
   unintelligible_second_reply_text: 'Sigo sin poder leer tu mensaje. Puedes escribirme qué producto o servicio te interesa, o pedirme que te contacte una persona.'
+  media_reply_text: 'Por ahora solo puedo leer mensajes de texto 🙏 ¿Me escribes lo que necesitas y con gusto te ayudo?'

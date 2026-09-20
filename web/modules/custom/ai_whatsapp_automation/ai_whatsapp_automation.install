@@ -1092,6 +1092,28 @@ function ai_whatsapp_automation_update_11037(): string {
 }
 
 /**
+ * Adds the reply sent when a voice note or an attachment arrives.
+ */
+function ai_whatsapp_automation_update_11038(): string {
+  $definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+  if ($definition_update_manager->getFieldStorageDefinition('media_reply_text', 'ai_whatsapp_bot') === NULL) {
+    $definition_update_manager->installFieldStorageDefinition(
+      'media_reply_text',
+      'ai_whatsapp_bot',
+      'ai_whatsapp_automation',
+      \Drupal::service('entity_field.manager')->getFieldStorageDefinitions('ai_whatsapp_bot')['media_reply_text']
+    );
+  }
+
+  $config = \Drupal::configFactory()->getEditable('ai_whatsapp_automation.settings');
+  if ($config->get('options.media_reply_text') === NULL) {
+    $config->set('options.media_reply_text', 'Por ahora solo puedo leer mensajes de texto 🙏 ¿Me escribes lo que necesitas y con gusto te ayudo?')->save();
+  }
+
+  return (string) t('Voice notes and attachments are now recorded and answered instead of ignored.');
+}
+
+/**
  * Returns the permissions of the client agent role.
  *
  * @return string[]

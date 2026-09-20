@@ -118,6 +118,9 @@ ai_whatsapp_automation.settings:
         unintelligible_second_reply_text:
           type: string
           label: 'Second reply to an unreadable message'
+        media_reply_text:
+          type: string
+          label: 'Reply to a voice note or an attachment'
 
 ai_whatsapp_automation.client_mail:
   type: config_object

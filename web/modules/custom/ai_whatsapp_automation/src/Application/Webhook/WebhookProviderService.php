@@ -182,8 +182,14 @@ final class WebhookProviderService {
   private function normalizeTwilio(Request $request): array {
     $body = trim((string) $request->request->get('Body', ''));
     $from = $this->normalizePhone((string) $request->request->get('From', ''));
+    // A voice note or a photo arrives with no text. Delivery receipts also
+    // arrive with no text, but they carry no media either, so they keep
+    // being ignored.
+    $media = (int) $request->request->get('NumMedia', 0) > 0
+      ? $this->mediaKindFromMimeType((string) $request->request->get('MediaContentType0', ''))
+      : '';
 
-    if ($body === '' || $from === '') {
+    if ($from === '' || ($body === '' && $media === '')) {
       return [];
     }
 
@@ -191,6 +197,7 @@ final class WebhookProviderService {
       'phone' => $from,
       'account_phone' => $this->normalizePhone((string) $request->request->get('To', '')),
       'body' => $body,
+      'media' => $body === '' ? $media : '',
       'provider_message_id' => (string) $request->request->get('MessageSid', $request->request->get('SmsMessageSid', '')),
       'raw' => $request->request->all(),
     ];
@@ -205,8 +212,11 @@ final class WebhookProviderService {
     $message = $value['messages'][0] ?? [];
     $body = trim((string) ($message['text']['body'] ?? ''));
     $from = $this->normalizePhone((string) ($message['from'] ?? ''));
+    // Cloud API names the kind directly. A "statuses" payload carries no
+    // message at all, so it never reaches this point with a sender.
+    $media = $body === '' ? $this->mediaKind((string) ($message['type'] ?? '')) : '';
 
-    if ($body === '' || $from === '') {
+    if ($from === '' || ($body === '' && $media === '')) {
       return [];
     }
 
@@ -214,6 +224,7 @@ final class WebhookProviderService {
       'phone' => $from,
       'account_phone' => $this->normalizePhone((string) ($value['metadata']['display_phone_number'] ?? $value['metadata']['phone_number_id'] ?? '')),
       'body' => $body,
+      'media' => $media,
       'provider_message_id' => (string) ($message['id'] ?? ''),
       'raw' => $payload,
     ];
@@ -229,8 +240,11 @@ final class WebhookProviderService {
     $body = trim((string) ($message['conversation'] ?? $message['extendedTextMessage']['text'] ?? $data['text'] ?? ''));
     $remote_jid = (string) ($data['key']['remoteJid'] ?? $data['remoteJid'] ?? '');
     $from = $this->normalizePhone($remote_jid);
+    // Evolution names the kind in the key that holds the message, such as
+    // "audioMessage" or "imageMessage".
+    $media = $body === '' && is_array($message) ? $this->evolutionMediaKind($message) : '';
 
-    if ($body === '' || $from === '') {
+    if ($from === '' || ($body === '' && $media === '')) {
       return [];
     }
 
@@ -238,9 +252,64 @@ final class WebhookProviderService {
       'phone' => $from,
       'account_phone' => (string) ($payload['instance'] ?? $data['instance'] ?? ''),
       'body' => $body,
+      'media' => $media,
       'provider_message_id' => (string) ($data['key']['id'] ?? $data['id'] ?? ''),
       'raw' => $payload,
     ];
+  }
+
+  /**
+   * Returns the media kind of an Evolution message, or an empty string.
+   *
+   * @param array<string, mixed> $message
+   *   The provider message.
+   */
+  private function evolutionMediaKind(array $message): string {
+    foreach (array_keys($message) as $key) {
+      if (!is_string($key) || !str_ends_with($key, 'Message')) {
+        continue;
+      }
+      $kind = $this->mediaKind(substr($key, 0, -strlen('Message')));
+      if ($kind !== '') {
+        return $kind;
+      }
+    }
+
+    return '';
+  }
+
+  /**
+   * Maps a provider's own name for a message kind to ours.
+   *
+   * Anything not listed here is either text or something we have no reply
+   * for, and returning an empty string leaves it ignored as before.
+   */
+  private function mediaKind(string $type): string {
+    $type = strtolower(trim($type));
+
+    return match ($type) {
+      'audio', 'ptt', 'voice' => 'audio',
+      'image' => 'image',
+      'video' => 'video',
+      'sticker' => 'sticker',
+      'document' => 'document',
+      'location', 'livelocation' => 'location',
+      'contacts', 'contact', 'contactsarray' => 'contact',
+      default => '',
+    };
+  }
+
+  /**
+   * Returns the media kind of a MIME type, such as "audio/ogg".
+   */
+  private function mediaKindFromMimeType(string $mime_type): string {
+    $top_level = strtok(strtolower(trim($mime_type)), '/');
+    if ($top_level === FALSE || $top_level === '') {
+      return '';
+    }
+
+    // An unknown attachment is still an attachment worth acknowledging.
+    return $this->mediaKind($top_level) ?: 'document';
   }
 
   /**

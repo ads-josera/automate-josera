@@ -99,6 +99,11 @@ final class WebhookProcessorService {
       return $this->blockNotificationRecipient($conversation, $provider, $message);
     }
 
+    $media = (string) ($message['media'] ?? '');
+    if ($media !== '' && trim((string) ($message['body'] ?? '')) === '') {
+      return $this->handleMediaMessage($conversation, $provider, $message, $media);
+    }
+
     if ($conversation->hasField('status') && $conversation->get('status')->value !== 'AI_ACTIVE') {
       $incoming = $this->saveIncomingMessage($conversation, $message);
       $this->logger->notice('Webhook message @message was saved without AI processing because conversation @conversation is @status.', [
@@ -201,6 +206,120 @@ final class WebhookProcessorService {
       'incoming_message_id' => $incoming->id(),
       'delivery' => $delivery,
     ];
+  }
+
+  /**
+   * Records a voice note or an attachment and says we cannot read it.
+   *
+   * These used to be dropped before reaching a conversation: the contact was
+   * left waiting for an answer that was never coming, and the operator saw
+   * no trace of it. Now the transcript shows what arrived, and the contact
+   * is told once — repeating it on every photo of a burst would be noise.
+   *
+   * @param array<string, mixed> $message
+   *   Normalized incoming message.
+   *
+   * @return array<string, mixed>
+   *   Processing result.
+   */
+  private function handleMediaMessage(
+    ContentEntityInterface $conversation,
+    string $provider,
+    array $message,
+    string $media,
+  ): array {
+    $incoming = $this->saveIncomingMessage($conversation, ['body' => $this->mediaPlaceholder($media)] + $message);
+
+    $reply = $this->mediaReply($conversation);
+    $delivery = ['status' => 'skipped_no_reply'];
+    if ($reply !== '' && $this->shouldAnnounceMedia($conversation, $reply)) {
+      $outbound_message = $message + [
+        'whatsapp_account_id' => $conversation->hasField('whatsapp_account') ? $conversation->get('whatsapp_account')->target_id : NULL,
+      ];
+      $delivery = $this->messageSender->sendText($provider, $outbound_message, $reply);
+      if (($delivery['status'] ?? '') === 'sent') {
+        $this->entityTypeManager->getStorage('ai_whatsapp_message')->create([
+          'conversation' => $conversation->id(),
+          'sender' => 'ai',
+          'content' => $reply,
+          'tokens' => 0,
+          'cost' => '0.000000',
+        ])->save();
+      }
+    }
+
+    $this->logger->notice('Conversation @conversation received @media, which the AI cannot read.', [
+      '@conversation' => (string) $conversation->id(),
+      '@media' => $media,
+    ]);
+
+    return [
+      'status' => 'saved_media',
+      'media' => $media,
+      'conversation_id' => $conversation->id(),
+      'incoming_message_id' => $incoming->id(),
+      'delivery' => $delivery,
+    ];
+  }
+
+  /**
+   * Returns whether the contact should be told we cannot read attachments.
+   *
+   * Only while the AI is answering — once a person has taken the
+   * conversation over, they decide what to do with a voice note — and only
+   * when it is not what we already said last.
+   */
+  private function shouldAnnounceMedia(ContentEntityInterface $conversation, string $reply): bool {
+    if ($conversation->hasField('status') && $conversation->get('status')->value !== 'AI_ACTIVE') {
+      return FALSE;
+    }
+
+    $storage = $this->entityTypeManager->getStorage('ai_whatsapp_message');
+    $ids = $storage->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('conversation', $conversation->id())
+      ->condition('sender', 'ai')
+      ->sort('id', 'DESC')
+      ->range(0, 1)
+      ->execute();
+    if ($ids === []) {
+      return TRUE;
+    }
+
+    $last = $storage->load(reset($ids));
+
+    return !$last instanceof ContentEntityInterface
+      || trim((string) $last->get('content')->value) !== trim($reply);
+  }
+
+  /**
+   * Returns what the transcript shows for an attachment.
+   */
+  private function mediaPlaceholder(string $media): string {
+    return match ($media) {
+      'audio' => '🎤 Nota de voz',
+      'image' => '🖼️ Imagen',
+      'video' => '🎬 Video',
+      'sticker' => '💬 Sticker',
+      'location' => '📍 Ubicación',
+      'contact' => '👤 Contacto',
+      default => '📎 Archivo adjunto',
+    };
+  }
+
+  /**
+   * Returns the bot's wording for attachments, or the global fallback.
+   */
+  private function mediaReply(ContentEntityInterface $conversation): string {
+    $bot = $this->botManager->getBotForConversation($conversation);
+    if ($bot instanceof ContentEntityInterface) {
+      $reply = trim($this->fieldValue($bot, 'media_reply_text'));
+      if ($reply !== '') {
+        return $reply;
+      }
+    }
+
+    return trim((string) $this->setting('options.media_reply_text'));
   }
 
   /**

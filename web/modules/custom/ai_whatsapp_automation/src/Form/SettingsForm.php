@@ -429,6 +429,13 @@ final class SettingsForm extends ConfigFormBase {
       '#rows' => 2,
       '#description' => $this->t('Sent when a second unreadable message arrives in a row. Offer a way out here, such as naming a product or asking for a person. After this one the bot stops replying until a readable message arrives.'),
     ];
+    $form['options']['media_reply_text'] = [
+      '#type' => 'textarea',
+      '#title' => $this->t('Default reply to a voice note or an attachment'),
+      '#default_value' => $config->get('options.media_reply_text') ?: '',
+      '#rows' => 2,
+      '#description' => $this->t('The AI cannot listen to audio or open files. This is sent once, and not repeated while it is still the last thing the bot said. The attachment is recorded in the conversation either way. Leave empty to stay silent.'),
+    ];
 
     return parent::buildForm($form, $form_state);
   }
@@ -562,6 +569,7 @@ final class SettingsForm extends ConfigFormBase {
       ->set('options.notification_recipient_reply_text', $options['notification_recipient_reply_text'])
       ->set('options.unintelligible_reply_text', $options['unintelligible_reply_text'])
       ->set('options.unintelligible_second_reply_text', $options['unintelligible_second_reply_text'])
+      ->set('options.media_reply_text', $options['media_reply_text'])
       ->save();
 
     parent::submitForm($form, $form_state);

@@ -28,8 +28,8 @@ use Drupal\views\EntityViewsData;
  */
 #[ContentEntityType(
   id: 'ai_whatsapp_client',
-  label: new TranslatableMarkup('Client'),
-  label_collection: new TranslatableMarkup('Clients'),
+  label: new TranslatableMarkup('Cliente'),
+  label_collection: new TranslatableMarkup('Clientes'),
   label_singular: new TranslatableMarkup('client'),
   label_plural: new TranslatableMarkup('clients'),
   entity_keys: ['id' => 'id', 'uuid' => 'uuid', 'label' => 'name'],
@@ -57,8 +57,8 @@ use Drupal\views\EntityViewsData;
   admin_permission: 'administer ai whatsapp automation entities',
   base_table: 'ai_whatsapp_client',
   label_count: [
-    'singular' => '@count client',
-    'plural' => '@count clients',
+    'singular' => '@count cliente',
+    'plural' => '@count clientes',
   ],
 )]
 final class Client extends ContentEntityBase {

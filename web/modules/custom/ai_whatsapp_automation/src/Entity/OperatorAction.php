@@ -23,10 +23,10 @@ use Drupal\views\EntityViewsData;
  */
 #[ContentEntityType(
   id: 'ai_whatsapp_operator_action',
-  label: new TranslatableMarkup('Operator action'),
-  label_collection: new TranslatableMarkup('Operator actions'),
-  label_singular: new TranslatableMarkup('Operator action'),
-  label_plural: new TranslatableMarkup('Operator actions'),
+  label: new TranslatableMarkup('Acción de operador'),
+  label_collection: new TranslatableMarkup('Acciones de operador'),
+  label_singular: new TranslatableMarkup('Acción de operador'),
+  label_plural: new TranslatableMarkup('Acciones de operador'),
   entity_keys: [
     'id' => 'id',
     'uuid' => 'uuid',
@@ -58,8 +58,8 @@ use Drupal\views\EntityViewsData;
   admin_permission: 'administer ai whatsapp automation entities',
   base_table: 'ai_whatsapp_operator_action',
   label_count: [
-    'singular' => '@count operator action',
-    'plural' => '@count operator actions',
+    'singular' => '@count acción de operador',
+    'plural' => '@count acciones de operador',
   ],
 )]
 final class OperatorAction extends ContentEntityBase {

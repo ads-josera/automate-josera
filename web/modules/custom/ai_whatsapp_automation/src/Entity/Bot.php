@@ -23,10 +23,10 @@ use Drupal\views\EntityViewsData;
  */
 #[ContentEntityType(
   id: 'ai_whatsapp_bot',
-  label: new TranslatableMarkup('AI bot'),
-  label_collection: new TranslatableMarkup('AI bots'),
-  label_singular: new TranslatableMarkup('AI bot'),
-  label_plural: new TranslatableMarkup('AI bots'),
+  label: new TranslatableMarkup('Bot de IA'),
+  label_collection: new TranslatableMarkup('Bots de IA'),
+  label_singular: new TranslatableMarkup('Bot de IA'),
+  label_plural: new TranslatableMarkup('Bots de IA'),
   entity_keys: [
     'id' => 'id',
     'uuid' => 'uuid',
@@ -58,8 +58,8 @@ use Drupal\views\EntityViewsData;
   admin_permission: 'administer ai whatsapp automation entities',
   base_table: 'ai_whatsapp_bot',
   label_count: [
-    'singular' => '@count AI bot',
-    'plural' => '@count AI bots',
+    'singular' => '@count bot de IA',
+    'plural' => '@count bots de IA',
   ],
 )]
 final class Bot extends ContentEntityBase {

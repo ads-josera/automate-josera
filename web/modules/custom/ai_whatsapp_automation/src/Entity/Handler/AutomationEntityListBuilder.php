@@ -41,6 +41,42 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
   ];
 
   /**
+   * Returns how a conversation's contact should read in a list.
+   *
+   * Web chat conversations are stored with the name "Web visitor", which is
+   * a placeholder and not something to show to the person using the panel.
+   */
+  private function contactLabel(string $name, string $phone, string $provider): string {
+    if ($name !== '' && $name !== 'Web visitor') {
+      return $name;
+    }
+
+    return $provider === 'web' ? (string) $this->t('Visitante web') : $phone;
+  }
+
+  /**
+   * Returns the operations column with a Spanish label.
+   *
+   * @return array<string, mixed>
+   *   The header fragment added at the end of every list.
+   */
+  private function operationsHeader(): array {
+    $header = parent::buildHeader();
+    if (!isset($header['operations'])) {
+      return $header;
+    }
+    // Core writes a plain label here, but a header cell may also be an array.
+    if (is_array($header['operations'])) {
+      $header['operations']['data'] = $this->t('Acciones');
+    }
+    else {
+      $header['operations'] = $this->t('Acciones');
+    }
+
+    return $header;
+  }
+
+  /**
    * {@inheritdoc}
    */
   public function buildHeader(): array {
@@ -51,7 +87,7 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
         'sender' => $this->t('Dirección'),
         'content' => $this->t('Mensaje'),
         'created' => $this->t('Fecha'),
-      ] + parent::buildHeader();
+      ] + $this->operationsHeader();
     }
     if ($this->entityTypeId === 'ai_whatsapp_conversation') {
       return [
@@ -59,7 +95,7 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
         'routing' => $this->t('Bot y canal'),
         'status' => $this->t('Estado'),
         'changed' => $this->t('Última actividad'),
-      ] + parent::buildHeader();
+      ] + $this->operationsHeader();
     }
     if ($this->entityTypeId === 'ai_whatsapp_lead') {
       return [
@@ -67,7 +103,7 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
         'routing' => $this->t('Bot y canal'),
         'status' => $this->t('Estado'),
         'created' => $this->t('Creado'),
-      ] + parent::buildHeader();
+      ] + $this->operationsHeader();
     }
     if ($this->entityTypeId === 'ai_whatsapp_operator_action') {
       return [
@@ -76,7 +112,7 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
         'user' => $this->t('Origen'),
         'note' => $this->t('Resultado'),
         'created' => $this->t('Fecha'),
-      ] + parent::buildHeader();
+      ] + $this->operationsHeader();
     }
     if ($this->entityTypeId === 'ai_whatsapp_knowledge_chunk') {
       return [
@@ -85,17 +121,17 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
         'content' => $this->t('Vista previa'),
         'model' => $this->t('Modelo'),
         'created' => $this->t('Creado'),
-      ] + parent::buildHeader();
+      ] + $this->operationsHeader();
     }
 
-    $header['label'] = $this->t('Label');
+    $header['label'] = $this->t('Nombre');
     if ((self::CLIENT_FIELD_PATHS[$this->entityTypeId] ?? '') === 'client') {
       $header['client'] = $this->t('Cliente');
     }
-    $header['status'] = $this->t('Status');
-    $header['changed'] = $this->t('Updated');
+    $header['status'] = $this->t('Estado');
+    $header['changed'] = $this->t('Actualizado');
 
-    return $header + parent::buildHeader();
+    return $header + $this->operationsHeader();
   }
 
   /**
@@ -570,7 +606,7 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
     $provider = $this->getFieldValue($entity, 'provider');
     $phone = $this->getFieldValue($entity, 'phone');
     $name = $this->getFieldValue($entity, 'name');
-    $contact = $name ?: ($provider === 'web' ? $this->t('Visitante web') : $phone);
+    $contact = $this->contactLabel($name, $phone, $provider);
     $bot = $this->getConversationBot($entity);
     $account = $entity->hasField('whatsapp_account')
       ? $entity->get('whatsapp_account')->entity
@@ -811,7 +847,11 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
     $conversation = $entity->hasField('conversation') ? $entity->get('conversation')->entity : NULL;
     $provider = $conversation instanceof EntityInterface ? $this->getFieldValue($conversation, 'provider') : '';
     $contact = $conversation instanceof EntityInterface
-      ? ($this->getFieldValue($conversation, 'name') ?: ($provider === 'web' ? (string) $this->t('Visitante web') : $this->getFieldValue($conversation, 'phone')))
+      ? $this->contactLabel(
+          $this->getFieldValue($conversation, 'name'),
+          $this->getFieldValue($conversation, 'phone'),
+          $provider
+        )
       : $this->t('Conversación eliminada');
     $operator = $entity->hasField('user') ? $entity->get('user')->entity : NULL;
     $action = $this->getFieldValue($entity, 'action');

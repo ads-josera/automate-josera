@@ -23,10 +23,10 @@ use Drupal\views\EntityViewsData;
  */
 #[ContentEntityType(
   id: 'ai_whatsapp_knowledge_base',
-  label: new TranslatableMarkup('Knowledge base'),
-  label_collection: new TranslatableMarkup('Knowledge bases'),
-  label_singular: new TranslatableMarkup('Knowledge base'),
-  label_plural: new TranslatableMarkup('Knowledge bases'),
+  label: new TranslatableMarkup('Base de conocimiento'),
+  label_collection: new TranslatableMarkup('Bases de conocimiento'),
+  label_singular: new TranslatableMarkup('Base de conocimiento'),
+  label_plural: new TranslatableMarkup('Bases de conocimiento'),
   entity_keys: ['id' => 'id', 'uuid' => 'uuid', 'label' => 'name'],
   handlers: [
     'storage' => AutomationEntityStorage::class,

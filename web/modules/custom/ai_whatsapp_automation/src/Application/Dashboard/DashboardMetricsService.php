@@ -39,7 +39,56 @@ final class DashboardMetricsService {
       ],
       'cost_by_bot' => $this->getCostByBot($range, $client_id),
       'cost_by_channel' => $this->getCostByChannel($range, $client_id),
+      'activity' => $this->getActivitySeries($range, $client_id),
     ];
+  }
+
+  /**
+   * Returns messages per day, split between what came in and what went out.
+   *
+   * Without a range (period "all time") the last 30 days are returned: a
+   * chart of every day since the first message would be unreadable.
+   *
+   * @return array<int, array{day: string, received: int, sent: int}>
+   *   One row per day, oldest first, with empty days filled in.
+   */
+  public function getActivitySeries(?array $range, int $client_id, int $max_days = 30): array {
+    $end = $range === NULL ? time() : min($range['end'], time());
+    $start = $range === NULL
+      ? strtotime('-' . ($max_days - 1) . ' days', (int) strtotime('today', $end))
+      : $range['start'];
+    // Long periods (a year) would give unreadable daily bars.
+    $days = (int) floor(($end - $start) / 86400) + 1;
+    if ($days > $max_days) {
+      $start = strtotime('-' . ($max_days - 1) . ' days', (int) strtotime('today', $end));
+      $days = $max_days;
+    }
+
+    $query = $this->database->select('ai_whatsapp_message', 'm');
+    $query->fields('m', ['created', 'sender']);
+    $this->applyMessageClient($query, $client_id);
+    $query->condition('m.created', $start, '>=');
+    $query->condition('m.created', $end + 1, '<');
+    // Counted in PHP: the window is at most 30 days, and grouping by day in
+    // SQL would tie the dashboard to one database's date functions.
+    $counted = [];
+    foreach ($query->execute() as $row) {
+      $day = date('Y-m-d', (int) $row->created);
+      $counted[$day] ??= ['received' => 0, 'sent' => 0];
+      $counted[$day][$row->sender === 'contact' ? 'received' : 'sent']++;
+    }
+
+    $series = [];
+    for ($i = 0; $i < $days; $i++) {
+      $day = date('Y-m-d', strtotime('+' . $i . ' days', (int) strtotime('today', $start)));
+      $series[] = [
+        'day' => $day,
+        'received' => $counted[$day]['received'] ?? 0,
+        'sent' => $counted[$day]['sent'] ?? 0,
+      ];
+    }
+
+    return $series;
   }
 
   /**

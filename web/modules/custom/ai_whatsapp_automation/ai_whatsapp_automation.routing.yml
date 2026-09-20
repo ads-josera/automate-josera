@@ -47,7 +47,7 @@ ai_whatsapp_automation.dashboard:
   path: '/admin/reports/ai-whatsapp-automation'
   defaults:
     _controller: '\Drupal\ai_whatsapp_automation\Controller\DashboardController::dashboard'
-    _title: 'AI WhatsApp Dashboard'
+    _title: 'Panel AI WhatsApp'
   requirements:
     _permission: 'view ai whatsapp automation dashboard'
 

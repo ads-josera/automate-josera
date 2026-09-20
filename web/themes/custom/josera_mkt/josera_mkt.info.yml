@@ -1,0 +1,19 @@
+name: Josera MKT
+type: theme
+base theme: claro
+description: 'Panel de automatización de Josera Marketing Digital. Subtema de Claro: hereda todo su comportamiento y solo cambia la imagen de marca y el diseño de las pantallas de AI WhatsApp.'
+package: Josera
+core_version_requirement: ^10 || ^11
+logo: images/logo-josera.svg
+libraries:
+  - josera_mkt/global
+regions:
+  header: Header
+  pre_content: Pre-content
+  breadcrumb: Breadcrumb
+  highlighted: Highlighted
+  help: Help
+  content: Content
+  page_top: Page top
+  page_bottom: Page bottom
+  sidebar_first: First sidebar

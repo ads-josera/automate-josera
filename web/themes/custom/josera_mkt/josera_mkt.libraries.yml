@@ -1,0 +1,6 @@
+global:
+  version: VERSION
+  css:
+    theme:
+      css/brand.css: {}
+      css/admin.css: {}

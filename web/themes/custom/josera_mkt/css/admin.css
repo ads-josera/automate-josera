@@ -1,0 +1,148 @@
+/**
+ * @file
+ * Chrome of the panel: toolbar, page header, cards, tables and buttons.
+ *
+ * Only colour, weight and spacing are touched. Claro keeps deciding the
+ * layout, the breakpoints and every behaviour, so an administration screen
+ * this theme has never seen still works.
+ */
+
+body {
+  background: var(--josera-canvas);
+  color: var(--josera-ink);
+}
+
+/* Toolbar -------------------------------------------------------------- */
+
+.toolbar-bar,
+.toolbar .toolbar-bar {
+  background: var(--josera-indigo-900);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 8%);
+}
+
+.toolbar .toolbar-bar .toolbar-tab > .toolbar-item:hover,
+.toolbar .toolbar-bar .toolbar-tab > .toolbar-item:focus {
+  background: rgb(255 255 255 / 10%);
+}
+
+.toolbar .toolbar-bar .toolbar-tab > .toolbar-item.is-active {
+  background: var(--josera-indigo-700);
+  box-shadow: inset 0 -3px 0 var(--josera-pink);
+}
+
+/* Page header ---------------------------------------------------------- */
+
+.content-header {
+  background: var(--josera-indigo-800);
+  background-image: linear-gradient(120deg, var(--josera-indigo-900) 0%, var(--josera-indigo-600) 100%);
+  border: 0;
+  box-shadow: none;
+}
+
+/* The wordmark sits above the page title, as on the access screen. */
+.content-header > .layout-container::before {
+  content: "";
+  display: block;
+  width: 132px;
+  height: 34px;
+  margin-bottom: 0.75rem;
+  background: url("../images/logo-josera.svg") left center / contain no-repeat;
+}
+
+.content-header .page-title,
+.content-header h1 {
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.content-header .region-breadcrumb .breadcrumb,
+.content-header .breadcrumb a,
+.content-header .breadcrumb li {
+  color: var(--josera-lavender);
+}
+
+.content-header .breadcrumb a:hover {
+  color: #fff;
+}
+
+/* Contextual "star" and other header icons must stay visible on indigo. */
+.content-header .toolbar-menu__trigger,
+.content-header .icon-link {
+  color: var(--josera-lavender);
+}
+
+/* Cards and panels ------------------------------------------------------ */
+
+.block,
+.views-element-container,
+details.claro-details,
+.layout-region,
+.panel {
+  border-radius: var(--josera-radius-sm);
+}
+
+/* Tables ---------------------------------------------------------------- */
+
+table {
+  background: var(--josera-surface);
+}
+
+thead th {
+  background: #f7f6fb;
+  color: var(--josera-ink-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--josera-border);
+}
+
+tbody tr:hover {
+  background: #faf9fd;
+}
+
+tbody td {
+  border-bottom: 1px solid var(--josera-border);
+  color: var(--josera-ink-soft);
+}
+
+/* Buttons --------------------------------------------------------------- */
+
+.button {
+  border-radius: 9px;
+  font-weight: 600;
+}
+
+.button--primary {
+  background: var(--josera-pink);
+  border-color: var(--josera-pink);
+  color: #fff;
+}
+
+.button--primary:hover,
+.button--primary:focus {
+  background: var(--josera-pink-dark);
+  border-color: var(--josera-pink-dark);
+  color: #fff;
+}
+
+/* Forms ----------------------------------------------------------------- */
+
+.form-item__label {
+  color: var(--josera-ink-soft);
+  font-weight: 600;
+}
+
+.form-element:focus,
+.form-element:focus-visible {
+  border-color: var(--josera-pink);
+  box-shadow: 0 0 0 3px rgb(236 30 99 / 22%);
+}
+
+@media (max-width: 48em) {
+  .content-header > .layout-container::before {
+    width: 108px;
+    height: 28px;
+  }
+}

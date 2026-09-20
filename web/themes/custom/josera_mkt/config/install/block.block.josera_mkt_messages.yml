@@ -1,0 +1,20 @@
+langcode: en
+status: true
+dependencies:
+  module:
+    - system
+  theme:
+    - josera_mkt
+id: josera_mkt_messages
+theme: josera_mkt
+region: highlighted
+weight: 0
+provider: null
+plugin: system_messages_block
+settings:
+  id: system_messages_block
+  label: 'Status messages'
+  label_display: '0'
+  provider: system
+visibility: {  }
+

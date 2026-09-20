@@ -1,225 +1,300 @@
+/**
+ * @file
+ * Dashboard of AI WhatsApp Automation.
+ *
+ * Reads as one board: a row of KPI cards, the daily activity chart and the
+ * consumption panels. The brand tokens come from the Josera MKT theme; the
+ * fallbacks after each var() keep the page readable under any other
+ * administration theme.
+ */
+
 .ai-whatsapp-dashboard {
-  --aiwa-surface: #ffffff;
-  --aiwa-surface-muted: #f6f8fb;
-  --aiwa-border: #d9e0ea;
-  --aiwa-text: #1f2937;
-  --aiwa-muted: #667085;
-  --aiwa-blue: #2563eb;
-  --aiwa-green: #16835b;
-  --aiwa-amber: #b45309;
-  --aiwa-slate: #475569;
-  --aiwa-indigo: #4f46e5;
-  color: var(--aiwa-text);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: 1400px;
 }
 
-.ai-whatsapp-dashboard__overview {
-  margin: 0 0 1rem;
-  padding: 1rem 1.25rem;
-  border: 1px solid var(--aiwa-border);
-  border-radius: 6px;
-  background: var(--aiwa-surface);
-}
+/* Period and client filters -------------------------------------------- */
 
 .ai-whatsapp-dashboard__filters {
-  display: grid;
-  grid-template-columns: 130px minmax(200px, 260px) max-content;
-  align-items: end;
-  justify-content: start;
-  column-gap: 12px;
-  margin: 0 0 1rem;
-  padding: 14px 16px;
-  border: 1px solid var(--aiwa-border);
-  border-radius: 6px;
-  background: var(--aiwa-surface);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1rem;
+  padding: 1rem 1.25rem;
+  background: var(--josera-surface, #fff);
+  border: 1px solid var(--josera-border, #e4e2ee);
+  border-radius: var(--josera-radius, 14px);
+  box-shadow: var(--josera-shadow, 0 1px 2px rgb(20 13 46 / 6%));
 }
 
-.ai-whatsapp-dashboard__filters .form-item,
+.ai-whatsapp-dashboard__filters > .form-item,
+.ai-whatsapp-dashboard__filters > .js-form-item {
+  margin: 0;
+  min-width: 170px;
+}
+
+/* The buttons sit on the baseline of the fields, not under them. */
 .ai-whatsapp-dashboard__filters .form-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  margin-inline-start: auto;
+}
+
+.ai-whatsapp-dashboard__filters .form-actions .button {
   margin: 0;
 }
 
-.ai-whatsapp-dashboard__filters .form-item select,
-.ai-whatsapp-dashboard__filters .form-item input {
-  width: 100%;
-  box-sizing: border-box;
-}
+/* Heading --------------------------------------------------------------- */
 
-.ai-whatsapp-dashboard__filters .form-actions {
-  display: flex;
-  gap: 8px;
-  align-items: end;
+.ai-whatsapp-dashboard__overview {
+  padding: 0;
+  border: 0;
+  background: none;
 }
 
 .ai-whatsapp-dashboard__eyebrow {
-  margin: 0 0 0.25rem;
-  color: var(--aiwa-muted);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 700;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
+  color: var(--josera-ink-muted, #7a7395);
 }
 
 .ai-whatsapp-dashboard__lead {
-  max-width: 52rem;
-  margin: 0;
-  color: var(--aiwa-text);
-  font-size: 0.9375rem;
-  line-height: 1.5;
+  margin: 0.25rem 0 0;
+  font-size: 1.05rem;
+  color: var(--josera-ink-soft, #4a4468);
 }
+
+/* KPI cards ------------------------------------------------------------- */
 
 .ai-whatsapp-dashboard__kpis {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
-  gap: 0.875rem;
-  margin: 0 0 1rem;
-}
-
-.ai-whatsapp-dashboard__kpi {
-  min-height: 6rem;
-  padding: 1rem;
-  border: 1px solid var(--aiwa-border);
-  border-left-width: 4px;
-  border-radius: 6px;
-  background: var(--aiwa-surface);
-}
-
-.ai-whatsapp-dashboard__kpi--success {
-  border-left-color: var(--aiwa-green);
-}
-
-.ai-whatsapp-dashboard__kpi--neutral {
-  border-left-color: var(--aiwa-slate);
-}
-
-.ai-whatsapp-dashboard__kpi--info {
-  border-left-color: var(--aiwa-blue);
-}
-
-.ai-whatsapp-dashboard__kpi--warning {
-  border-left-color: var(--aiwa-amber);
-}
-
-.ai-whatsapp-dashboard__kpi--cost {
-  border-left-color: var(--aiwa-indigo);
-}
-
-.ai-whatsapp-dashboard__kpi-label {
-  min-height: 2rem;
-  margin: 0 0 0.5rem;
-  color: var(--aiwa-muted);
-  font-size: 0.75rem;
-  font-weight: 700;
-  line-height: 1.25;
-}
-
-.ai-whatsapp-dashboard__kpi-value {
-  overflow-wrap: anywhere;
-  font-size: 1.55rem;
-  font-weight: 700;
-  line-height: 1.15;
-}
-
-.ai-whatsapp-dashboard__rankings {
-  display: grid;
-  grid-template-columns: minmax(18rem, 0.8fr) minmax(30rem, 1.2fr);
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 1rem;
 }
 
+.ai-whatsapp-dashboard__kpi {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 1.15rem 1.25rem 1.25rem;
+  background: var(--josera-surface, #fff);
+  border: 1px solid var(--josera-border, #e4e2ee);
+  border-radius: var(--josera-radius, 14px);
+  box-shadow: var(--josera-shadow, 0 1px 2px rgb(20 13 46 / 6%));
+  overflow: hidden;
+}
+
+/* The tone is a thin top edge, not a heavy left border. */
+.ai-whatsapp-dashboard__kpi::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: var(--kpi-color, var(--josera-blue, #3a4fd6));
+}
+
+.ai-whatsapp-dashboard__kpi--success {
+  --kpi-color: var(--josera-green, #0f9d6a);
+  --kpi-soft: var(--josera-green-soft, #e6f6ef);
+}
+
+.ai-whatsapp-dashboard__kpi--warning {
+  --kpi-color: var(--josera-amber, #b26a00);
+  --kpi-soft: var(--josera-amber-soft, #fdf1df);
+}
+
+.ai-whatsapp-dashboard__kpi--info {
+  --kpi-color: var(--josera-blue, #3a4fd6);
+  --kpi-soft: var(--josera-blue-soft, #ecefff);
+}
+
+.ai-whatsapp-dashboard__kpi--lead {
+  --kpi-color: var(--josera-pink, #ec1e63);
+  --kpi-soft: #fdeaf1;
+}
+
+.ai-whatsapp-dashboard__kpi--neutral {
+  --kpi-color: var(--josera-ink-muted, #7a7395);
+  --kpi-soft: #f2f1f7;
+}
+
+.ai-whatsapp-dashboard__kpi--cost {
+  --kpi-color: var(--josera-indigo-600, #2e1f63);
+  --kpi-soft: #eeebf7;
+}
+
+.ai-whatsapp-dashboard__kpi-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  margin-bottom: 0.55rem;
+  border-radius: 10px;
+  background: var(--kpi-soft, #f2f1f7);
+  color: var(--kpi-color, #3a4fd6);
+}
+
+.ai-whatsapp-dashboard__kpi-icon svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ai-whatsapp-dashboard__kpi-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--josera-ink-muted, #7a7395);
+}
+
+.ai-whatsapp-dashboard__kpi-value {
+  font-size: 2.1rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--josera-ink, #1b1140);
+  font-variant-numeric: tabular-nums;
+}
+
+.ai-whatsapp-dashboard__kpi-hint {
+  font-size: 0.8rem;
+  color: var(--josera-ink-muted, #7a7395);
+}
+
+/* Panels ---------------------------------------------------------------- */
+
+.ai-whatsapp-dashboard__rankings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+
+/* The channel table carries six columns: it needs the wider half. */
+@media (min-width: 62em) {
+  .ai-whatsapp-dashboard__rankings {
+    grid-template-columns: minmax(320px, 1fr) minmax(460px, 1.55fr);
+  }
+}
+
 .ai-whatsapp-dashboard__panel {
-  border: 1px solid var(--aiwa-border);
-  border-radius: 6px;
-  background: var(--aiwa-surface);
+  padding: 1.25rem;
+  background: var(--josera-surface, #fff);
+  border: 1px solid var(--josera-border, #e4e2ee);
+  border-radius: var(--josera-radius, 14px);
+  box-shadow: var(--josera-shadow, 0 1px 2px rgb(20 13 46 / 6%));
 }
 
 .ai-whatsapp-dashboard__panel-title {
   margin: 0;
-  padding: 0.875rem 1rem;
-  border-bottom: 1px solid var(--aiwa-border);
-  background: var(--aiwa-surface-muted);
-  font-size: 0.9375rem;
+  font-size: 1.05rem;
   font-weight: 700;
+  color: var(--josera-ink, #1b1140);
 }
 
-.ai-whatsapp-dashboard__table {
-  width: 100%;
-  margin: 0;
-  font-size: 0.875rem;
+.ai-whatsapp-dashboard__panel-hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: var(--josera-ink-muted, #7a7395);
 }
 
-.ai-whatsapp-dashboard__table th {
-  color: var(--aiwa-muted);
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
+.ai-whatsapp-dashboard__panel table {
+  margin-top: 0.85rem;
 }
 
-.ai-whatsapp-dashboard__table td,
-.ai-whatsapp-dashboard__table th {
-  padding: 0.6875rem 1rem;
-  vertical-align: middle;
-}
-
-.ai-whatsapp-dashboard__table tbody tr:nth-child(even) {
-  background: #fbfcfe;
-}
-
-.ai-whatsapp-dashboard__table tbody tr:hover {
-  background: #f2f6ff;
-}
-
-.ai-whatsapp-dashboard__table td:not(:first-child),
-.ai-whatsapp-dashboard__table th:not(:first-child) {
-  text-align: right;
-  white-space: nowrap;
-}
-
-.ai-whatsapp-dashboard__bot,
-.ai-whatsapp-dashboard__conversation,
-.ai-whatsapp-dashboard__channel {
-  min-width: 0;
-}
-
-.ai-whatsapp-dashboard__bot > span,
-.ai-whatsapp-dashboard__conversation > span,
-.ai-whatsapp-dashboard__channel > span {
+.ai-whatsapp-dashboard__bot span,
+.ai-whatsapp-dashboard__channel span {
   display: block;
-  margin-top: 3px;
-  color: var(--aiwa-muted);
-  font-size: 0.6875rem;
+  font-size: 0.78rem;
+  color: var(--josera-ink-muted, #7a7395);
 }
 
-.ai-whatsapp-dashboard__channel {
-  font-weight: 700;
+/* Activity chart --------------------------------------------------------- */
+
+.aiwa-chart {
+  margin-top: 1rem;
 }
 
-.ai-whatsapp-dashboard__conversation a {
-  font-weight: 700;
-  text-decoration: none;
+.aiwa-chart__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
 }
 
-.ai-whatsapp-dashboard__conversation a:hover {
-  text-decoration: underline;
+.aiwa-chart__bar-received {
+  fill: var(--josera-pink, #ec1e63);
 }
 
-@media (max-width: 48rem) {
-  .ai-whatsapp-dashboard__filters {
-    display: block;
-  }
+.aiwa-chart__bar-sent {
+  fill: var(--josera-indigo-600, #2e1f63);
+}
 
-  .ai-whatsapp-dashboard__filters .form-item,
-  .ai-whatsapp-dashboard__filters .form-actions {
-    margin: 0 0 12px;
-  }
+.aiwa-chart__bar:hover .aiwa-chart__bar-received,
+.aiwa-chart__bar:hover .aiwa-chart__bar-sent {
+  opacity: 0.75;
+}
 
-  .ai-whatsapp-dashboard__overview,
-  .ai-whatsapp-dashboard__kpi {
-    padding: 0.875rem;
-  }
+.aiwa-chart__axis {
+  font-size: 11px;
+  fill: var(--josera-ink-muted, #7a7395);
+}
 
+.aiwa-chart__legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  font-size: 0.82rem;
+  color: var(--josera-ink-muted, #7a7395);
+}
+
+.aiwa-chart__key {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--josera-ink-soft, #4a4468);
+}
+
+.aiwa-chart__key::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: currentColor;
+}
+
+.aiwa-chart__key--received::before {
+  background: var(--josera-pink, #ec1e63);
+}
+
+.aiwa-chart__key--sent::before {
+  background: var(--josera-indigo-600, #2e1f63);
+}
+
+.aiwa-chart__peak {
+  margin-inline-start: auto;
+}
+
+.aiwa-chart__empty {
+  margin: 1rem 0 0;
+  color: var(--josera-ink-muted, #7a7395);
+}
+
+@media (max-width: 40em) {
   .ai-whatsapp-dashboard__kpi-value {
-    font-size: 1.35rem;
-  }
-
-  .ai-whatsapp-dashboard__rankings {
-    grid-template-columns: 1fr;
+    font-size: 1.7rem;
   }
 }

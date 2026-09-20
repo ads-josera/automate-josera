@@ -33,28 +33,28 @@ final class DashboardFilterForm extends FormBase {
     $form['client'] = ClientFilter::element($request);
     $form['period'] = [
       '#type' => 'select',
-      '#title' => $this->t('View'),
+      '#title' => $this->t('Periodo'),
       '#options' => [
-        'day' => $this->t('Day'),
-        'month' => $this->t('Month'),
-        'year' => $this->t('Year'),
-        'all' => $this->t('All time'),
+        'day' => $this->t('Día'),
+        'month' => $this->t('Mes'),
+        'year' => $this->t('Año'),
+        'all' => $this->t('Todo el histórico'),
       ],
       '#default_value' => (string) $request->query->get('period', 'month'),
     ];
     $form['date'] = [
       '#type' => 'date',
-      '#title' => $this->t('Reference date'),
+      '#title' => $this->t('Fecha de referencia'),
       '#default_value' => (string) $request->query->get('date', date('Y-m-d')),
     ];
     $form['actions'] = ['#type' => 'actions'];
     $form['actions']['submit'] = [
       '#type' => 'submit',
-      '#value' => $this->t('Apply'),
+      '#value' => $this->t('Aplicar'),
     ];
     $form['actions']['reset'] = [
       '#type' => 'link',
-      '#title' => $this->t('Current month'),
+      '#title' => $this->t('Mes actual'),
       '#url' => Url::fromRoute('ai_whatsapp_automation.dashboard'),
       '#attributes' => ['class' => ['button']],
     ];

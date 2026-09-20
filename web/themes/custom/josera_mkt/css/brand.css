@@ -1,0 +1,52 @@
+/**
+ * @file
+ * Design tokens of Josera Marketing Digital.
+ *
+ * Taken from the login screen (theme josera_access) so the panel, the access
+ * screen and the e-mails to clients look like one product.
+ *
+ * Only Claro variables that carry brand colour are redefined here. Sizes,
+ * spacing and states stay as Claro sets them: that is what keeps every
+ * administration screen working after a core update.
+ */
+
+:root {
+  /* Brand. */
+  --josera-indigo-900: #140d2e;
+  --josera-indigo-800: #1b1140;
+  --josera-indigo-700: #241a4d;
+  --josera-indigo-600: #2e1f63;
+  --josera-pink: #ec1e63;
+  --josera-pink-dark: #c9134f;
+  --josera-lavender: #b9b3d6;
+
+  /* Surfaces and text. */
+  --josera-canvas: #f4f4f8;
+  --josera-surface: #ffffff;
+  --josera-border: #e4e2ee;
+  --josera-ink: #1b1140;
+  --josera-ink-soft: #4a4468;
+  --josera-ink-muted: #7a7395;
+
+  /* Status, shared with the lists and the dashboard. */
+  --josera-green: #0f9d6a;
+  --josera-green-soft: #e6f6ef;
+  --josera-amber: #b26a00;
+  --josera-amber-soft: #fdf1df;
+  --josera-red: #c0362c;
+  --josera-red-soft: #fdeceb;
+  --josera-blue: #3a4fd6;
+  --josera-blue-soft: #ecefff;
+
+  --josera-radius: 14px;
+  --josera-radius-sm: 10px;
+  --josera-shadow: 0 1px 2px rgb(20 13 46 / 6%), 0 8px 24px -12px rgb(20 13 46 / 18%);
+
+  /* Claro tokens: the accent of buttons, links and focus rings. */
+  --color-absolutezero: var(--josera-indigo-600);
+  --color-absolutezero-hover: var(--josera-indigo-700);
+  --color-absolutezero-active: var(--josera-indigo-800);
+  --color-text: var(--josera-ink);
+  --color-text-light: var(--josera-ink-muted);
+  --color-focus: var(--josera-pink);
+}

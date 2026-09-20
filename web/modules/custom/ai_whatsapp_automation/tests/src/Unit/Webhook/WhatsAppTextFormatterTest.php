@@ -42,6 +42,23 @@ final class WhatsAppTextFormatterTest extends TestCase {
       'single asterisks are left alone' => ['ya es *negrita* en WhatsApp', 'ya es *negrita* en WhatsApp'],
       'unbalanced markers are left alone' => ['precio 2**3 y **abierto', 'precio 2**3 y **abierto'],
       'plain text' => ['Hola, ¿en qué te ayudo?', 'Hola, ¿en qué te ayudo?'],
+      // WhatsApp only draws the first level of a list, so an indented item
+      // used to arrive with its dash showing.
+      'nested items get their own marker' => [
+        "- Todo riesgo\n  - Caída de contenedor\n  - Rotura en tránsito",
+        "- Todo riesgo\n  ◦ Caída de contenedor\n  ◦ Rotura en tránsito",
+      ],
+      'nested items written with an asterisk' => [
+        "* Robo\n    * Sustracción en carretera",
+        "* Robo\n    ◦ Sustracción en carretera",
+      ],
+      'the first level keeps its dash' => ["- Robo\n- Avería", "- Robo\n- Avería"],
+      'nested bold still converts' => [
+        "- Cobertura\n  - **Ejemplo:** caída",
+        "- Cobertura\n  ◦ *Ejemplo:* caída",
+      ],
+      'an indented sentence is not a list' => ["  no es lista", "  no es lista"],
+      'a dash inside a sentence is untouched' => ['pago 30-60 días', 'pago 30-60 días'],
     ];
   }
 

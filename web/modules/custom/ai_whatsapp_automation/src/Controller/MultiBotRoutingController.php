@@ -69,21 +69,20 @@ final class MultiBotRoutingController extends ControllerBase {
       $rows[] = [
         'client' => $client instanceof ContentEntityInterface ? $client->label() : $this->t('Sin cliente'),
         'account' => $account->toLink(),
-        'provider' => $this->fieldValue($account, 'provider'),
+        'provider' => $this->providerLabel($this->fieldValue($account, 'provider')),
         'number' => $this->fieldValue($account, 'phone_number'),
         'status' => $answers
-          ? $this->fieldValue($account, 'status')
+          ? $this->statusLabel($this->fieldValue($account, 'status'))
           : ['data' => ['#markup' => '<strong class="ai-whatsapp-routing-table__warning">' . $this->t('Inactiva: no responde') . '</strong>']],
         // Connection status is tracked only for Evolution instances; Twilio and
         // Cloud API accounts keep a stale default that reads as a real state.
         'connection' => $this->fieldValue($account, 'provider') === 'evolution'
-          ? $this->fieldValue($account, 'connection_status')
+          ? $this->connectionLabel($this->fieldValue($account, 'connection_status'))
           : $this->t('No aplica'),
-        'bot' => $bot instanceof ContentEntityInterface ? $bot->toLink() : $this->t('No active bot'),
-        'model' => $bot instanceof ContentEntityInterface ? ($this->botManager->getEffectiveModel($bot, $account) ?: $this->t('Default')) : '',
-        'knowledge_base' => $knowledge_base instanceof ContentEntityInterface ? $knowledge_base->toLink() : $this->t('None'),
-        'prompt' => $this->fieldValue($account, 'prompt_override') !== '' ? $this->t('Account override') : $this->t('Bot prompt'),
-        'operations' => Link::fromTextAndUrl($this->t('Edit account'), Url::fromRoute('entity.ai_whatsapp_account.edit_form', [
+        'bot' => $this->botCell($bot, $this->fieldValue($account, 'prompt_override') !== ''),
+        'model' => $bot instanceof ContentEntityInterface ? ($this->botManager->getEffectiveModel($bot, $account) ?: $this->t('Predeterminado')) : '',
+        'knowledge_base' => $knowledge_base instanceof ContentEntityInterface ? $knowledge_base->toLink() : $this->t('Ninguna'),
+        'operations' => Link::fromTextAndUrl($this->t('Editar cuenta'), Url::fromRoute('entity.ai_whatsapp_account.edit_form', [
           'ai_whatsapp_account' => $account->id(),
         ])),
       ];
@@ -164,7 +163,7 @@ final class MultiBotRoutingController extends ControllerBase {
     $build['assignments_title'] = [
       '#type' => 'html_tag',
       '#tag' => 'h2',
-      '#value' => $this->t('Current assignments'),
+      '#value' => $this->t('Asignaciones actuales'),
       '#attributes' => ['class' => ['ai-whatsapp-routing-assignments-title']],
     ];
     $build['routing_wrapper'] = [
@@ -176,16 +175,15 @@ final class MultiBotRoutingController extends ControllerBase {
       '#attributes' => ['class' => ['ai-whatsapp-routing-table']],
       '#header' => [
         $this->t('Cliente'),
-        $this->t('Account'),
-        $this->t('Provider'),
-        $this->t('Number'),
-        $this->t('Status'),
-        $this->t('Connection'),
+        $this->t('Cuenta'),
+        $this->t('Proveedor'),
+        $this->t('Número'),
+        $this->t('Estado'),
+        $this->t('Conexión'),
         $this->t('Bot'),
-        $this->t('Model'),
-        $this->t('Knowledge base'),
-        $this->t('Prompt'),
-        $this->t('Operations'),
+        $this->t('Modelo'),
+        $this->t('Base de conocimiento'),
+        $this->t('Acciones'),
       ],
       '#rows' => $rows,
       '#empty' => $this->t('Todavía no hay números de WhatsApp. Empieza por el paso 1: crea el cliente.'),
@@ -205,6 +203,63 @@ final class MultiBotRoutingController extends ControllerBase {
     $value = $entity->get($field_name)->value;
 
     return is_scalar($value) ? (string) $value : '';
+  }
+
+  /**
+   * Builds the bot cell, noting when the account overrides its instructions.
+   */
+  private function botCell(?ContentEntityInterface $bot, bool $overrides_prompt): Link|array|string|\Stringable {
+    if (!$bot instanceof ContentEntityInterface) {
+      return $this->t('Sin bot activo');
+    }
+    if (!$overrides_prompt) {
+      return $bot->toLink();
+    }
+
+    return [
+      'data' => [
+        'bot' => $bot->toLink()->toRenderable(),
+        'note' => ['#markup' => '<div class="ai-whatsapp-routing-table__note">' . $this->t('Instrucciones propias de esta cuenta') . '</div>'],
+      ],
+    ];
+  }
+
+  /**
+   * Returns a readable provider name.
+   */
+  private function providerLabel(string $provider): string|\Stringable {
+    return match ($provider) {
+      'twilio' => 'Twilio',
+      'cloud_api' => 'Cloud API',
+      'evolution' => 'Evolution',
+      '' => $this->t('Sin proveedor'),
+      default => $provider,
+    };
+  }
+
+  /**
+   * Returns a readable account status.
+   */
+  private function statusLabel(string $status): string|\Stringable {
+    return match ($status) {
+      'active' => $this->t('Activa'),
+      'inactive' => $this->t('Inactiva'),
+      'paused' => $this->t('En pausa'),
+      default => $status,
+    };
+  }
+
+  /**
+   * Returns a readable Evolution connection state.
+   */
+  private function connectionLabel(string $connection): string|\Stringable {
+    return match ($connection) {
+      'CONNECTED' => $this->t('Conectada'),
+      'DISCONNECTED' => $this->t('Desconectada'),
+      'CONNECTING' => $this->t('Conectando'),
+      '' => $this->t('Sin datos'),
+      default => $connection,
+    };
   }
 
 }

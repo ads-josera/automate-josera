@@ -112,6 +112,17 @@ tbody td {
 .button {
   border-radius: 9px;
   font-weight: 600;
+  color: var(--josera-indigo-600);
+  background: var(--josera-surface);
+  border: 1px solid var(--josera-border);
+  box-shadow: none;
+}
+
+.button:hover,
+.button:focus {
+  background: #f4f1fb;
+  border-color: #cfc9e4;
+  color: var(--josera-indigo-800);
 }
 
 .button--primary {
@@ -145,4 +156,74 @@ tbody td {
     width: 108px;
     height: 28px;
   }
+}
+
+/* Row actions ----------------------------------------------------------- */
+
+td .dropbutton-wrapper .dropbutton {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--josera-border);
+  background: var(--josera-surface);
+}
+
+td .dropbutton-wrapper .dropbutton li > a,
+td .dropbutton-wrapper .dropbutton li > .button {
+  padding: 0.45rem 0.8rem;
+  background: var(--josera-surface);
+  color: var(--josera-indigo-600);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  border: 0;
+  box-shadow: none;
+}
+
+td .dropbutton-wrapper .dropbutton li > a:hover,
+td .dropbutton-wrapper .dropbutton li > .button:hover {
+  background: #f4f1fb;
+  color: var(--josera-indigo-800);
+}
+
+td .dropbutton-wrapper .dropbutton-toggle button {
+  border: 0;
+  border-inline-start: 1px solid var(--josera-border);
+  background: var(--josera-surface);
+}
+
+td .dropbutton-wrapper .dropbutton .secondary-action {
+  border-top: 1px solid var(--josera-border);
+}
+
+/* Filter bars ----------------------------------------------------------- */
+
+.aiwa-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--josera-border);
+  border-radius: var(--josera-radius);
+  background: var(--josera-surface);
+  box-shadow: var(--josera-shadow);
+}
+
+.aiwa-filters .form-item,
+.aiwa-filters .js-form-item {
+  margin: 0;
+}
+
+/* The buttons carry no label, so they line up with the fields, not above. */
+.aiwa-filters .form-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  margin: 0;
+  margin-inline-start: auto;
+}
+
+.aiwa-filters .form-actions .button {
+  margin: 0;
+  padding-block: 0.55rem;
 }

@@ -29,6 +29,7 @@ final class DashboardFilterForm extends FormBase {
     $form['#method'] = 'get';
     $form['#action'] = Url::fromRoute('ai_whatsapp_automation.dashboard')->toString();
     $form['#attributes']['class'][] = 'ai-whatsapp-dashboard__filters';
+    $form['#attributes']['class'][] = 'aiwa-filters';
 
     $form['client'] = ClientFilter::element($request);
     $form['period'] = [
@@ -51,6 +52,7 @@ final class DashboardFilterForm extends FormBase {
     $form['actions']['submit'] = [
       '#type' => 'submit',
       '#value' => $this->t('Aplicar'),
+      '#button_type' => 'primary',
     ];
     $form['actions']['reset'] = [
       '#type' => 'link',

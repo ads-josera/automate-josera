@@ -540,8 +540,12 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
   private function buildMessageRow(EntityInterface $entity): array {
     $conversation = $entity->hasField('conversation') ? $entity->get('conversation')->entity : NULL;
     $contact = $conversation instanceof EntityInterface
-      ? ($this->getFieldValue($conversation, 'name') ?: $this->getFieldValue($conversation, 'phone'))
-      : $this->t('Conversation unavailable');
+      ? $this->contactLabel(
+          $this->getFieldValue($conversation, 'name'),
+          $this->getFieldValue($conversation, 'phone'),
+          $this->getFieldValue($conversation, 'provider')
+        )
+      : $this->t('Conversación eliminada');
     $conversation_id = $conversation instanceof EntityInterface ? $conversation->id() : NULL;
     $bot = $conversation instanceof EntityInterface ? $this->getConversationBot($conversation) : NULL;
     $account = $conversation instanceof EntityInterface && $conversation->hasField('whatsapp_account')

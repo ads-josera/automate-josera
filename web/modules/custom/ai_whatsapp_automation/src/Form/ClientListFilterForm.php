@@ -33,6 +33,7 @@ final class ClientListFilterForm extends FormBase {
     $form['#method'] = 'get';
     $form['#action'] = Url::fromRoute($route_name)->toString();
     $form['#attributes']['class'][] = 'aiwa-list-filters';
+    $form['#attributes']['class'][] = 'aiwa-filters';
     $form['#attached']['library'][] = 'ai_whatsapp_automation/list_filters';
 
     $form['client'] = ClientFilter::element($request);
@@ -40,6 +41,7 @@ final class ClientListFilterForm extends FormBase {
     $form['actions']['submit'] = [
       '#type' => 'submit',
       '#value' => $this->t('Filtrar'),
+      '#button_type' => 'primary',
     ];
     $form['actions']['reset'] = [
       '#type' => 'link',

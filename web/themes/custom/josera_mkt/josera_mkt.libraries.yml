@@ -3,4 +3,5 @@ global:
   css:
     theme:
       css/brand.css: {}
+      css/shell.css: {}
       css/admin.css: {}

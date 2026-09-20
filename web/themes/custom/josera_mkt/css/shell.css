@@ -1,0 +1,227 @@
+/**
+ * @file
+ * The panel shell: side navigation, top bar and the content column.
+ *
+ * Only the frame is defined here. Everything inside <main> is still laid out
+ * by Claro, so screens this theme has never seen keep working.
+ */
+
+.josera-shell {
+  display: flex;
+  align-items: flex-start;
+  min-height: 100vh;
+  background: var(--josera-canvas);
+}
+
+/* Side navigation ------------------------------------------------------- */
+
+.josera-shell__nav {
+  position: sticky;
+  top: 0;
+  flex: 0 0 248px;
+  width: 248px;
+  align-self: stretch;
+  min-height: 100vh;
+  padding: 1.5rem 0.9rem 2rem;
+  background: var(--josera-indigo-900);
+  background-image: linear-gradient(180deg, var(--josera-indigo-900) 0%, var(--josera-indigo-700) 100%);
+  box-sizing: border-box;
+}
+
+/* Drupal's toolbar is fixed on top: the sticky column starts below it. */
+body.toolbar-fixed .josera-shell__nav {
+  top: 39px;
+  min-height: calc(100vh - 39px);
+}
+
+body.toolbar-fixed.toolbar-horizontal.toolbar-tray-open .josera-shell__nav {
+  top: 79px;
+  min-height: calc(100vh - 79px);
+}
+
+.josera-shell__brand {
+  display: block;
+  padding: 0.25rem 0.6rem 1.5rem;
+}
+
+.josera-shell__logo {
+  display: block;
+  width: 136px;
+  height: auto;
+}
+
+.josera-shell__wordmark {
+  color: #fff;
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.josera-shell__group {
+  margin: 1.25rem 0 0.4rem;
+  padding-inline-start: 0.7rem;
+  color: #8f86b8;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.josera-shell__menu ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.josera-shell__link {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-bottom: 0.15rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 10px;
+  color: #cfc9e6;
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.josera-shell__link:hover,
+.josera-shell__link:focus {
+  background: rgb(255 255 255 / 8%);
+  color: #fff;
+  text-decoration: none;
+}
+
+.josera-shell__link.is-active {
+  background: rgb(236 30 99 / 16%);
+  color: #fff;
+  box-shadow: inset 3px 0 0 var(--josera-pink);
+}
+
+.josera-shell__icon svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Content column -------------------------------------------------------- */
+
+.josera-shell__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.josera-shell__topbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 0.6rem 1.75rem;
+  background: var(--josera-surface);
+  border-bottom: 1px solid var(--josera-border);
+}
+
+.josera-shell__account {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.88rem;
+}
+
+.josera-shell__account-name {
+  color: var(--josera-ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.josera-shell__account-name::before {
+  content: "";
+  display: inline-block;
+  width: 26px;
+  height: 26px;
+  margin-inline-end: 0.5rem;
+  border-radius: 50%;
+  background: var(--josera-indigo-600) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='12' cy='9' r='3.2'/%3E%3Cpath d='M5.5 19c.8-3 3.4-4.5 6.5-4.5s5.7 1.5 6.5 4.5'/%3E%3C/svg%3E") center / 18px no-repeat;
+  vertical-align: middle;
+}
+
+.josera-shell__logout {
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--josera-border);
+  border-radius: 8px;
+  color: var(--josera-indigo-600);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.josera-shell__logout:hover {
+  background: #f4f1fb;
+  color: var(--josera-indigo-800);
+  text-decoration: none;
+}
+
+/* The brand now lives in the side column, so the page header is quiet. */
+.josera-shell .content-header {
+  background: none;
+  background-image: none;
+}
+
+.josera-shell .content-header > .layout-container::before {
+  content: none;
+}
+
+.josera-shell .content-header .page-title,
+.josera-shell .content-header h1 {
+  color: var(--josera-ink);
+}
+
+.josera-shell .content-header .region-breadcrumb .breadcrumb,
+.josera-shell .content-header .breadcrumb a,
+.josera-shell .content-header .breadcrumb li {
+  color: var(--josera-ink-muted);
+}
+
+.josera-shell .content-header .breadcrumb a:hover {
+  color: var(--josera-indigo-600);
+}
+
+/* Narrow screens: the navigation becomes a strip above the content. */
+@media (max-width: 62em) {
+  .josera-shell {
+    flex-direction: column;
+  }
+
+  .josera-shell__nav,
+  body.toolbar-fixed .josera-shell__nav {
+    position: static;
+    flex: 0 0 auto;
+    width: 100%;
+    min-height: 0;
+    padding: 1rem;
+  }
+
+  .josera-shell__brand {
+    padding-bottom: 0.75rem;
+  }
+
+  .josera-shell__group {
+    margin: 0.75rem 0 0.25rem;
+  }
+
+  .josera-shell__menu ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .josera-shell__link {
+    margin: 0;
+  }
+}

@@ -1039,6 +1039,23 @@ function ai_whatsapp_automation_update_11035(): string {
 }
 
 /**
+ * Takes Drupal's toolbar away from the client users.
+ *
+ * The panel now has its own side navigation and its own account box, so the
+ * administration bar only showed them Drupal itself.
+ */
+function ai_whatsapp_automation_update_11036(): string {
+  $role = \Drupal::entityTypeManager()->getStorage('user_role')->load(AI_WHATSAPP_AUTOMATION_CLIENT_AGENT_ROLE);
+  if ($role === NULL) {
+    return (string) t('The client agent role does not exist: nothing to do.');
+  }
+  $role->revokePermission('access toolbar');
+  $role->save();
+
+  return (string) t('Client users now navigate with the panel menu instead of the Drupal toolbar.');
+}
+
+/**
  * Returns the permissions of the client agent role.
  *
  * @return string[]
@@ -1049,7 +1066,6 @@ function ai_whatsapp_automation_client_agent_permissions(): array {
     'access own client ai whatsapp records',
     'operate own client ai whatsapp conversations',
     'view ai whatsapp automation dashboard',
-    'access toolbar',
     'view the administration theme',
   ];
 }

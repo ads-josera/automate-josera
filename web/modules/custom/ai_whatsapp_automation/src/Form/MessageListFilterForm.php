@@ -29,6 +29,7 @@ final class MessageListFilterForm extends FormBase {
     $form['#method'] = 'get';
     $form['#action'] = Url::fromRoute('entity.ai_whatsapp_message.collection')->toString();
     $form['#attributes']['class'][] = 'aiwa-message-filters';
+    $form['#attributes']['class'][] = 'aiwa-filters';
 
     $form['client'] = ClientFilter::element($request);
     $form['q'] = [
@@ -60,6 +61,7 @@ final class MessageListFilterForm extends FormBase {
     $form['actions']['submit'] = [
       '#type' => 'submit',
       '#value' => $this->t('Filtrar'),
+      '#button_type' => 'primary',
     ];
     $form['actions']['reset'] = [
       '#type' => 'link',

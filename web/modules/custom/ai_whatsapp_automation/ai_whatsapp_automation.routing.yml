@@ -83,7 +83,7 @@ ai_whatsapp_automation.multibot_routing:
   path: '/admin/content/ai-whatsapp/routing'
   defaults:
     _controller: '\Drupal\ai_whatsapp_automation\Controller\MultiBotRoutingController::overview'
-    _title: 'MultiBot routing'
+    _title: 'Enrutamiento de bots'
   requirements:
     _permission: 'administer ai whatsapp automation entities'
 

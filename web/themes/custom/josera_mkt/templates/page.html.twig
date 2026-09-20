@@ -1,0 +1,84 @@
+{#
+/**
+ * @file
+ * Josera MKT page layout: a fixed side navigation and a top bar.
+ *
+ * Copied from Claro's page.html.twig and wrapped in the panel shell. The
+ * inner structure (main, layout-container, page-content) is kept exactly as
+ * Claro writes it, so every administration screen and all of Claro's CSS
+ * keep working.
+ *
+ * Added variables (see josera_mkt.theme):
+ * - josera_nav_groups: the panel's sections the user may open, in groups.
+ * - josera_user: name, account URL and log out URL.
+ * - josera_logo: URL of the wordmark.
+ * - josera_home: URL the wordmark links to.
+ */
+#}
+<div class="josera-shell">
+  <aside class="josera-shell__nav" aria-label="{{ 'Secciones del panel'|t }}">
+    <a href="{{ josera_home }}" class="josera-shell__brand">
+      {% if josera_logo %}
+        <img src="{{ josera_logo }}" alt="Josera Marketing Digital" class="josera-shell__logo">
+      {% else %}
+        <span class="josera-shell__wordmark">Josera</span>
+      {% endif %}
+    </a>
+    {% if josera_nav_groups %}
+      <nav class="josera-shell__menu">
+        {% for group in josera_nav_groups %}
+          {% if group.title %}
+            <p class="josera-shell__group">{{ group.title }}</p>
+          {% endif %}
+          <ul>
+            {% for item in group.items %}
+              <li>
+                <a href="{{ item.url }}" class="josera-shell__link{{ item.active ? ' is-active' : '' }}">
+                  <span class="josera-shell__icon">{{ item.icon }}</span>
+                  <span class="josera-shell__label">{{ item.title }}</span>
+                </a>
+              </li>
+            {% endfor %}
+          </ul>
+        {% endfor %}
+      </nav>
+    {% endif %}
+  </aside>
+
+  <div class="josera-shell__body">
+    {% if josera_user %}
+      <div class="josera-shell__topbar">
+        <div class="josera-shell__account">
+          <a href="{{ josera_user.url }}" class="josera-shell__account-name">{{ josera_user.name }}</a>
+          <a href="{{ josera_user.logout }}" class="josera-shell__logout">{{ 'Cerrar sesión'|t }}</a>
+        </div>
+      </div>
+    {% endif %}
+
+    <main>
+      <div class="visually-hidden"><a id="main-content" tabindex="-1"></a></div>
+      {% if page.breadcrumb or page.header %}
+        <header class="content-header clearfix">
+          <div class="layout-container">
+            {{ page.breadcrumb }}
+            {{ page.header }}
+          </div>
+        </header>
+      {% endif %}
+
+      <div class="layout-container">
+        {{ page.pre_content }}
+        <div class="page-content clearfix">
+          {{ page.highlighted }}
+          {% if page.help %}
+            <div class="help">
+              {{ page.help }}
+            </div>
+          {% endif %}
+          {{ page.content }}
+        </div>
+
+      </div>
+    </main>
+  </div>
+</div>

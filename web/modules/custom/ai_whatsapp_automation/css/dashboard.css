@@ -230,25 +230,62 @@
   display: block;
   width: 100%;
   height: auto;
-  overflow: visible;
+  max-height: 280px;
 }
 
-.aiwa-chart__bar-received {
-  fill: var(--josera-pink, #ec1e63);
+.aiwa-chart__grid {
+  stroke: var(--josera-border, #e4e2ee);
+  stroke-width: 1;
 }
 
-.aiwa-chart__bar-sent {
-  fill: var(--josera-indigo-600, #2e1f63);
-}
-
-.aiwa-chart__bar:hover .aiwa-chart__bar-received,
-.aiwa-chart__bar:hover .aiwa-chart__bar-sent {
-  opacity: 0.75;
-}
-
+.aiwa-chart__scale,
 .aiwa-chart__axis {
   font-size: 11px;
   fill: var(--josera-ink-muted, #7a7395);
+}
+
+.aiwa-chart__line {
+  fill: none;
+  stroke-width: 2.25;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.aiwa-chart__line--received {
+  stroke: var(--josera-pink, #ec1e63);
+}
+
+.aiwa-chart__line--sent {
+  stroke: var(--josera-indigo-600, #2e1f63);
+}
+
+.aiwa-chart__area {
+  stroke: none;
+}
+
+.aiwa-chart__area--received {
+  fill: rgb(236 30 99 / 10%);
+}
+
+.aiwa-chart__area--sent {
+  fill: rgb(46 31 99 / 8%);
+}
+
+.aiwa-chart__dot--received {
+  fill: var(--josera-pink, #ec1e63);
+}
+
+.aiwa-chart__dot--sent {
+  fill: var(--josera-indigo-600, #2e1f63);
+}
+
+/* Invisible, but it catches the pointer so every day can show its numbers. */
+.aiwa-chart__hit {
+  fill: transparent;
+}
+
+.aiwa-chart__point:hover .aiwa-chart__hit {
+  fill: rgb(46 31 99 / 4%);
 }
 
 .aiwa-chart__legend {
@@ -256,7 +293,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 1rem;
-  margin-top: 0.75rem;
+  margin-top: 0.5rem;
   font-size: 0.82rem;
   color: var(--josera-ink-muted, #7a7395);
 }
@@ -266,13 +303,14 @@
   align-items: center;
   gap: 0.4rem;
   color: var(--josera-ink-soft, #4a4468);
+  font-weight: 600;
 }
 
 .aiwa-chart__key::before {
   content: "";
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
   background: currentColor;
 }
 

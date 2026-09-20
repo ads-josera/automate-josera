@@ -29,6 +29,7 @@ final class ConversationListFilterForm extends FormBase {
     $form['#method'] = 'get';
     $form['#action'] = Url::fromRoute('entity.ai_whatsapp_conversation.collection')->toString();
     $form['#attributes']['class'][] = 'aiwa-conversation-filters';
+    $form['#attributes']['class'][] = 'aiwa-filters';
 
     $form['client'] = ClientFilter::element($request);
     $form['q'] = [
@@ -81,6 +82,7 @@ final class ConversationListFilterForm extends FormBase {
     $form['actions']['submit'] = [
       '#type' => 'submit',
       '#value' => $this->t('Filtrar'),
+      '#button_type' => 'primary',
     ];
     $form['actions']['reset'] = [
       '#type' => 'link',

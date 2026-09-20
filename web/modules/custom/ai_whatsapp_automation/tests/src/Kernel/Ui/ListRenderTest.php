@@ -115,6 +115,22 @@ final class ListRenderTest extends KernelTestBase {
   }
 
   /**
+   * The routing overview renders, in Spanish and without the prompt column.
+   */
+  public function testTheRoutingOverviewRenders(): void {
+    $build = $this->container->get('class_resolver')
+      ->getInstanceFromDefinition('Drupal\\ai_whatsapp_automation\\Controller\\MultiBotRoutingController')
+      ->overview();
+    $rendered = (string) $this->container->get('renderer')->renderInIsolation($build);
+
+    $this->assertStringContainsString('Asignaciones actuales', $rendered);
+    $this->assertStringContainsString('Base de conocimiento', $rendered);
+    $this->assertStringNotContainsString('Knowledge base', $rendered);
+    $this->assertStringNotContainsString('Bot prompt', $rendered, 'The prompt column is gone');
+    $this->assertStringNotContainsString('Operations', $rendered);
+  }
+
+  /**
    * The stored "Web visitor" placeholder never reaches the screen.
    */
   public function testTheWebVisitorPlaceholderIsTranslated(): void {

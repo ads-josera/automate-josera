@@ -16,6 +16,8 @@ use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Url;
 use Drupal\ai_whatsapp_automation\Application\RAG\KnowledgeFileStorage;
 use Drupal\ai_whatsapp_automation\Entity\Handler\AutomationEntityListBuilder;
+use Drupal\ai_whatsapp_automation\Mail\ClientAgentMail;
+use Drupal\Core\Entity\EntityFormInterface;
 use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\file\FileInterface;
@@ -291,6 +293,10 @@ function ai_whatsapp_automation_form_user_form_alter(array &$form, FormStateInte
   if (isset($form['ai_whatsapp_client'])) {
     $form['#validate'][] = '_ai_whatsapp_automation_user_client_validate';
   }
+  // Entity forms keep their handlers on the button, not on the form.
+  if (isset($form['actions']['submit']['#submit'])) {
+    $form['actions']['submit']['#submit'][] = '_ai_whatsapp_automation_account_saved_redirect';
+  }
 }
 
 /**
@@ -313,3 +319,90 @@ function _ai_whatsapp_automation_user_client_validate(array &$form, FormStateInt
   }
 }
 
+
+/**
+ * Implements hook_theme().
+ */
+function ai_whatsapp_automation_theme(): array {
+  return [
+    'ai_whatsapp_client_agent_mail' => [
+      'variables' => [
+        'heading' => NULL,
+        'intro' => NULL,
+        'items' => [],
+        'action' => NULL,
+        'url' => '',
+        'note' => NULL,
+        'client' => '',
+      ],
+    ],
+  ];
+}
+
+/**
+ * Implements hook_mail_alter().
+ *
+ * Rewrites the account e-mails of a client's users: Drupal's English text
+ * about "a site administrator" says nothing to somebody who was only given a
+ * panel for their own chatbot.
+ */
+function ai_whatsapp_automation_mail_alter(array &$message): void {
+  \Drupal::service('ai_whatsapp_automation.client_agent_mail')->alter($message);
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for user_login_form.
+ */
+function ai_whatsapp_automation_form_user_login_form_alter(array &$form, FormStateInterface $form_state): void {
+  $form['#submit'][] = '_ai_whatsapp_automation_login_redirect';
+}
+
+/**
+ * Sends a client's user straight to their dashboard after logging in.
+ *
+ * Runs after the login submit handler, so the account is already logged in by
+ * then. When a second factor is still pending (TFA) nobody is logged in yet
+ * and the redirect TFA set is left untouched.
+ */
+function _ai_whatsapp_automation_login_redirect(array &$form, FormStateInterface $form_state): void {
+  $uid = (int) $form_state->get('uid');
+  if ($uid === 0 || (int) \Drupal::currentUser()->id() !== $uid) {
+    return;
+  }
+  _ai_whatsapp_automation_redirect_to_dashboard($form_state, $uid);
+}
+
+/**
+ * Sends a client's user to the dashboard after saving their own account.
+ *
+ * This is where the first login ends: the one-time link from the welcome
+ * e-mail opens the account form to set a password.
+ */
+function _ai_whatsapp_automation_account_saved_redirect(array &$form, FormStateInterface $form_state): void {
+  $form_object = $form_state->getFormObject();
+  if (!$form_object instanceof EntityFormInterface) {
+    return;
+  }
+  $account = $form_object->getEntity();
+  if ((int) $account->id() !== (int) \Drupal::currentUser()->id()) {
+    return;
+  }
+  _ai_whatsapp_automation_redirect_to_dashboard($form_state, (int) $account->id());
+}
+
+/**
+ * Redirects to the dashboard when the account is a client's user.
+ *
+ * Anybody else keeps the landing Drupal chose. The dashboard is only offered
+ * when the account may actually open it, to never land on an access denied.
+ */
+function _ai_whatsapp_automation_redirect_to_dashboard(FormStateInterface $form_state, int $uid): void {
+  $account = \Drupal::entityTypeManager()->getStorage('user')->load($uid);
+  if ($account === NULL || !in_array(ClientAgentMail::ROLE, $account->getRoles(), TRUE)) {
+    return;
+  }
+  $dashboard = Url::fromRoute('ai_whatsapp_automation.dashboard');
+  if ($dashboard->access($account)) {
+    $form_state->setRedirect('ai_whatsapp_automation.dashboard');
+  }
+}

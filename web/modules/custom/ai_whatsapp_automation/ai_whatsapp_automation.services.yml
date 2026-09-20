@@ -187,3 +187,9 @@ services:
       - '@entity_type.manager'
       - '@config.factory'
       - '@logger.factory'
+
+  ai_whatsapp_automation.client_agent_mail:
+    class: Drupal\ai_whatsapp_automation\Mail\ClientAgentMail
+    arguments:
+      - '@Drupal\user\OneTimeAuthentication'
+      - '@renderer'

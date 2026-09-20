@@ -119,7 +119,7 @@ final class ClientAgentWelcomeTest extends KernelTestBase {
 
     $body = (string) $message['body'][0];
     $this->assertMatchesRegularExpression('#<a href="https?://[^"]+/user/reset/#', $body, 'The button points at the one-time login link');
-    $this->assertStringContainsString('Activar mi cuenta', $body);
+    $this->assertStringContainsString('Activar mi acceso', $body);
     $this->assertStringContainsString('text/html', $message['headers']['Content-Type']);
   }
 
@@ -133,6 +133,47 @@ final class ClientAgentWelcomeTest extends KernelTestBase {
       $this->assertStringContainsString('/user/reset/', (string) $message['body'], "$key keeps its link");
       $this->assertStringNotContainsString('Replacement login information', (string) $message['body'], "$key has no English left");
     }
+  }
+
+  /**
+   * The copy written in the settings form replaces the one shipped.
+   */
+  public function testTheSavedCopyIsUsed(): void {
+    $this->config('ai_whatsapp_automation.client_mail')
+      ->set('messages.register_admin_created.subject', 'Bienvenido a [cliente]')
+      ->set('messages.register_admin_created.intro', 'Hola [nombre], este es tu panel.')
+      ->set('footer', 'Atendemos a [cliente] todos los días.')
+      ->set('logo_url', 'https://app.josera.com.mx/logo.png')
+      ->save();
+
+    $message = $this->notify('register_admin_created', $this->agent);
+    $body = (string) $message['body'];
+
+    $this->assertSame('Bienvenido a JG Mylard', $message['subject'], 'Placeholders are replaced in the saved subject');
+    $this->assertStringContainsString('Hola aseguramientojg, este es tu panel.', $body);
+    $this->assertStringContainsString('Atendemos a JG Mylard todos los días.', $body);
+    // Fields left empty keep the copy shipped with the module.
+    $this->assertStringContainsString('Activar mi acceso', $body);
+  }
+
+  /**
+   * The logo of the settings form is the one the e-mail shows.
+   */
+  public function testTheConfiguredLogoIsUsed(): void {
+    $this->config('ai_whatsapp_automation.client_mail')
+      ->set('logo_url', 'https://app.josera.com.mx/logo.png')
+      ->save();
+    $message = [
+      'module' => 'user',
+      'key' => 'register_admin_created',
+      'params' => ['account' => $this->agent],
+      'subject' => '',
+      'body' => [],
+      'headers' => [],
+    ];
+    $this->container->get('ai_whatsapp_automation.client_agent_mail')->alter($message);
+
+    $this->assertStringContainsString('<img src="https://app.josera.com.mx/logo.png"', (string) $message['body'][0]);
   }
 
   /**

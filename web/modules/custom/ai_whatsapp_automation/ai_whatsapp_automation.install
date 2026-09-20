@@ -1027,6 +1027,18 @@ function ai_whatsapp_automation_update_11034(): string {
 }
 
 /**
+ * Creates the editable configuration of the client account e-mails.
+ */
+function ai_whatsapp_automation_update_11035(): string {
+  $config = \Drupal::configFactory()->getEditable('ai_whatsapp_automation.client_mail');
+  if ($config->get('messages') === NULL) {
+    $config->set('logo_url', '')->set('footer', '')->set('messages', [])->save();
+  }
+
+  return (string) t('Client account e-mails can now be edited at /admin/config/services/ai-whatsapp-automation/correos.');
+}
+
+/**
  * Returns the permissions of the client agent role.
  *
  * @return string[]

@@ -118,3 +118,10 @@ entity.ai_whatsapp_knowledge_chunk.collection:
   route_name: entity.ai_whatsapp_knowledge_chunk.collection
   parent: ai_whatsapp_automation.content
   weight: 63
+
+ai_whatsapp_automation.client_mail:
+  title: 'Correos a usuarios de clientes'
+  description: 'Personaliza el correo de bienvenida y los avisos de cuenta que reciben tus clientes.'
+  route_name: ai_whatsapp_automation.client_mail
+  parent: system.admin_config_services
+  weight: 51

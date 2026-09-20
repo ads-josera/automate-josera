@@ -171,3 +171,18 @@ ai_whatsapp_automation.lead_status:
       ai_whatsapp_lead:
         type: entity:ai_whatsapp_lead
 
+ai_whatsapp_automation.client_mail:
+  path: '/admin/config/services/ai-whatsapp-automation/correos'
+  defaults:
+    _form: '\Drupal\ai_whatsapp_automation\Form\ClientMailForm'
+    _title: 'Correos a usuarios de clientes'
+  requirements:
+    _permission: 'administer ai whatsapp automation'
+
+ai_whatsapp_automation.client_mail_preview:
+  path: '/admin/config/services/ai-whatsapp-automation/correos/vista-previa/{key}'
+  defaults:
+    _controller: '\Drupal\ai_whatsapp_automation\Controller\ClientMailPreviewController::preview'
+    _title: 'Vista previa'
+  requirements:
+    _permission: 'administer ai whatsapp automation'

@@ -1,0 +1,4 @@
+# Empty values fall back to the copy shipped in ClientAgentMail::DEFAULTS.
+logo_url: ''
+footer: ''
+messages: {}

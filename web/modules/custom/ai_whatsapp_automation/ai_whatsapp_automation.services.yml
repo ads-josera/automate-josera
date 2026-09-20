@@ -193,3 +193,6 @@ services:
     arguments:
       - '@Drupal\user\OneTimeAuthentication'
       - '@renderer'
+      - '@config.factory'
+      - '@file_url_generator'
+      - '@entity_type.manager'

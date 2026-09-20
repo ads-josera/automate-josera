@@ -15,6 +15,8 @@
  * - url: one-time login link the button points to.
  * - note: small print under the button.
  * - client: name of the client the account belongs to.
+ * - logo_url: absolute URL of the logo, may be empty.
+ * - footer: closing line under the card.
  */
 #}
 <!DOCTYPE html>
@@ -31,8 +33,13 @@
       <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="width:560px;max-width:100%;background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(20,13,46,.08);">
         <tr>
           <td style="padding:28px 32px;background:#1b1140;background-image:linear-gradient(135deg,#1b1140 0%,#2e1f63 100%);">
-            <p style="margin:0 0 6px 0;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#b9b3d6;">Josera · Plataforma de automatización</p>
-            <p style="margin:0;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#ffffff;font-weight:600;">{{ client }}</p>
+            {% if logo_url %}
+              <img src="{{ logo_url }}" alt="Josera Marketing Digital" width="150" style="display:block;width:150px;max-width:60%;height:auto;margin:0 0 18px 0;border:0;">
+            {% else %}
+              <p style="margin:0 0 6px 0;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#b9b3d6;">Josera · Marketing Digital</p>
+            {% endif %}
+            <p style="margin:0;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#b9b3d6;">Panel de automatización</p>
+            <p style="margin:4px 0 0 0;font-size:15px;color:#ffffff;font-weight:600;">{{ client }}</p>
           </td>
         </tr>
         <tr>
@@ -66,6 +73,13 @@
           </td>
         </tr>
       </table>
+      {% if footer %}
+        <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="width:560px;max-width:100%;">
+          <tr>
+            <td style="padding:18px 32px 0 32px;font-size:12px;line-height:1.6;color:#8f88a8;text-align:center;">{{ footer }}</td>
+          </tr>
+        </table>
+      {% endif %}
     </td>
   </tr>
 </table>

@@ -112,3 +112,39 @@ ai_whatsapp_automation.settings:
         notification_recipient_reply_text:
           type: string
           label: 'Notification recipient auto-reply text'
+
+ai_whatsapp_automation.client_mail:
+  type: config_object
+  label: 'Account e-mails sent to client users'
+  mapping:
+    logo_url:
+      type: string
+      label: 'Logo URL shown in the e-mail header'
+    footer:
+      type: string
+      label: 'Footer line'
+    messages:
+      type: sequence
+      label: 'Copy per e-mail'
+      sequence:
+        type: mapping
+        label: 'E-mail copy'
+        mapping:
+          subject:
+            type: string
+            label: 'Subject'
+          heading:
+            type: string
+            label: 'Heading'
+          intro:
+            type: string
+            label: 'Intro paragraph'
+          items:
+            type: string
+            label: 'Bullet list, one per line'
+          action:
+            type: string
+            label: 'Button label'
+          note:
+            type: string
+            label: 'Small print'

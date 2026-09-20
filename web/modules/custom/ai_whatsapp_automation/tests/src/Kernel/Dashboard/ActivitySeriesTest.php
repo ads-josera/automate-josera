@@ -64,7 +64,7 @@ final class ActivitySeriesTest extends KernelTestBase {
     ] as $entity_type_id) {
       $this->installEntitySchema($entity_type_id);
     }
-    $this->installConfig(['ai_whatsapp_automation']);
+    $this->installConfig(['system', 'ai_whatsapp_automation']);
 
     foreach (['a' => 'JG Mylard', 'b' => 'Laboratorio JVC'] as $key => $name) {
       $client = $this->create('ai_whatsapp_client', ['name' => $name]);
@@ -85,18 +85,20 @@ final class ActivitySeriesTest extends KernelTestBase {
    * Every day of the window is returned, including the days without messages.
    */
   public function testTheWindowIsCompleteAndCounted(): void {
-    $today = (int) strtotime('today') + 3600;
-    $this->message('a', 'contact', $today);
-    $this->message('a', 'contact', $today);
-    $this->message('a', 'ai', $today);
-    $this->message('a', 'ai', $today - 86400);
+    // Times in the past: a message that has not happened yet is not counted,
+    // and "noon today" is still in the future early in the morning.
+    $now = \Drupal::time()->getRequestTime() - 60;
+    $this->message('a', 'contact', $now);
+    $this->message('a', 'contact', $now);
+    $this->message('a', 'ai', $now);
+    $this->message('a', 'ai', $now - 86400);
     // Older than the window: it must not appear.
-    $this->message('a', 'ai', $today - (40 * 86400));
+    $this->message('a', 'ai', $now - (40 * 86400));
 
     $series = $this->service()->getActivitySeries(NULL, 0);
 
     $this->assertCount(30, $series, 'Without a period, the last 30 days are shown');
-    $this->assertSame(date('Y-m-d'), end($series)['day'], 'The last day is today');
+    $this->assertSame($this->day($now), end($series)['day'], 'The window ends on the day of the last message');
     $last = end($series);
     $this->assertSame(2, $last['received']);
     $this->assertSame(1, $last['sent']);
@@ -109,10 +111,10 @@ final class ActivitySeriesTest extends KernelTestBase {
    * A client only sees the messages of their own conversations.
    */
   public function testTheSeriesIsScopedToOneClient(): void {
-    $today = (int) strtotime('today') + 3600;
-    $this->message('a', 'contact', $today);
-    $this->message('b', 'contact', $today);
-    $this->message('b', 'contact', $today);
+    $now = \Drupal::time()->getRequestTime() - 60;
+    $this->message('a', 'contact', $now);
+    $this->message('b', 'contact', $now);
+    $this->message('b', 'contact', $now);
 
     $own = $this->service()->getActivitySeries(NULL, $this->clients['a']);
     $this->assertSame(1, end($own)['received'], 'Only the own client is counted');
@@ -127,17 +129,17 @@ final class ActivitySeriesTest extends KernelTestBase {
   public function testAPeriodReturnsItsOwnDays(): void {
     $start = (int) strtotime('today') - (2 * 86400);
     $end = (int) strtotime('today') + 86400;
-    $this->message('a', 'contact', $start + 60);
+    $this->message('a', 'contact', $start + 3600);
 
     $series = $this->service()->getActivitySeries(['start' => $start, 'end' => $end], 0);
 
-    $this->assertSame(date('Y-m-d', $start), $series[0]['day']);
+    $this->assertSame($this->day($start), $series[0]['day']);
     $this->assertSame(1, $series[0]['received']);
     $this->assertLessThanOrEqual(4, count($series));
   }
 
   /**
-   * The chart draws one bar per day and says so when there is nothing.
+   * The chart draws both series and says so when there is nothing.
    */
   public function testTheChartDrawsTheSeries(): void {
     $rendered = (string) $this->container->get('renderer')->renderInIsolation(
@@ -147,7 +149,9 @@ final class ActivitySeriesTest extends KernelTestBase {
       ])
     );
     $this->assertStringContainsString('<svg', $rendered, 'The SVG is not stripped by the renderer');
-    $this->assertSame(2, substr_count($rendered, '<rect'), 'One bar per series with data');
+    $this->assertSame(2, substr_count($rendered, '<rect'), 'One hover band per day');
+    $this->assertStringContainsString('aiwa-chart__line--received', $rendered, 'Both series are drawn');
+    $this->assertStringContainsString('aiwa-chart__line--sent', $rendered);
     $this->assertStringContainsString('18 sep', $rendered, 'Days are labelled in Spanish');
 
     $empty = (string) $this->container->get('renderer')->renderInIsolation(
@@ -155,6 +159,13 @@ final class ActivitySeriesTest extends KernelTestBase {
     );
     $this->assertStringContainsString('Todavía no hay mensajes', $empty);
     $this->assertStringNotContainsString('<rect', $empty);
+  }
+
+  /**
+   * Returns the day a timestamp belongs to, in the panel's time zone.
+   */
+  private function day(int $timestamp): string {
+    return $this->container->get('date.formatter')->format($timestamp, 'custom', 'Y-m-d');
   }
 
   /**

@@ -6,6 +6,7 @@ namespace Drupal\ai_whatsapp_automation\Application\Dashboard;
 
 use Drupal\Core\Database\Connection;
 use Drupal\Core\Database\Query\SelectInterface;
+use Drupal\Core\Datetime\DateFormatterInterface;
 
 /**
  * Provides optimized dashboard metrics.
@@ -17,6 +18,9 @@ final class DashboardMetricsService {
    */
   public function __construct(
     private readonly Connection $database,
+    // Days are bucketed in the panel's own time zone: a message at 23:00 in
+    // Mexico belongs to that day, not to the next one in UTC.
+    private readonly DateFormatterInterface $dateFormatter,
   ) {
   }
 
@@ -73,14 +77,14 @@ final class DashboardMetricsService {
     // SQL would tie the dashboard to one database's date functions.
     $counted = [];
     foreach ($query->execute() as $row) {
-      $day = date('Y-m-d', (int) $row->created);
+      $day = $this->dateFormatter->format((int) $row->created, 'custom', 'Y-m-d');
       $counted[$day] ??= ['received' => 0, 'sent' => 0];
       $counted[$day][$row->sender === 'contact' ? 'received' : 'sent']++;
     }
 
     $series = [];
     for ($i = 0; $i < $days; $i++) {
-      $day = date('Y-m-d', strtotime('+' . $i . ' days', (int) strtotime('today', $start)));
+      $day = $this->dateFormatter->format(strtotime('+' . $i . ' days', (int) strtotime('today', $start)), 'custom', 'Y-m-d');
       $series[] = [
         'day' => $day,
         'received' => $counted[$day]['received'] ?? 0,

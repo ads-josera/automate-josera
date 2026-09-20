@@ -127,6 +127,7 @@ services:
     class: Drupal\ai_whatsapp_automation\Application\Dashboard\DashboardMetricsService
     arguments:
       - '@database'
+      - '@date.formatter'
 
   ai_whatsapp_automation.document_parser:
     class: Drupal\ai_whatsapp_automation\Application\RAG\DocumentParserService

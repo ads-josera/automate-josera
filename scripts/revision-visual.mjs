@@ -13,7 +13,10 @@ const PAGES = {
   documentos: '/admin/content/ai-whatsapp/knowledge-documents',
   correos: '/admin/config/services/ai-whatsapp-automation/correos',
 };
-const ENGLISH = ['Operations', 'Web visitor', 'Knowledge base', 'Current assignments', 'Unassigned', 'Updated', 'Status', 'Label', 'Apply', 'Reference date', 'All time', 'Cost by', 'Active conversations', 'Sent messages', 'No active bot'];
+const ENGLISH = ['Operations', 'Web visitor', 'Knowledge base', 'Current assignments', 'Unassigned',
+  'Updated', 'Status', 'Label', 'Apply', 'Reference date', 'All time', 'Cost by', 'Active conversations',
+  'Sent messages', 'No active bot', 'Edit', 'Delete', 'Manage QR', 'Web integration', 'Default', 'None',
+  'Save configuration', 'Add ', 'Showing'];
 
 export default async function (page) {
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -50,7 +53,9 @@ export default async function (page) {
       // English left in the interface.
       const text = main.innerText;
       for (const word of english) {
-        if (text.includes(word)) out.push(`inglés: "${word}"`);
+        // Whole words only: "Edit" must not match inside "Editar".
+        const re = new RegExp(`(^|[^\\wÁÉÍÓÚÑáéíóúñ])${word.trim()}([^\\wÁÉÍÓÚÑáéíóúñ]|$)`);
+        if (re.test(text)) out.push(`inglés: "${word}"`);
       }
 
       // Filter bars: fields and buttons on the same baseline.

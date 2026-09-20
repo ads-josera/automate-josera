@@ -55,6 +55,95 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
   }
 
   /**
+   * Lists where a row only carries the actions of its own work.
+   *
+   * These are read all day long: editing or deleting the record is done from
+   * its page, not from a row.
+   */
+  private const OPERATIONAL_LISTS = [
+    'ai_whatsapp_conversation',
+    'ai_whatsapp_message',
+    'ai_whatsapp_lead',
+    'ai_whatsapp_operator_action',
+    'ai_whatsapp_knowledge_chunk',
+  ];
+
+  /**
+   * Puts Drupal's own row operations in Spanish and behind ours.
+   *
+   * They used to hide inside the dropbutton; now that every action is a
+   * visible button, "Edit" and "Delete" would be the first thing read on a
+   * screen that is otherwise entirely in Spanish.
+   *
+   * @param array<string, array<string, mixed>> $operations
+   *   Operations from the parent list builder.
+   *
+   * @return array<string, array<string, mixed>>
+   *   The same operations, renamed and re-weighted.
+   */
+  private function translateDefaultOperations(array $operations): array {
+    $titles = [
+      'view' => $this->t('Ver'),
+      'edit' => $this->t('Editar'),
+      'delete' => $this->t('Eliminar'),
+      'duplicate' => $this->t('Duplicar'),
+    ];
+    $weights = ['view' => 30, 'edit' => 40, 'delete' => 50, 'duplicate' => 45];
+    foreach ($operations as $key => $operation) {
+      if (isset($titles[$key])) {
+        $operations[$key]['title'] = $titles[$key];
+        $operations[$key]['weight'] = $weights[$key];
+      }
+    }
+
+    return $operations;
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * Rows show their actions as plain buttons instead of Drupal's dropbutton.
+   * With one action the dropbutton still drew an arrow that opened nothing,
+   * and with two it hid the second one behind a click for no reason: these
+   * lists never have more than three.
+   */
+  public function buildOperations(EntityInterface $entity): array {
+    $operations = $this->getOperations($entity);
+    if ($operations === []) {
+      return [];
+    }
+    uasort($operations, static fn (array $a, array $b): int => ($a['weight'] ?? 0) <=> ($b['weight'] ?? 0));
+
+    $build = [
+      '#type' => 'container',
+      '#attributes' => ['class' => ['aiwa-actions']],
+      '#attached' => ['library' => ['ai_whatsapp_automation/responsive_tables']],
+    ];
+    $is_first = TRUE;
+    foreach ($operations as $key => $operation) {
+      if (!isset($operation['url'])) {
+        continue;
+      }
+      $classes = ['aiwa-actions__button'];
+      if ($key === 'delete') {
+        $classes[] = 'aiwa-actions__button--danger';
+      }
+      elseif ($is_first) {
+        $classes[] = 'aiwa-actions__button--primary';
+      }
+      $build[$key] = [
+        '#type' => 'link',
+        '#title' => $operation['title'],
+        '#url' => $operation['url'],
+        '#attributes' => ['class' => $classes],
+      ];
+      $is_first = FALSE;
+    }
+
+    return $build;
+  }
+
+  /**
    * Returns the operations column with a Spanish label.
    *
    * @return array<string, mixed>
@@ -364,11 +453,14 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
    * Builds every operation of a record before access filtering.
    */
   private function collectOperations(EntityInterface $entity): array {
-    $operations = parent::getDefaultOperations($entity);
+    $operations = $this->translateDefaultOperations(parent::getDefaultOperations($entity));
+    if (in_array($entity->getEntityTypeId(), self::OPERATIONAL_LISTS, TRUE)) {
+      unset($operations['view'], $operations['edit'], $operations['delete'], $operations['duplicate']);
+    }
 
     if ($entity->getEntityTypeId() === 'ai_whatsapp_account' && $this->getFieldValue($entity, 'provider') === 'evolution') {
       $operations['manage_qr'] = [
-        'title' => $this->t('Manage QR'),
+        'title' => $this->t('Conectar por QR'),
         'weight' => 20,
         'url' => Url::fromRoute('ai_whatsapp_automation.evolution_account_qr', [
           'ai_whatsapp_account' => $entity->id(),
@@ -389,7 +481,7 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
 
     if ($entity->getEntityTypeId() === 'ai_whatsapp_bot') {
       $operations['web_integration'] = [
-        'title' => $this->t('Web integration'),
+        'title' => $this->t('Integración web'),
         'weight' => 20,
         'url' => Url::fromRoute('ai_whatsapp_automation.bot_web_integration', [
           'ai_whatsapp_bot' => $entity->id(),
@@ -467,11 +559,6 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
         'url' => Url::fromRoute('ai_whatsapp_automation.conversation_manual_reply', $route_params),
       ];
     }
-    $operations['assign_operator'] = [
-      'title' => $this->t('Asignar operador'),
-      'weight' => 21,
-      'url' => Url::fromRoute('ai_whatsapp_automation.conversation_assign_operator', $route_params),
-    ];
     if ($this->getFieldValue($entity, 'status') === 'AI_ACTIVE') {
       $operations['stop_ai'] = [
         'title' => $this->t('Pausar IA'),
@@ -486,10 +573,10 @@ final class AutomationEntityListBuilder extends EntityListBuilder {
         'url' => Url::fromRoute('ai_whatsapp_automation.conversation_reactivate_ai', $route_params),
       ];
     }
-    $operations['close'] = [
-      'title' => $this->t('Cerrar conversación'),
-      'weight' => 24,
-      'url' => Url::fromRoute('ai_whatsapp_automation.conversation_close', $route_params),
+    $operations['open'] = [
+      'title' => $this->t('Abrir'),
+      'weight' => 30,
+      'url' => $entity->toUrl('canonical'),
     ];
 
     return $operations;

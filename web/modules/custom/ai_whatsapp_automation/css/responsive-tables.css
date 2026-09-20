@@ -14,3 +14,52 @@
 .aiwa-table-scroll th {
   white-space: nowrap;
 }
+
+/* Row actions -----------------------------------------------------------
+ * Plain buttons, the same shape as the "Cerrar sesión" button of the top
+ * bar. Drupal's dropbutton drew an arrow even with a single action, and the
+ * arrow opened nothing. */
+.aiwa-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.aiwa-actions__button {
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--josera-border, #d7deea);
+  border-radius: 8px;
+  background: var(--josera-surface, #fff);
+  color: var(--josera-indigo-600, #2e1f63);
+  font-size: 0.83rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.aiwa-actions__button:hover,
+.aiwa-actions__button:focus {
+  background: #f4f1fb;
+  border-color: #cfc9e4;
+  color: var(--josera-indigo-800, #1b1140);
+  text-decoration: none;
+}
+
+.aiwa-actions__button--primary {
+  border-color: #cfc9e4;
+}
+
+/* Deleting is destructive and one click away: it reads as a quiet link. */
+.aiwa-actions__button--danger {
+  border-color: transparent;
+  background: none;
+  color: #a33227;
+}
+
+.aiwa-actions__button--danger:hover,
+.aiwa-actions__button--danger:focus {
+  background: #fdeceb;
+  border-color: #f3cbc7;
+  color: #8f2b21;
+}

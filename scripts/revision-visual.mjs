@@ -56,6 +56,31 @@ export default async function (page) {
         }
       }
 
+      // Words split across two lines. Claro hyphenates by default, which in
+      // a narrow column produces "JG My-lard": a word broken mid-way is
+      // always a defect, never a wrapping choice worth keeping.
+      const walker = document.createTreeWalker(main, NodeFilter.SHOW_TEXT);
+      const broken = new Set();
+      while (walker.nextNode()) {
+        const node = walker.currentNode;
+        const parent = node.parentElement;
+        if (!parent || parent.offsetParent === null) continue;
+        const pattern = /[^\s]{4,}/g;
+        let match;
+        while ((match = pattern.exec(node.nodeValue || '')) !== null) {
+          const range = document.createRange();
+          range.setStart(node, match.index);
+          range.setEnd(node, match.index + match[0].length);
+          const lines = new Set(
+            [...range.getClientRects()].filter(r => r.width > 0).map(r => Math.round(r.top)),
+          );
+          // A long URL has to break somewhere: it is the one word allowed to.
+          const isUrl = /https?:\/\/|www\./.test(match[0]);
+          if (lines.size > 1 && !isUrl) broken.add(match[0]);
+        }
+      }
+      for (const word of [...broken].slice(0, 6)) out.push(`palabra partida: "${word}"`);
+
       // English left in the interface.
       const text = main.innerText;
       for (const word of english) {

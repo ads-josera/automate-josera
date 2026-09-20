@@ -84,17 +84,41 @@ details.claro-details,
 
 /* Tables ---------------------------------------------------------------- */
 
+/*
+ * Claro sets "hyphens: auto" on the body, which in a narrow column splits
+ * words mid-way: "JG My-lard", "CONOCIMIEN-TO". A client's name is not a
+ * word to hyphenate, so the panel turns it off everywhere and relies on
+ * wrapping between words instead.
+ */
+.josera-shell {
+  hyphens: manual;
+}
+
 table {
   background: var(--josera-surface);
+}
+
+/*
+ * Smaller type and tighter gutters: these tables carry up to ten columns,
+ * and the room has to come from somewhere before the words themselves give
+ * way. Claro keeps deciding the widths.
+ */
+thead th,
+tbody td {
+  padding-right: 0.75rem;
+  padding-left: 0.75rem;
+  font-size: 0.875rem;
 }
 
 thead th {
   background: #f7f6fb;
   color: var(--josera-ink-muted);
-  font-size: 0.78rem;
+  font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
+  /* A heading is a label, not prose: it breaks between words or not at all. */
+  overflow-wrap: normal;
   border-bottom: 1px solid var(--josera-border);
 }
 

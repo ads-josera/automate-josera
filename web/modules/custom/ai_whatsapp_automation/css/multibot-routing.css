@@ -119,3 +119,13 @@
   hyphens: none;
   white-space: nowrap;
 }
+
+/*
+ * A model name breaks after its hyphens ("gpt-5-/mini") and a phone number
+ * after nothing at all. Both are identifiers: they wrap as a whole or not
+ * at all, and the table scrolls sideways if the row needs the room.
+ */
+.ai-whatsapp-routing-table td:nth-child(4),
+.ai-whatsapp-routing-table td:nth-child(8) {
+  white-space: nowrap;
+}

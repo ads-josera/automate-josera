@@ -46,8 +46,13 @@
   padding-bottom: 12px;
 }
 
+/*
+ * A phone number is one unit: split across two lines it stops being
+ * readable, and stops being copyable at a glance.
+ */
 .aiwa-message-list__conversation a {
   font-size: 0.94rem;
+  white-space: nowrap;
 }
 
 .aiwa-message-list__routing,

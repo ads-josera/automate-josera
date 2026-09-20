@@ -12,6 +12,8 @@ const PAGES = {
   conocimiento: '/admin/content/ai-whatsapp/knowledge-bases',
   documentos: '/admin/content/ai-whatsapp/knowledge-documents',
   correos: '/admin/config/services/ai-whatsapp-automation/correos',
+  ajustes: '/admin/config/services/ai-whatsapp-automation',
+  editar_bot: '/admin/content/ai-whatsapp/bots/1/edit',
 };
 const ENGLISH = ['Operations', 'Web visitor', 'Knowledge base', 'Current assignments', 'Unassigned',
   'Updated', 'Status', 'Label', 'Apply', 'Reference date', 'All time', 'Cost by', 'Active conversations',
@@ -20,8 +22,12 @@ const ENGLISH = ['Operations', 'Web visitor', 'Knowledge base', 'Current assignm
 
 export default async function (page) {
   await page.setViewportSize({ width: 1440, height: 900 });
+  // The browser keeps its context between runs, so a session left by the
+  // previous role would silently log this one in as somebody else and turn
+  // every page into a 403.
+  await page.context().clearCookies();
   await page.goto(base + '/user/login', { waitUntil: 'networkidle' });
-  await page.fill('#edit-name', 'josera');
+  await page.fill('#edit-name', process.env.REVISION_USER || 'josera');
   await page.fill('#edit-pass', 'PruebaLocal123!');
   await page.click('#edit-submit');
   await page.waitForLoadState('networkidle');

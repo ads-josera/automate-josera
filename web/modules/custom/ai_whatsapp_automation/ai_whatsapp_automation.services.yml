@@ -22,6 +22,9 @@ services:
       - '@entity_type.manager'
       - '@logger.factory'
 
+  ai_whatsapp_automation.unintelligible_message_detector:
+    class: Drupal\ai_whatsapp_automation\Application\AI\UnintelligibleMessageDetector
+
   ai_whatsapp_automation.conversation_engine:
     class: Drupal\ai_whatsapp_automation\Application\AI\ConversationEngineService
     arguments:
@@ -29,6 +32,8 @@ services:
       - '@ai_whatsapp_automation.bot_manager'
       - '@ai_whatsapp_automation.prompt_builder'
       - '@ai_whatsapp_automation.openai_service'
+      - '@ai_whatsapp_automation.unintelligible_message_detector'
+      - '@config.factory'
       - '@logger.factory'
 
   ai_whatsapp_automation.web_chat:

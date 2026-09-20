@@ -1056,6 +1056,42 @@ function ai_whatsapp_automation_update_11036(): string {
 }
 
 /**
+ * Adds the replies sent to messages that carry no readable request.
+ */
+function ai_whatsapp_automation_update_11037(): string {
+  $definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+  $field_definitions = \Drupal::service('entity_field.manager')
+    ->getFieldStorageDefinitions('ai_whatsapp_bot');
+
+  foreach (['unintelligible_reply_text', 'unintelligible_second_reply_text'] as $field_name) {
+    if ($definition_update_manager->getFieldStorageDefinition($field_name, 'ai_whatsapp_bot') !== NULL) {
+      continue;
+    }
+
+    $definition_update_manager->installFieldStorageDefinition(
+      $field_name,
+      'ai_whatsapp_bot',
+      'ai_whatsapp_automation',
+      $field_definitions[$field_name]
+    );
+  }
+
+  $config = \Drupal::configFactory()->getEditable('ai_whatsapp_automation.settings');
+  $defaults = [
+    'options.unintelligible_reply_text' => 'No logré entender tu mensaje 🤔 ¿Me lo escribes de nuevo, por favor?',
+    'options.unintelligible_second_reply_text' => 'Sigo sin poder leer tu mensaje. Puedes escribirme qué producto o servicio te interesa, o pedirme que te contacte una persona.',
+  ];
+  foreach ($defaults as $key => $value) {
+    if ($config->get($key) === NULL) {
+      $config->set($key, $value);
+    }
+  }
+  $config->save();
+
+  return (string) t('Unreadable messages are now answered without calling the AI.');
+}
+
+/**
  * Returns the permissions of the client agent role.
  *
  * @return string[]

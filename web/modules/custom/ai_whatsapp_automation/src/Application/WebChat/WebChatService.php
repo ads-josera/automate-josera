@@ -88,13 +88,19 @@ final class WebChatService {
       'sender' => 'contact',
       'provider_message_id' => 'web-' . $session_id . '-' . time(),
     ]);
-    $handoff = $this->leadHandoff->handle($conversation, (string) $result['response_text']);
+    $reply = trim((string) $result['response_text']);
+    // An empty reply means the engine chose to stay quiet, which today only
+    // happens after a run of unreadable messages. There is no answer to
+    // qualify as a lead, and the widget renders no bubble for it.
+    $handoff = $reply === ''
+      ? ['status' => 'not_ready']
+      : $this->leadHandoff->handle($conversation, $reply);
 
     return [
       'status' => 'ok',
       'session_id' => $session_id,
       'conversation_id' => $conversation->id(),
-      'message' => (string) $result['response_text'],
+      'message' => $reply,
       'handoff' => $handoff,
     ];
   }

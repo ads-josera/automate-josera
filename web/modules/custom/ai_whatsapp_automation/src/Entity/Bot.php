@@ -326,6 +326,34 @@ final class Bot extends ContentEntityBase {
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
+    $fields['unintelligible_reply_text'] = BaseFieldDefinition::create('string_long')
+      ->setLabel(t('First reply to an unreadable message'))
+      ->setDescription(t('Sent without calling the AI when a message carries no readable request, such as keyboard mashing. Leave empty to use the global fallback.'))
+      ->setDisplayOptions('form', [
+        'type' => 'string_textarea',
+        'weight' => 53,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'basic_string',
+        'weight' => 53,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['unintelligible_second_reply_text'] = BaseFieldDefinition::create('string_long')
+      ->setLabel(t('Second reply to an unreadable message'))
+      ->setDescription(t('Sent when a second unreadable message arrives in a row. Offer a way out here, such as naming a product or asking for a person. After this one the bot stops replying until a readable message arrives.'))
+      ->setDisplayOptions('form', [
+        'type' => 'string_textarea',
+        'weight' => 54,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'basic_string',
+        'weight' => 54,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
     $fields['web_widget_enabled'] = BaseFieldDefinition::create('boolean')
       ->setLabel(t('Enable web widget'))
       ->setDescription(t('Allow this bot to be embedded as a public web chat widget.'))

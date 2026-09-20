@@ -142,21 +142,21 @@ final class ActivitySeriesTest extends KernelTestBase {
    * The chart draws both series and says so when there is nothing.
    */
   public function testTheChartDrawsTheSeries(): void {
-    $rendered = (string) $this->container->get('renderer')->renderInIsolation(
-      ActivityChart::build([
-        ['day' => '2026-09-18', 'received' => 3, 'sent' => 2],
-        ['day' => '2026-09-19', 'received' => 0, 'sent' => 0],
-      ])
-    );
+    // renderInIsolation() takes its render array by reference, so the chart
+    // is built into a variable first.
+    $chart = ActivityChart::build([
+      ['day' => '2026-09-18', 'received' => 3, 'sent' => 2],
+      ['day' => '2026-09-19', 'received' => 0, 'sent' => 0],
+    ]);
+    $rendered = (string) $this->container->get('renderer')->renderInIsolation($chart);
     $this->assertStringContainsString('<svg', $rendered, 'The SVG is not stripped by the renderer');
     $this->assertSame(2, substr_count($rendered, '<rect'), 'One hover band per day');
     $this->assertStringContainsString('aiwa-chart__line--received', $rendered, 'Both series are drawn');
     $this->assertStringContainsString('aiwa-chart__line--sent', $rendered);
     $this->assertStringContainsString('18 sep', $rendered, 'Days are labelled in Spanish');
 
-    $empty = (string) $this->container->get('renderer')->renderInIsolation(
-      ActivityChart::build([['day' => '2026-09-19', 'received' => 0, 'sent' => 0]])
-    );
+    $empty_chart = ActivityChart::build([['day' => '2026-09-19', 'received' => 0, 'sent' => 0]]);
+    $empty = (string) $this->container->get('renderer')->renderInIsolation($empty_chart);
     $this->assertStringContainsString('Todavía no hay mensajes', $empty);
     $this->assertStringNotContainsString('<rect', $empty);
   }

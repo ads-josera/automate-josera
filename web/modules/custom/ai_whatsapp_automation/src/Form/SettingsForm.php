@@ -415,6 +415,20 @@ final class SettingsForm extends ConfigFormBase {
       '#rows' => 2,
       '#description' => $this->t('Fallback used only when the bot does not define its own reply. Recipients listed above cannot use the bot. This optional message is sent at most once every 24 hours when they reply. Leave empty to block AI without sending a reply.'),
     ];
+    $form['options']['unintelligible_reply_text'] = [
+      '#type' => 'textarea',
+      '#title' => $this->t('Default reply to an unreadable message'),
+      '#default_value' => $config->get('options.unintelligible_reply_text') ?: '',
+      '#rows' => 2,
+      '#description' => $this->t('Sent without calling the AI when a message carries no readable request, such as keyboard mashing. Used on WhatsApp and on the web widget when the bot defines no reply of its own. Leave empty to stay silent instead.'),
+    ];
+    $form['options']['unintelligible_second_reply_text'] = [
+      '#type' => 'textarea',
+      '#title' => $this->t('Default second reply to an unreadable message'),
+      '#default_value' => $config->get('options.unintelligible_second_reply_text') ?: '',
+      '#rows' => 2,
+      '#description' => $this->t('Sent when a second unreadable message arrives in a row. Offer a way out here, such as naming a product or asking for a person. After this one the bot stops replying until a readable message arrives.'),
+    ];
 
     return parent::buildForm($form, $form_state);
   }
@@ -546,6 +560,8 @@ final class SettingsForm extends ConfigFormBase {
       ->set('options.enable_lead_notifications', (bool) $options['enable_lead_notifications'])
       ->set('options.lead_notification_numbers', $options['lead_notification_numbers'])
       ->set('options.notification_recipient_reply_text', $options['notification_recipient_reply_text'])
+      ->set('options.unintelligible_reply_text', $options['unintelligible_reply_text'])
+      ->set('options.unintelligible_second_reply_text', $options['unintelligible_second_reply_text'])
       ->save();
 
     parent::submitForm($form, $form_state);

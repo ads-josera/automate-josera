@@ -112,6 +112,12 @@ ai_whatsapp_automation.settings:
         notification_recipient_reply_text:
           type: string
           label: 'Notification recipient auto-reply text'
+        unintelligible_reply_text:
+          type: string
+          label: 'First reply to an unreadable message'
+        unintelligible_second_reply_text:
+          type: string
+          label: 'Second reply to an unreadable message'
 
 ai_whatsapp_automation.client_mail:
   type: config_object

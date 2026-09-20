@@ -179,4 +179,63 @@ final class WhatsAppPipelineTest extends KernelTestBase {
     $this->assertContains('whatsapp:+5215599999999', $recipients);
   }
 
+  /**
+   * Noise is answered from configuration and silence never reaches Twilio.
+   *
+   * The third message matters most: an empty body would be rejected by the
+   * provider, the processor would throw, and the queue would retry the same
+   * noise until it gave up.
+   */
+  public function testNoiseNeverReachesOpenAiOrTwilio(): void {
+    $etm = $this->container->get('entity_type.manager');
+    $bot = $etm->getStorage('ai_whatsapp_bot')->create([
+      'name' => 'JG Mylard',
+      'status' => 'active',
+      'system_prompt' => 'Asistente de seguros.',
+    ]);
+    $bot->save();
+    $account = $etm->getStorage('ai_whatsapp_account')->create([
+      'name' => 'JG Mylard WhatsApp',
+      'provider' => 'twilio',
+      'phone_number' => '+5213342701566',
+      'twilio_account_sid' => 'ACtest',
+      'twilio_auth_token' => 'test-token',
+      'status' => 'active',
+      'bot' => $bot->id(),
+    ]);
+    $account->save();
+
+    $processor = $this->container->get('ai_whatsapp_automation.webhook_processor');
+    $message = static fn (string $sid, string $body): array => [
+      'provider' => 'twilio',
+      'message' => [
+        'phone' => '+5215512345678',
+        'account_phone' => '+5213342701566',
+        'body' => $body,
+        'provider_message_id' => $sid,
+      ],
+      'attempts' => 0,
+      'created' => time(),
+    ];
+
+    $first = $processor->process($message('SM1', 'Vfvfffbrbrhr'));
+    $second = $processor->process($message('SM2', 'Zxcvb bnmk'));
+    $third = $processor->process($message('SM3', 'Prprpr mmkk vbvb'));
+
+    $settings = $this->config('ai_whatsapp_automation.settings');
+    $this->assertSame('sent', $first['delivery']['status'] ?? NULL);
+    $this->assertSame($settings->get('options.unintelligible_reply_text'), $first['response_text']);
+    $this->assertSame($settings->get('options.unintelligible_second_reply_text'), $second['response_text']);
+    $this->assertSame('skipped_no_reply', $third['delivery']['status'] ?? NULL, 'Silence is not handed to the provider');
+    $this->assertSame('', $third['response_text']);
+
+    $hosts = array_map(
+      static fn (array $transaction): string => $transaction['request']->getUri()->getHost(),
+      $this->history,
+    );
+    $this->assertNotContains('api.openai.com', $hosts, 'Noise never costs a model call');
+    $this->assertSame(2, count(array_filter($hosts, static fn (string $host): bool => $host === 'api.twilio.com')), 'Only the two ladder replies were sent');
+    $this->assertSame([], $etm->getStorage('ai_whatsapp_lead')->loadMultiple(), 'Noise never becomes a lead');
+  }
+
 }

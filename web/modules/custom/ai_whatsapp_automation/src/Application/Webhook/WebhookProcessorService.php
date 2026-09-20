@@ -605,6 +605,23 @@ final class WebhookProcessorService {
    *   Processing result.
    */
   private function deliverEngineResult(string $provider, array $message, ContentEntityInterface $conversation, array $engine_result): array {
+    if (trim((string) $engine_result['response_text']) === '') {
+      // The engine decided not to answer, which today only happens after a
+      // run of unreadable messages. Sending an empty body would be rejected
+      // by the provider and the queue would retry it forever, so the message
+      // is marked handled and the lead check is skipped: there is no answer
+      // to qualify.
+      $this->markProviderDeliverySuccessful($provider, (string) ($message['provider_message_id'] ?? ''));
+      $this->logger->notice('No reply was sent for conversation @conversation because the engine returned no text.', [
+        '@conversation' => (string) $conversation->id(),
+      ]);
+
+      return $engine_result + [
+        'delivery' => ['status' => 'skipped_no_reply'],
+        'handoff' => ['status' => 'not_ready'],
+      ];
+    }
+
     $outbound_message = $message + [
       'whatsapp_account_id' => $conversation->hasField('whatsapp_account') ? $conversation->get('whatsapp_account')->target_id : NULL,
     ];

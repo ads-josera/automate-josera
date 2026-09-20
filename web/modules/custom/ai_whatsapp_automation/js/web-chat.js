@@ -66,7 +66,11 @@
           })
           .then(function (payload) {
             removeElement(typing);
-            appendMessage(messages, payload.message || '', 'ai');
+            // An empty reply means the assistant chose to stay quiet, so no
+            // bubble is drawn rather than an empty one.
+            if (payload.message) {
+              appendMessage(messages, payload.message, 'ai');
+            }
           })
           .catch(function () {
             removeElement(typing);

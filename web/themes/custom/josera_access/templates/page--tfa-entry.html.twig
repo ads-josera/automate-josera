@@ -3,10 +3,12 @@
     <div class="josera-login__content">
       <div class="josera-login__brand">
         {% if josera_login.logo_url %}
-          <img src="{{ josera_login.logo_url }}" alt="JG Mylard" class="josera-login__logo">
+          <img src="{{ josera_login.logo_url }}" alt="{{ josera_login.name }}" class="josera-login__logo">
         {% else %}
-          <span class="josera-login__wordmark">JG <strong>MYLARD</strong></span>
-          <span class="josera-login__slogan">Calidad y Servicio</span>
+          <span class="josera-login__wordmark">{{ josera_login.name }}</span>
+          {% if josera_login.slogan %}
+            <span class="josera-login__slogan">{{ josera_login.slogan }}</span>
+          {% endif %}
         {% endif %}
       </div>
 

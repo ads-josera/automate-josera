@@ -1,7 +1,13 @@
 <?php
 
+/**
+ * @file
+ * Josera Access: the branded login and second-factor screens.
+ */
+
 declare(strict_types=1);
 
+use Drupal\Core\Form\FormStateInterface;
 use Drupal\file\Entity\File;
 
 /**
@@ -20,11 +26,54 @@ function josera_access_preprocess_page(array &$variables): void {
     $logo_url = \Drupal::service('file_url_generator')->generateAbsoluteString($file->getFileUri());
   }
 
+  // The site's own name, never a hard-coded one: it is the text a screen
+  // reader announces for the logo, and the wordmark shown in its place when
+  // no logo is configured or the file has gone missing.
+  $site = \Drupal::config('system.site');
+
   $variables['josera_login'] = [
     'primary_color' => josera_access_color(theme_get_setting('login_primary_color', 'josera_access'), '#20105d'),
     'accent_color' => josera_access_color(theme_get_setting('login_accent_color', 'josera_access'), '#fb167c'),
     'logo_url' => $logo_url,
+    'name' => (string) $site->get('name'),
+    'slogan' => (string) $site->get('slogan'),
   ];
+  $variables['#cache']['tags'][] = 'config:system.site';
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for the login form.
+ *
+ * The site runs in English, so Drupal labels this form "Username",
+ * "Password" and "Log in". It is the first screen every client sees, and
+ * the only one they see before the panel, so it is written in Spanish here
+ * rather than switching the whole site's language.
+ */
+function josera_access_form_user_login_form_alter(array &$form, FormStateInterface $form_state): void {
+  $form['name']['#title'] = t('Usuario');
+  $form['name']['#description'] = t('Tu nombre de usuario o tu correo.');
+  $form['pass']['#title'] = t('Contraseña');
+  $form['pass']['#description'] = t('La contraseña de tu cuenta.');
+  if (isset($form['actions']['submit'])) {
+    $form['actions']['submit']['#value'] = t('Entrar');
+  }
+}
+
+/**
+ * Implements hook_preprocess_HOOK() for the page title block.
+ *
+ * Covers the heading Drupal prints for the password reset screens, which
+ * are reached from the login page.
+ */
+function josera_access_preprocess_html(array &$variables): void {
+  if (\Drupal::routeMatch()->getRouteName() !== 'user.login') {
+    return;
+  }
+
+  // head_title is what the browser tab shows: "Log in | Automate Josera".
+  if (isset($variables['head_title']['title'])) {
+    $variables['head_title']['title'] = t('Acceso');
+  }
 }
 
 /**

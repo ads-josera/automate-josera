@@ -102,6 +102,42 @@ async function walk(page) {
       }
       for (const word of [...broken].slice(0, 6)) out.push(`palabra partida: "${word}"`);
 
+      // Unreadable text. Setting a background without its colour left the
+      // toolbar's active tab black on near-black, and only a person
+      // noticing caught it. Contrast is a number: measure it.
+      const luminancia = (c) => {
+        const [r, g, b] = c.slice(0, 3).map((v) => {
+          const x = v / 255;
+          return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+        });
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      };
+      const partes = (valor) => (valor.match(/[\d.]+/g) || []).map(Number);
+      const fondoDe = (el) => {
+        for (let p = el; p; p = p.parentElement) {
+          const c = partes(getComputedStyle(p).backgroundColor);
+          if (c.length >= 3 && (c[3] === undefined || c[3] > 0.5)) return c;
+        }
+        return [255, 255, 255];
+      };
+      for (const el of main.querySelectorAll('a, button, th, td, label, h1, h2, h3, p, span, li')) {
+        const tieneTexto = [...el.childNodes].some((n) => n.nodeType === 3 && n.nodeValue.trim());
+        const r = el.getBoundingClientRect();
+        if (!tieneTexto || !r.width || !r.height) continue;
+        const cs = getComputedStyle(el);
+        if (cs.visibility === 'hidden' || Number(cs.opacity) < 0.5) continue;
+        const frente = partes(cs.color);
+        if (frente.length < 3 || (frente[3] !== undefined && frente[3] < 0.5)) continue;
+        const [claro, oscuro] = [luminancia(frente), luminancia(fondoDe(el))].sort((a, b) => b - a);
+        const razon = (claro + 0.05) / (oscuro + 0.05);
+        // 4.5:1 is the readable minimum; large text gets by on 3:1.
+        const grande = parseFloat(cs.fontSize) >= 24
+          || (parseFloat(cs.fontSize) >= 18.66 && Number(cs.fontWeight) >= 700);
+        if (razon < (grande ? 3 : 4.5)) {
+          out.push(`contraste ${razon.toFixed(1)}:1 en "${el.innerText.trim().slice(0, 18)}"`);
+        }
+      }
+
       // English left in the interface.
       const text = main.innerText;
       for (const word of english) {

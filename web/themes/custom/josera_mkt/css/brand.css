@@ -17,6 +17,14 @@
   --josera-indigo-700: #241a4d;
   --josera-indigo-600: #2e1f63;
   --josera-pink: #ec1e63;
+  /*
+   * The same pink, a shade down, for the one job the brand pink cannot do:
+   * carry white text. At #ec1e63 a 16px label sits at 4.26:1, under the
+   * 4.5:1 that small text needs; this reaches 4.77:1 and is not tellable
+   * apart side by side. The brand pink itself is untouched and still fills
+   * every accent, border and focus ring.
+   */
+  --josera-pink-on-white-text: #e01259;
   --josera-pink-dark: #c9134f;
   --josera-lavender: #b9b3d6;
 
@@ -26,7 +34,12 @@
   --josera-border: #e4e2ee;
   --josera-ink: #1b1140;
   --josera-ink-soft: #4a4468;
-  --josera-ink-muted: #7a7395;
+  /*
+   * Darkened from #7a7395 on 2026-09-20: at 4.1:1 over a table heading it
+   * fell under the 4.5:1 that small text needs to stay readable. Still the
+   * quiet tone of the design, now legible.
+   */
+  --josera-ink-muted: #6b6488;
 
   /* Status, shared with the lists and the dashboard. */
   --josera-green: #0f9d6a;

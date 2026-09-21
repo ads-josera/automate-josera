@@ -25,8 +25,16 @@ body {
   background: rgb(255 255 255 / 10%);
 }
 
-.toolbar .toolbar-bar .toolbar-tab > .toolbar-item.is-active {
+/*
+ * The colour has to come with the background. Claro darkens the active
+ * tab's text because its own active tab is pale; over this indigo that
+ * left black on near-black, which is what José could not read.
+ */
+.toolbar .toolbar-bar .toolbar-tab > .toolbar-item.is-active,
+.toolbar .toolbar-bar .toolbar-tab > .toolbar-item.is-active:hover,
+.toolbar .toolbar-bar .toolbar-tab > .toolbar-item.is-active:focus {
   background: var(--josera-indigo-700);
+  color: #fff;
   box-shadow: inset 0 -3px 0 var(--josera-pink);
 }
 
@@ -150,8 +158,8 @@ tbody td {
 }
 
 .button--primary {
-  background: var(--josera-pink);
-  border-color: var(--josera-pink);
+  background: var(--josera-pink-on-white-text);
+  border-color: var(--josera-pink-on-white-text);
   color: #fff;
 }
 

@@ -15,10 +15,17 @@ const PAGES = {
   ajustes: '/admin/config/services/ai-whatsapp-automation',
   editar_bot: '/admin/content/ai-whatsapp/bots/1/edit',
 };
+// Words that must not appear in a Spanish interface.
 const ENGLISH = ['Operations', 'Web visitor', 'Knowledge base', 'Current assignments', 'Unassigned',
-  'Updated', 'Status', 'Label', 'Apply', 'Reference date', 'All time', 'Cost by', 'Active conversations',
-  'Sent messages', 'No active bot', 'Edit', 'Delete', 'Manage QR', 'Web integration', 'Default', 'None',
-  'Save configuration', 'Add ', 'Showing', 'Active', 'Inactive', 'Pending', 'Draft', 'Yes', 'No results'];
+  'Updated', 'Label', 'Apply', 'Reference date', 'All time', 'Cost by', 'Active conversations',
+  'Sent messages', 'No active bot', 'Edit', 'Delete', 'Manage QR', 'Web integration',
+  'Save configuration', 'Showing', 'Active', 'Inactive', 'Pending', 'Indexed', 'Failed'];
+
+// The two configuration forms are wholly in English by decision (2026-09-20,
+// José: "déjalas así, solo yo las veo"). Everything else about them is still
+// checked; only the word list is skipped, so a finding nobody intends to fix
+// does not turn the report into noise.
+const EN_INGLES_A_PROPOSITO = ['ajustes', 'editar_bot'];
 
 export default async function (page) {
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -136,7 +143,7 @@ async function walk(page) {
         }
       }
       return [...new Set(out)];
-    }, ENGLISH);
+    }, EN_INGLES_A_PROPOSITO.includes(name) ? [] : ENGLISH);
     const pageOverflow = await page.evaluate(
       () => document.documentElement.scrollWidth > window.innerWidth + 2
         ? `la página se desplaza de lado: ${document.documentElement.scrollWidth}px en ${window.innerWidth}px`

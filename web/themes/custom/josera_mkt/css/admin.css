@@ -38,6 +38,16 @@ body {
   box-shadow: inset 0 -3px 0 var(--josera-pink);
 }
 
+/*
+ * Same assumption, same fix, one layer down: Claro inverts the active
+ * tab's icon to darken it for its pale tab. Over indigo that turned the
+ * icon almost black next to the white label it belongs to.
+ */
+.toolbar .toolbar-bar .toolbar-icon.is-active::before,
+.toolbar .toolbar-bar .toolbar-tab > .toolbar-item.is-active::before {
+  filter: none;
+}
+
 /* Page header ---------------------------------------------------------- */
 
 .content-header {

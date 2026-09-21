@@ -120,10 +120,12 @@ async function walk(page) {
         }
         return [255, 255, 255];
       };
-      for (const el of main.querySelectorAll('a, button, th, td, label, h1, h2, h3, p, span, li')) {
+      for (const el of document.body.querySelectorAll('a, button, th, td, label, h1, h2, h3, p, span, li')) {
         const tieneTexto = [...el.childNodes].some((n) => n.nodeType === 3 && n.nodeValue.trim());
         const r = el.getBoundingClientRect();
-        if (!tieneTexto || !r.width || !r.height) continue;
+        // Text for screen readers is clipped to a 1x1 box: nothing that
+        // small is being read by eye, so its contrast does not matter.
+        if (!tieneTexto || r.width < 4 || r.height < 4) continue;
         const cs = getComputedStyle(el);
         if (cs.visibility === 'hidden' || Number(cs.opacity) < 0.5) continue;
         const frente = partes(cs.color);
@@ -135,6 +137,20 @@ async function walk(page) {
           || (parseFloat(cs.fontSize) >= 18.66 && Number(cs.fontWeight) >= 700);
         if (razon < (grande ? 3 : 4.5)) {
           out.push(`contraste ${razon.toFixed(1)}:1 en "${el.innerText.trim().slice(0, 18)}"`);
+        }
+      }
+
+      // Icons darkened over a dark background. Claro inverts an active
+      // tab's icon because its own tab is pale; over indigo that hid it
+      // next to the white label it belongs to. Contrast maths does not
+      // reach an icon drawn as a ::before image, so look at the filter.
+      for (const el of document.body.querySelectorAll('*')) {
+        const antes = getComputedStyle(el, '::before');
+        if (!/invert/.test(antes.filter || '') || (antes.backgroundImage || 'none') === 'none') {
+          continue;
+        }
+        if (luminancia(fondoDe(el)) < 0.2) {
+          out.push(`icono invertido sobre fondo oscuro: "${el.innerText.trim().slice(0, 18)}"`);
         }
       }
 

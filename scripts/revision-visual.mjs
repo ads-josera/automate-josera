@@ -35,7 +35,7 @@ export default async function (page) {
   const report = {};
   // Both widths, always: a defect that only shows on a phone is still a
   // defect a client sees, and checking it by hand is what gets skipped.
-  for (const [label, width] of [['escritorio', 1440], ['celular', 390]]) {
+  for (const [label, width] of [['escritorio', 1440], ['portatil', 1280], ['portatil-chico', 1024], ['tableta', 820], ['celular', 390]]) {
     await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
     report[label] = await walk(page);
   }
@@ -119,14 +119,20 @@ async function walk(page) {
         }
       }
 
-      // Tables: no cell content wider than its cell.
-      for (const cell of main.querySelectorAll('td')) {
+      // Tables: nothing inside a cell may spill past it. Every descendant,
+      // not only the direct children: the link that overlapped the next
+      // column sat two levels down and went unseen for a whole release.
+      for (const cell of main.querySelectorAll('th, td')) {
         const cr = cell.getBoundingClientRect();
-        for (const child of cell.children) {
-          const chr = child.getBoundingClientRect();
-          if (chr.width && chr.right > cr.right + 2) {
-            out.push(`celda cortada: ${child.className || child.tagName} sale ${Math.round(chr.right - cr.right)}px`);
+        for (const el of cell.querySelectorAll('*')) {
+          const r = el.getBoundingClientRect();
+          if (r.width && r.right > cr.right + 2) {
+            out.push(`celda cortada: "${el.innerText.trim().slice(0, 18)}" sale ${Math.round(r.right - cr.right)}px`);
           }
+        }
+        // A heading with no element inside clips its own text instead.
+        if (cell.querySelector('*') === null && cell.scrollWidth > cell.clientWidth + 2) {
+          out.push(`texto cortado: "${cell.innerText.trim().slice(0, 18)}"`);
         }
       }
       return [...new Set(out)];

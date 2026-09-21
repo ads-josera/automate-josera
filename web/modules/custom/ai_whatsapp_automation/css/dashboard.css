@@ -181,10 +181,16 @@
   align-items: start;
 }
 
-/* The channel table carries six columns: it needs the wider half. */
-@media (min-width: 62em) {
+/*
+ * The channel table carries six columns: it needs the wider half. The
+ * breakpoint measures the window, but the panel only gets what is left
+ * after the side navigation, so it asks for a good deal more than the two
+ * columns need — at 1024px the pair demanded 780px of a 700px column and
+ * pushed the whole page sideways.
+ */
+@media (min-width: 78em) {
   .ai-whatsapp-dashboard__rankings {
-    grid-template-columns: minmax(320px, 1fr) minmax(460px, 1.55fr);
+    grid-template-columns: minmax(300px, 1fr) minmax(420px, 1.55fr);
   }
 }
 

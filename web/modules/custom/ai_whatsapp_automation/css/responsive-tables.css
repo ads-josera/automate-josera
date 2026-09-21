@@ -20,25 +20,30 @@
  * badges spill out of their cell. A floor width keeps every column legible
  * and lets the container scroll instead, which is what it is for.
  */
+/*
+ * Fixed column widths hand every column a share of the table whether its
+ * content fits or not: a phone number then spilled over the next column,
+ * and a heading clipped its own text. The content decides instead, the
+ * percentages below stay as a preference, and the container scrolls when
+ * the total will not fit.
+ */
+.aiwa-table-scroll > table {
+  table-layout: auto;
+}
+
+/*
+ * Words never break, so a column is at least as wide as its longest word
+ * and "Chat widget" wraps onto two lines instead of becoming "wid-get".
+ * Identifiers that must stay on one line say so where they are defined.
+ */
+.aiwa-table-scroll td,
+.aiwa-table-scroll td * {
+  overflow-wrap: normal;
+}
+
 @media (max-width: 48em) {
   .aiwa-table-scroll > table {
     min-width: 34rem;
-    /*
-     * Fixed column widths are what make sense on a wide screen. On a phone
-     * they squeeze every column to a fraction of what it holds, so the
-     * content decides instead and the container scrolls.
-     */
-    table-layout: auto;
-  }
-
-  /*
-   * Words never break, so a column is at least as wide as its longest word
-   * and "Chat widget" wraps onto two lines instead of becoming "wid-get".
-   * Identifiers that must stay on one line say so where they are defined.
-   */
-  .aiwa-table-scroll td,
-  .aiwa-table-scroll td * {
-    overflow-wrap: normal;
   }
 }
 

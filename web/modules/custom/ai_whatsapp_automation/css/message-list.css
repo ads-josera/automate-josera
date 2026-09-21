@@ -160,12 +160,7 @@
   }
 }
 
-/* The actions column keeps its own width: the dropbutton is laid out by
- * JavaScript and spills out of a column that only fits its text. */
-.aiwa-message-list th:last-child,
-.aiwa-message-list td:last-child {
-  width: 190px;
-}
+
 
 /* The date is written on one line: give the column the room it needs. */
 .aiwa-message-list th:nth-last-child(2),

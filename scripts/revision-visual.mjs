@@ -18,7 +18,7 @@ const PAGES = {
 const ENGLISH = ['Operations', 'Web visitor', 'Knowledge base', 'Current assignments', 'Unassigned',
   'Updated', 'Status', 'Label', 'Apply', 'Reference date', 'All time', 'Cost by', 'Active conversations',
   'Sent messages', 'No active bot', 'Edit', 'Delete', 'Manage QR', 'Web integration', 'Default', 'None',
-  'Save configuration', 'Add ', 'Showing'];
+  'Save configuration', 'Add ', 'Showing', 'Active', 'Inactive', 'Pending', 'Draft', 'Yes', 'No results'];
 
 export default async function (page) {
   await page.setViewportSize({ width: 1440, height: 900 });

@@ -5,6 +5,20 @@
   max-width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  /*
+   * A shadow on whichever edge has more table behind it. Nothing else says
+   * the table scrolls, so on a phone a column can sit just out of sight
+   * with no hint that it is there. The "local" layers cover the shadow when
+   * that side is fully scrolled, so it only shows while there is more.
+   */
+  background:
+    linear-gradient(to right, #fff 30%, rgb(255 255 255 / 0%)) left center,
+    linear-gradient(to left, #fff 30%, rgb(255 255 255 / 0%)) right center,
+    radial-gradient(farthest-side at 0 50%, rgb(20 13 46 / 14%), transparent) left center,
+    radial-gradient(farthest-side at 100% 50%, rgb(20 13 46 / 14%), transparent) right center;
+  background-repeat: no-repeat;
+  background-attachment: local, local, scroll, scroll;
+  background-size: 42px 100%, 42px 100%, 14px 100%, 14px 100%;
 }
 
 .aiwa-table-scroll > table {
@@ -55,6 +69,17 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
+}
+
+/*
+ * Wide enough to hold them, the actions belong on one line: wrapped, two
+ * buttons turned a 40px row into a 95px one down the whole list. The column
+ * sizes itself to fit them, and on a phone they wrap as before.
+ */
+@media (min-width: 48em) {
+  .aiwa-actions {
+    flex-wrap: nowrap;
+  }
 }
 
 .aiwa-actions__button {

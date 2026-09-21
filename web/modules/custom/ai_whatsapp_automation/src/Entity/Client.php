@@ -82,7 +82,7 @@ final class Client extends ContentEntityBase {
       ->setLabel(t('Status'))
       ->setRequired(TRUE)
       ->setDefaultValue('active')
-      ->setSettings(['allowed_values' => ['active' => 'Active', 'inactive' => 'Inactive']])
+      ->setSettings(['allowed_values' => ['active' => 'Activo', 'inactive' => 'Inactivo']])
       ->setDisplayOptions('form', ['type' => 'options_select', 'weight' => 10])
       ->setDisplayOptions('view', ['type' => 'list_default', 'weight' => 10])
       ->setDisplayConfigurable('form', TRUE)

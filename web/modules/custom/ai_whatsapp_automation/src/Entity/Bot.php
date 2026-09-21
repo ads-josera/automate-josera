@@ -717,8 +717,8 @@ final class Bot extends ContentEntityBase {
       ->setDefaultValue('active')
       ->setSettings([
         'allowed_values' => [
-          'active' => 'Active',
-          'inactive' => 'Inactive',
+          'active' => 'Activo',
+          'inactive' => 'Inactivo',
         ],
       ])
       ->setDisplayOptions('form', [

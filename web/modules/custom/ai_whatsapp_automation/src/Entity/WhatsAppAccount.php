@@ -152,8 +152,8 @@ final class WhatsAppAccount extends ContentEntityBase {
       ->setDefaultValue('inactive')
       ->setSettings([
         'allowed_values' => [
-          'active' => 'Active',
-          'inactive' => 'Inactive',
+          'active' => 'Activa',
+          'inactive' => 'Inactiva',
           'disconnected' => 'Disconnected',
           'error' => 'Error',
         ],

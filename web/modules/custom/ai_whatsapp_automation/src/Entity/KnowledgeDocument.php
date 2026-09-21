@@ -94,7 +94,7 @@ final class KnowledgeDocument extends ContentEntityBase {
       ->setLabel(t('Status'))
       ->setRequired(TRUE)
       ->setDefaultValue('pending')
-      ->setSettings(['allowed_values' => ['pending' => 'Pending', 'indexed' => 'Indexed', 'failed' => 'Failed']])
+      ->setSettings(['allowed_values' => ['pending' => 'Pendiente', 'indexed' => 'Indexado', 'failed' => 'Falló']])
       ->setDisplayOptions('view', ['type' => 'list_default', 'weight' => 30])
       ->setDisplayConfigurable('view', TRUE);
 

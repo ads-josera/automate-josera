@@ -92,7 +92,7 @@ final class KnowledgeBase extends ContentEntityBase {
       ->setLabel(t('Status'))
       ->setRequired(TRUE)
       ->setDefaultValue('active')
-      ->setSettings(['allowed_values' => ['active' => 'Active', 'inactive' => 'Inactive']])
+      ->setSettings(['allowed_values' => ['active' => 'Activa', 'inactive' => 'Inactiva']])
       ->setDisplayOptions('form', ['type' => 'options_select', 'weight' => 30])
       ->setDisplayOptions('view', ['type' => 'list_default', 'weight' => 30])
       ->setDisplayConfigurable('form', TRUE)

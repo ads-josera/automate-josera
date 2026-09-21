@@ -129,3 +129,8 @@
 .ai-whatsapp-routing-table td:nth-child(8) {
   white-space: nowrap;
 }
+
+/* The action link is a label, not prose: it wraps whole or not at all. */
+.ai-whatsapp-routing-table td:last-child {
+  white-space: nowrap;
+}

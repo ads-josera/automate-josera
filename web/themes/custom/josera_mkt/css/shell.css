@@ -223,14 +223,24 @@ body.toolbar-fixed.toolbar-horizontal.toolbar-tray-open .josera-shell__nav {
     margin: 0.75rem 0 0.25rem;
   }
 
+  /*
+   * Laid out in wrapping rows the sections landed in two ragged columns and
+   * the active pill hung off the left edge. Folded behind a button there is
+   * no reason to save space: a plain list reads in one pass and every row
+   * is wide enough to hit with a thumb.
+   */
   .josera-shell__menu ul {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
+    display: block;
+  }
+
+  .josera-shell__menu li + li {
+    margin-top: 0.15rem;
   }
 
   .josera-shell__link {
     margin: 0;
+    /* A comfortable target on a touch screen. */
+    min-height: 44px;
   }
 }
 
@@ -262,6 +272,12 @@ body.toolbar-fixed.toolbar-horizontal.toolbar-tray-open .josera-shell__nav {
 .josera-shell__toggle:hover,
 .josera-shell__toggle:focus-visible {
   background: rgb(255 255 255 / 14%);
+}
+
+/* Claro rings any focused button; a ring left over from a tap is noise. */
+.josera-shell__toggle:focus:not(:focus-visible) {
+  outline: none;
+  box-shadow: none;
 }
 
 /* Three bars that become an X once the menu is open. */

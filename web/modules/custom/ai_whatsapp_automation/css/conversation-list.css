@@ -136,12 +136,7 @@
   }
 }
 
-/* The actions column holds a dropbutton laid out by JavaScript; without a
- * width of its own it spills over the column next to it. */
-.aiwa-conversation-list th:last-child,
-.aiwa-conversation-list td:last-child {
-  width: 200px;
-}
+
 
 /* A phone number is one unit: split over two lines it stops being read. */
 .aiwa-conversation-list__contact a {

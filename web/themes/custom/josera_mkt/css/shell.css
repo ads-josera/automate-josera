@@ -233,3 +233,96 @@ body.toolbar-fixed.toolbar-horizontal.toolbar-tray-open .josera-shell__nav {
     margin: 0;
   }
 }
+
+/* Folding menu ---------------------------------------------------------- */
+
+/*
+ * Stacked, the navigation used to fill the whole screen, so the client
+ * scrolled past every section before reaching the page they asked for.
+ * It folds behind this button instead. The button carries `hidden` in the
+ * markup and the script removes it, so without JavaScript the menu simply
+ * stays open and everything still works.
+ */
+.josera-shell__toggle {
+  display: none;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 10px;
+  background: rgb(255 255 255 / 8%);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.josera-shell__toggle:hover,
+.josera-shell__toggle:focus-visible {
+  background: rgb(255 255 255 / 14%);
+}
+
+/* Three bars that become an X once the menu is open. */
+.josera-shell__toggle-icon,
+.josera-shell__toggle-icon::before,
+.josera-shell__toggle-icon::after {
+  display: block;
+  width: 18px;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.josera-shell__toggle-icon {
+  position: relative;
+}
+
+.josera-shell__toggle-icon::before,
+.josera-shell__toggle-icon::after {
+  position: absolute;
+  left: 0;
+  content: '';
+}
+
+.josera-shell__toggle-icon::before {
+  top: -6px;
+}
+
+.josera-shell__toggle-icon::after {
+  top: 6px;
+}
+
+.josera-shell__toggle[aria-expanded='true'] .josera-shell__toggle-icon {
+  background: transparent;
+}
+
+.josera-shell__toggle[aria-expanded='true'] .josera-shell__toggle-icon::before {
+  top: 0;
+  transform: rotate(45deg);
+}
+
+.josera-shell__toggle[aria-expanded='true'] .josera-shell__toggle-icon::after {
+  top: 0;
+  transform: rotate(-45deg);
+}
+
+@media (max-width: 62em) {
+  .josera-shell__toggle:not([hidden]) {
+    display: flex;
+  }
+
+  /*
+   * Only once the script has taken over: `is-open` is what it toggles, and
+   * a menu it never touched keeps showing.
+   */
+  .josera-shell__toggle:not([hidden]) ~ .josera-shell__menu:not(.is-open) {
+    display: none;
+  }
+
+  .josera-shell__toggle:not([hidden]) ~ .josera-shell__menu.is-open {
+    margin-top: 0.75rem;
+  }
+}

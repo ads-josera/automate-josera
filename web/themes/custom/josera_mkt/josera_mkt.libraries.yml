@@ -5,3 +5,8 @@ global:
       css/brand.css: {}
       css/shell.css: {}
       css/admin.css: {}
+  js:
+    js/shell.js: {}
+  dependencies:
+    - core/drupal
+    - core/once

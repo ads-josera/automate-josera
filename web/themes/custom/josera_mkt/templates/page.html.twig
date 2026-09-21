@@ -25,7 +25,16 @@
       {% endif %}
     </a>
     {% if josera_nav_groups %}
-      <nav class="josera-shell__menu">
+      {#
+        Shown only on a narrow screen (see shell.css). The panel works
+        without JavaScript: the menu starts open, and the script hides it
+        and wires this button up only once it has run.
+      #}
+      <button type="button" class="josera-shell__toggle" aria-controls="josera-shell-menu" aria-expanded="true" hidden>
+        <span class="josera-shell__toggle-icon" aria-hidden="true"></span>
+        <span class="josera-shell__toggle-label">{{ 'Menú'|t }}</span>
+      </button>
+      <nav class="josera-shell__menu" id="josera-shell-menu">
         {% for group in josera_nav_groups %}
           {% if group.title %}
             <p class="josera-shell__group">{{ group.title }}</p>

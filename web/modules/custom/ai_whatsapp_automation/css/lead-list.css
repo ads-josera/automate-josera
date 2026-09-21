@@ -21,7 +21,7 @@
   margin-top: 3px;
   color: #667085;
   font-size: 0.78rem;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .aiwa-lead-list__routing {
@@ -33,7 +33,7 @@
   font-size: 0.86rem;
   font-weight: 700;
   line-height: 1.35;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .aiwa-lead-list__channel {
@@ -42,7 +42,7 @@
   font-size: 0.78rem;
   line-height: 1.35;
   margin-top: 3px;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .aiwa-lead-list__source,
@@ -119,4 +119,9 @@
   .aiwa-lead-list__date {
     white-space: normal;
   }
+}
+
+/* A phone number is one unit: split over two lines it stops being read. */
+.aiwa-lead-list__contact a {
+  white-space: nowrap;
 }

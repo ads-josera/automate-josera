@@ -33,6 +33,17 @@ export default async function (page) {
   await page.waitForLoadState('networkidle');
 
   const report = {};
+  // Both widths, always: a defect that only shows on a phone is still a
+  // defect a client sees, and checking it by hand is what gets skipped.
+  for (const [label, width] of [['escritorio', 1440], ['celular', 390]]) {
+    await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
+    report[label] = await walk(page);
+  }
+  return report;
+}
+
+async function walk(page) {
+  const report = {};
   for (const [name, path] of Object.entries(PAGES)) {
     const res = await page.goto(base + path, { waitUntil: 'networkidle' });
     const findings = await page.evaluate((english) => {
@@ -74,9 +85,12 @@ export default async function (page) {
           const lines = new Set(
             [...range.getClientRects()].filter(r => r.width > 0).map(r => Math.round(r.top)),
           );
-          // A long URL has to break somewhere: it is the one word allowed to.
-          const isUrl = /https?:\/\/|www\./.test(match[0]);
-          if (lines.size > 1 && !isUrl) broken.add(match[0]);
+          // Two words are allowed to break: a long URL, which has to break
+          // somewhere, and a compound that already carries a hyphen, which
+          // breaks at its own hyphen the way any prose does. Identifiers
+          // that must survive whole say so in their own stylesheet.
+          const mayBreak = /https?:\/\/|www\.|-/.test(match[0]);
+          if (lines.size > 1 && !mayBreak) broken.add(match[0]);
         }
       }
       for (const word of [...broken].slice(0, 6)) out.push(`palabra partida: "${word}"`);
@@ -95,8 +109,13 @@ export default async function (page) {
         const field = bar.querySelector('.form-item input, .form-item select');
         const button = bar.querySelector('.form-actions .button, .form-actions input[type=submit]');
         if (field && button) {
-          const diff = Math.round(field.getBoundingClientRect().bottom - button.getBoundingClientRect().bottom);
-          if (Math.abs(diff) > 3) out.push(`filtros desalineados: ${diff}px`);
+          const f = field.getBoundingClientRect();
+          const b = button.getBoundingClientRect();
+          // Only when they share a row. Narrow screens stack the filters and
+          // put the button underneath, which is the right thing to do.
+          const sameRow = Math.abs(f.top - b.top) < 8;
+          const diff = Math.round(f.bottom - b.bottom);
+          if (sameRow && Math.abs(diff) > 3) out.push(`filtros desalineados: ${diff}px`);
         }
       }
 
@@ -112,7 +131,16 @@ export default async function (page) {
       }
       return [...new Set(out)];
     }, ENGLISH);
-    report[name] = { status: res.status(), findings };
+    const pageOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > window.innerWidth + 2
+        ? `la página se desplaza de lado: ${document.documentElement.scrollWidth}px en ${window.innerWidth}px`
+        : null,
+    );
+    report[name] = {
+      status: res.status(),
+      findings: pageOverflow ? [pageOverflow, ...findings] : findings,
+    };
   }
+
   return report;
 }

@@ -15,6 +15,33 @@
   white-space: nowrap;
 }
 
+/*
+ * On a phone the columns would otherwise squeeze until words break and
+ * badges spill out of their cell. A floor width keeps every column legible
+ * and lets the container scroll instead, which is what it is for.
+ */
+@media (max-width: 48em) {
+  .aiwa-table-scroll > table {
+    min-width: 34rem;
+    /*
+     * Fixed column widths are what make sense on a wide screen. On a phone
+     * they squeeze every column to a fraction of what it holds, so the
+     * content decides instead and the container scrolls.
+     */
+    table-layout: auto;
+  }
+
+  /*
+   * Words never break, so a column is at least as wide as its longest word
+   * and "Chat widget" wraps onto two lines instead of becoming "wid-get".
+   * Identifiers that must stay on one line say so where they are defined.
+   */
+  .aiwa-table-scroll td,
+  .aiwa-table-scroll td * {
+    overflow-wrap: normal;
+  }
+}
+
 /* Row actions -----------------------------------------------------------
  * Plain buttons, the same shape as the "Cerrar sesión" button of the top
  * bar. Drupal's dropbutton drew an arrow even with a single action, and the

@@ -196,6 +196,14 @@ body.toolbar-fixed.toolbar-horizontal.toolbar-tray-open .josera-shell__nav {
 @media (max-width: 62em) {
   .josera-shell {
     flex-direction: column;
+    /*
+     * Stacked, the navigation and the content are laid out down the page,
+     * so "flex-start" would size each one to its own content: a wide table
+     * then stretched the whole page and pushed "Cerrar sesión" off screen.
+     * Stretched, they are exactly as wide as the screen and a wide table
+     * scrolls inside .aiwa-table-scroll, where it belongs.
+     */
+    align-items: stretch;
   }
 
   .josera-shell__nav,

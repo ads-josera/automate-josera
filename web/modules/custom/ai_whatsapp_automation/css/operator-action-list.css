@@ -83,7 +83,7 @@
   max-width: 360px;
   color: #475467;
   font-size: 0.84rem;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .aiwa-operator-action-list__result {
@@ -100,7 +100,7 @@
 .aiwa-operator-action-list__result span {
   color: #667085;
   font-size: 0.78rem;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .aiwa-operator-action-list .dropbutton__item > a {

@@ -68,7 +68,7 @@
   font-size: 0.86rem;
   font-weight: 700;
   line-height: 1.35;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .aiwa-conversation-list__channel {
@@ -77,7 +77,7 @@
   font-size: 0.78rem;
   line-height: 1.35;
   margin-top: 3px;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .aiwa-conversation-list__status--ai-active {
@@ -141,4 +141,15 @@
 .aiwa-conversation-list th:last-child,
 .aiwa-conversation-list td:last-child {
   width: 200px;
+}
+
+/* A phone number is one unit: split over two lines it stops being read. */
+.aiwa-conversation-list__contact a {
+  white-space: nowrap;
+}
+
+/* A date and a status badge are single units: they never wrap or clip. */
+.aiwa-conversation-list__date,
+.aiwa-conversation-list__status {
+  white-space: nowrap;
 }

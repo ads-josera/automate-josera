@@ -101,3 +101,19 @@ function ai_adminops_update_10005(): string {
   return (string) t('@count past AdminOps readings without data are no longer labelled as successes.', ['@count' => $relabelled]);
 }
 
+/**
+ * Requires a problem to persist across readings before it raises an alert.
+ *
+ * On the production server 24 of 25 load spikes above the threshold were a
+ * single reading during the 02:00 backups; two readings in a row filter
+ * all of them and keep the one sustained episode.
+ */
+function ai_adminops_update_10006(): string {
+  $config = \Drupal::configFactory()->getEditable('ai_adminops.settings');
+  if ($config->get('alerts.consecutive_readings') === NULL) {
+    $config->set('alerts.consecutive_readings', 2)->save();
+  }
+
+  return (string) t('AdminOps alerts now wait for two readings in a row.');
+}
+

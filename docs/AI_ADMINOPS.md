@@ -58,7 +58,7 @@ Cada lectura escribe un aviso en el registro de Drupal (`AdminOps execution … 
 José aprobó estos cuatro pasos, sin tocar `ai_whatsapp_automation`:
 
 1. ✅ **Hecho** — **Bitácora honesta**: un estado nuevo `no_data` («No data», en ámbar) cuando una lectura llega por SSH pero no trae valores (`unavailable`, `not_configured`), en lugar de «Succeeded». Requiere actualizar el campo `status` de `ai_adminops_tool_execution`.
-2. **Alertas sin ruido**: un valor alto solo abre evento si **las últimas N lecturas** de ese indicador lo superan (`alerts.consecutive_readings`, 2 por defecto), leídas de la propia bitácora. «Servidor sin respuesta» exige también N trabajos seguidos sin respuesta (contador en State). La resolución sigue siendo inmediata en cuanto el valor baja.
+2. ✅ **Hecho** — **Alertas sin ruido**: un valor alto solo abre evento si **las últimas N lecturas** de ese indicador lo superan (`alerts.consecutive_readings`, 2 por defecto), leídas de la propia bitácora. «Servidor sin respuesta» exige también N trabajos seguidos sin respuesta (contador en State). La resolución sigue siendo inmediata en cuanto el valor baja.
 3. **Botón «enviar aviso de prueba»** en los ajustes, para comprobar de punta a punta el correo y el WhatsApp con los valores del formulario.
 4. **Encenderlo**: alertas, aviso de servidor sin respuesta y correo a José. Lo hace José desde los ajustes después del despliegue, verificándolo con el botón de prueba.
 
@@ -86,9 +86,16 @@ cola (cron, 45 s de trabajo) ── MonitoringQueueWorker
              si ninguna lectura respondió → evento «servidor sin respuesta»; si alguna, se resuelve
 
 MonitoringAlertEvaluator ── compara con alerts.* y llama a AdminOpsEventManager
-        ├ valor ≥ umbral → record():  UN evento abierto por servidor y tipo (huella sha256);
-        │                              si ya hay uno, lo actualiza y NO vuelve a avisar
-        └ valor < umbral → resolveCondition(): lo cierra
+        ├ valor ≥ umbral en las últimas alerts.consecutive_readings lecturas (2 por defecto,
+        │   leídas de la bitácora con AdminOpsExecutionAudit::recentReadings(); una lectura
+        │   sin datos o fallida rompe la racha)
+        │   → record():  UN evento abierto por servidor y tipo (huella sha256);
+        │                si ya hay uno, lo actualiza y NO vuelve a avisar
+        ├ valor ≥ umbral pero sin racha suficiente → nada (un evento abierto sigue abierto)
+        └ valor < umbral → resolveCondition(): lo cierra en la primera lectura normal
+        «Servidor sin respuesta»: también exige N trabajos seguidos sin respuesta
+        (contador en State ai_adminops.monitoring.unreachable_streak.<servidor>,
+        que se borra en cuanto el servidor responde).
 
 AdminOpsEventManager::record() ── solo al CREAR un evento
         └▶ NotificationBridge::notifyEvent()

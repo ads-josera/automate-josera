@@ -5,9 +5,15 @@ declare(strict_types=1);
 namespace Drupal\ai_adminops\Service;
 
 use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\State\StateInterface;
 
 /**
  * Converts read-only monitoring results into deduplicated operational events.
+ *
+ * A problem must persist for alerts.consecutive_readings readings in a row
+ * before it opens an event, so a one-off spike (the nightly backups push the
+ * load past 4 for a single reading) does not wake anybody. An event closes
+ * on the first reading back to normal.
  */
 final class MonitoringAlertEvaluator {
 
@@ -17,6 +23,8 @@ final class MonitoringAlertEvaluator {
   public function __construct(
     private readonly ConfigFactoryInterface $configFactory,
     private readonly AdminOpsEventManager $eventManager,
+    private readonly AdminOpsExecutionAudit $executionAudit,
+    private readonly StateInterface $state,
   ) {}
 
   /**
@@ -35,42 +43,46 @@ final class MonitoringAlertEvaluator {
       'get_server_load' => [
         'event_type' => 'server_load_high',
         'rule' => 'load_1m_warning',
-        'value' => $this->number($result, ['load_1m', 'load']),
+        'keys' => ['load_1m', 'load'],
         'unit' => '',
         'label' => 'Carga a 1 minuto',
       ],
       'get_cpu_usage' => [
         'event_type' => 'cpu_usage_high',
         'rule' => 'cpu_percent_warning',
-        'value' => $this->number($result, ['cpu_percent', 'usage_percent', 'used_percent']),
+        'keys' => ['cpu_percent', 'usage_percent', 'used_percent'],
         'unit' => '%',
         'label' => 'Uso de CPU',
       ],
       'get_memory_usage' => [
         'event_type' => 'memory_usage_high',
         'rule' => 'memory_percent_warning',
-        'value' => $this->number($result, ['memory_percent', 'usage_percent', 'used_percent']),
+        'keys' => ['memory_percent', 'usage_percent', 'used_percent'],
         'unit' => '%',
         'label' => 'Uso de memoria',
       ],
       'get_disk_usage' => [
         'event_type' => 'disk_usage_high',
         'rule' => 'disk_percent_warning',
-        'value' => $this->number($result, ['used_percent', 'disk_percent', 'usage_percent']),
+        'keys' => ['used_percent', 'disk_percent', 'usage_percent'],
         'unit' => '%',
         'label' => 'Uso de disco',
       ],
       'get_exim_queue' => [
         'event_type' => 'exim_queue_high',
         'rule' => 'exim_queue_warning',
-        'value' => $this->number($result, ['queue_count', 'queue_size', 'count']),
+        'keys' => ['queue_count', 'queue_size', 'count'],
         'unit' => ' mensajes',
         'label' => 'Cola de Exim',
       ],
       default => NULL,
     };
 
-    if ($definition === NULL || $definition['value'] === NULL) {
+    if ($definition === NULL) {
+      return;
+    }
+    $definition['value'] = $this->number($result, $definition['keys']);
+    if ($definition['value'] === NULL) {
       return;
     }
 
@@ -80,6 +92,11 @@ final class MonitoringAlertEvaluator {
     }
 
     if ($definition['value'] >= $threshold) {
+      if (!$this->isSustained($server_id, $tool_id, $definition['keys'], $threshold, (int) $rules['consecutive_readings'])) {
+        // Above the threshold, but not for long enough yet. An event that is
+        // already open stays open: the problem has not gone away.
+        return;
+      }
       $value = $this->format($definition['value']);
       $threshold_text = $this->format($threshold);
       $this->eventManager->record(
@@ -104,7 +121,16 @@ final class MonitoringAlertEvaluator {
    * Records a critical event when the server cannot be reached by SSH.
    */
   public function recordServerUnreachable(string $server_id): void {
-    if (!(bool) $this->rules()['enabled'] || !(bool) $this->rules()['unreachable_enabled']) {
+    $rules = $this->rules();
+    if (!(bool) $rules['enabled'] || !(bool) $rules['unreachable_enabled']) {
+      return;
+    }
+
+    // One dropped connection is not an outage: count jobs in a row.
+    $streak_key = 'ai_adminops.monitoring.unreachable_streak.' . $server_id;
+    $streak = (int) $this->state->get($streak_key, 0) + 1;
+    $this->state->set($streak_key, $streak);
+    if ($streak < (int) $rules['consecutive_readings']) {
       return;
     }
 
@@ -121,6 +147,7 @@ final class MonitoringAlertEvaluator {
    * Resolves the reachability condition after a successful SSH response.
    */
   public function recordServerReachable(string $server_id): void {
+    $this->state->delete('ai_adminops.monitoring.unreachable_streak.' . $server_id);
     $this->eventManager->resolveCondition($server_id, 'server_unreachable');
   }
 
@@ -142,7 +169,37 @@ final class MonitoringAlertEvaluator {
       'memory_percent_warning' => (float) ($configured['memory_percent_warning'] ?? 90),
       'disk_percent_warning' => (float) ($configured['disk_percent_warning'] ?? 85),
       'exim_queue_warning' => (float) ($configured['exim_queue_warning'] ?? 100),
+      'consecutive_readings' => max(1, (int) ($configured['consecutive_readings'] ?? 2)),
     ];
+  }
+
+  /**
+   * Checks that the last N readings of a check all stayed at the threshold.
+   *
+   * The current reading is already in the audit log when this runs, so it is
+   * one of the N. A reading that failed or carried no data breaks the run:
+   * nothing is known about that moment.
+   *
+   * @param string[] $keys
+   *   Result keys that may hold the measured value.
+   */
+  private function isSustained(string $server_id, string $tool_id, array $keys, float $threshold, int $required): bool {
+    if ($required <= 1) {
+      return TRUE;
+    }
+
+    $readings = $this->executionAudit->recentReadings($server_id, $tool_id, $required);
+    if (count($readings) < $required) {
+      return FALSE;
+    }
+    foreach ($readings as $reading) {
+      $value = $reading['status'] === 'succeeded' ? $this->number($reading['result'], $keys) : NULL;
+      if ($value === NULL || $value < $threshold) {
+        return FALSE;
+      }
+    }
+
+    return TRUE;
   }
 
   /**

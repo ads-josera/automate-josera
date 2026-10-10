@@ -9,6 +9,7 @@ alerts:
   memory_percent_warning: 90
   disk_percent_warning: 85
   exim_queue_warning: 100
+  consecutive_readings: 2
 notifications:
   enabled: true
   minimum_severity: warning

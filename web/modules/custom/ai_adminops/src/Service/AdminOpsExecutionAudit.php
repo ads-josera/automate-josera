@@ -95,6 +95,35 @@ final class AdminOpsExecutionAudit {
   }
 
   /**
+   * Returns the latest finished readings of one check on one server.
+   *
+   * @return list<array{status: string, result: array<string, mixed>}>
+   *   Newest first.
+   */
+  public function recentReadings(string $server_id, string $tool_id, int $limit): array {
+    $storage = $this->entityTypeManager->getStorage('ai_adminops_tool_execution');
+    $ids = $storage->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('server', $server_id)
+      ->condition('tool_id', $tool_id)
+      ->condition('status', ['succeeded', 'no_data', 'failed'], 'IN')
+      ->sort('id', 'DESC')
+      ->range(0, max(1, $limit))
+      ->execute();
+
+    $readings = [];
+    foreach ($storage->loadMultiple($ids) as $execution) {
+      $result = json_decode((string) $execution->get('result')->value, TRUE);
+      $readings[] = [
+        'status' => (string) $execution->get('status')->value,
+        'result' => is_array($result) ? $result : [],
+      ];
+    }
+
+    return $readings;
+  }
+
+  /**
    * Marks an execution as failed without exposing raw infrastructure details.
    *
    * @param array<string, mixed> $result

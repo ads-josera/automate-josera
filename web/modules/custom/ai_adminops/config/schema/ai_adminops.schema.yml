@@ -37,6 +37,9 @@ ai_adminops.settings:
         exim_queue_warning:
           type: integer
           label: 'Exim queue warning threshold'
+        consecutive_readings:
+          type: integer
+          label: 'Consecutive readings required before alerting'
     notifications:
       type: mapping
       label: 'Notification settings'

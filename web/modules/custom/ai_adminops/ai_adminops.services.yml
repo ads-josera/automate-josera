@@ -56,6 +56,8 @@ services:
     arguments:
       - '@config.factory'
       - '@ai_adminops.event_manager'
+      - '@ai_adminops.execution_audit'
+      - '@state'
 
   plugin.manager.ai_adminops_tool:
     class: Drupal\ai_adminops\Plugin\AdminOpsTool\AdminOpsToolManager

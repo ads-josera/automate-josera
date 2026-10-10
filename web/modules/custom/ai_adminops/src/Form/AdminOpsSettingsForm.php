@@ -101,6 +101,16 @@ final class AdminOpsSettingsForm extends ConfigFormBase {
       '#default_value' => (bool) ($alerts['unreachable_enabled'] ?? TRUE),
       '#description' => $this->t('Creates a critical alert if a configured SSH monitoring check cannot be completed.'),
     ];
+    $form['alerts']['consecutive_readings'] = [
+      '#type' => 'number',
+      '#title' => $this->t('Readings in a row before alerting'),
+      '#default_value' => $alerts['consecutive_readings'] ?? 2,
+      '#min' => 1,
+      '#max' => 12,
+      '#step' => 1,
+      '#required' => TRUE,
+      '#description' => $this->t('A value must stay above its threshold, or a server must stay unreachable, for this many readings in a row. With checks every 15 minutes, 2 means 15 to 30 minutes and filters one-off spikes such as nightly backups. 1 alerts on the first reading.'),
+    ];
     $form['alerts']['load_1m_warning'] = [
       '#type' => 'number',
       '#title' => $this->t('Load average warning threshold (1 minute)'),
@@ -227,6 +237,7 @@ final class AdminOpsSettingsForm extends ConfigFormBase {
         'memory_percent_warning' => (int) $form_state->getValue(['alerts', 'memory_percent_warning']),
         'disk_percent_warning' => (int) $form_state->getValue(['alerts', 'disk_percent_warning']),
         'exim_queue_warning' => (int) $form_state->getValue(['alerts', 'exim_queue_warning']),
+        'consecutive_readings' => max(1, (int) $form_state->getValue(['alerts', 'consecutive_readings'])),
       ])
       ->set('notifications.enabled', (bool) $form_state->getValue(['notifications', 'enabled']))
       ->set('notifications.minimum_severity', (string) $form_state->getValue(['notifications', 'minimum_severity']))

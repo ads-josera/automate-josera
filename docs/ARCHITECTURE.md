@@ -1,28 +1,130 @@
-Módulo:
-ai_whatsapp_automation
+# Arquitectura de AI WhatsApp Automation
 
-Drupal:
-11
+Documento de referencia del módulo `ai_whatsapp_automation` (Drupal 11.4, PHP 8.4). Explica qué hace cada pieza, cómo se relacionan y qué reglas no son obvias leyendo el código. Revisado contra el código el 2026-10-09.
 
-PHP:
-8.3
+Para desplegar, ver [DEPLOY.md](DEPLOY.md). Para el correo por Amazon SES, [SES_API_SETUP.md](SES_API_SETUP.md).
 
-Arquitectura:
-Clean Architecture
+## Qué es
 
-Proveedores:
+Una plataforma **multicliente** de asistentes con IA para WhatsApp y para un chat web incrustable. Cada cliente (empresa) tiene sus bots, sus números de WhatsApp, sus bases de conocimiento, sus conversaciones y sus prospectos. Un administrador (José) configura todo; los agentes de cada cliente entran a un panel donde solo ven y operan lo suyo.
 
-- Twilio
-- WhatsApp Cloud API
-- Evolution API
+En producción: `https://app.josera.com.mx`. Cliente activo: JG Mylard (seguros de transporte de mercancías).
 
-IA:
+## Capas
 
-- GPT-5.5 Mini por defecto
-- GPT-5.5 para tareas avanzadas
+```
+src/
+  Entity/          Entidades de contenido y sus manejadores (lista, acceso, almacenamiento).
+  Application/     Lógica de negocio, en servicios. Aquí vive todo lo que decide algo.
+    AI/            Motor de conversación, prompts, filtro de ruido.
+    WebChat/       Chat web: configuración pública, sesiones, límites, dominios.
+    Webhook/       Entrada de mensajes de los proveedores, cola, envío, formato.
+    Lead/          Detección de prospectos y aviso al cliente.
+    HumanOperator/ Paso de la IA a una persona y vuelta.
+    Client/        Asignación de registros a clientes y chequeo de consistencia.
+    RAG/           Documentos, fragmentos, embeddings y búsqueda vectorial.
+    Evolution/     Conexión de números por QR (Evolution API).
+    Dashboard/     Métricas del panel.
+    OpenAI/        Interfaz del proveedor de modelo.
+  Infrastructure/  Implementaciones contra servicios externos (OpenAI).
+  Controller/      Puntos de entrada HTTP. Delegan en Application/.
+  Form/            Formularios. Delegan en Application/.
+  Access/, Routing/ Acceso por cliente.
+  Plugin/          Colas y el plugin de correo.
+  Ui/              Piezas de interfaz reutilizables (gráfica, filtro de cliente, tabla responsiva).
+```
 
-RAG:
+La regla: Controllers, Forms y hooks son entradas; la decisión vive en un servicio de `Application/`. Los servicios están en `ai_whatsapp_automation.services.yml`.
 
-- PDF
-- DOCX
-- TXT
+## Entidades
+
+| Entidad | Para qué | Referencias clave |
+|---|---|---|
+| `ai_whatsapp_client` (Client) | La empresa cliente. | — |
+| `ai_whatsapp_bot` (Bot) | Un asistente: prompt, modelo, reglas de traspaso, **toda la configuración del widget web**, límites. | client, knowledge_base, lead_notification_account |
+| `ai_whatsapp_account` (WhatsAppAccount) | Un número de WhatsApp y su proveedor (Twilio, Cloud API o Evolution). | client, bot, knowledge_base |
+| `ai_whatsapp_conversation` | Una conversación con un contacto, por WhatsApp o web. | client, bot, whatsapp_account, assigned_operator (user) |
+| `ai_whatsapp_message` | Cada mensaje: `sender` contact / ai / operator, tokens y coste. | conversation |
+| `ai_whatsapp_lead` | Un prospecto detectado. | client, conversation, bot |
+| `ai_whatsapp_operator_action` | Bitácora de lo que hace una persona en una conversación. | conversation, user |
+| `ai_whatsapp_knowledge_base` / `_document` / `_chunk` | RAG: base, documento subido y fragmentos con su embedding. | client (base), file |
+
+### El modelo multicliente
+
+- El campo `client` se declara una sola vez en `Client::referenceField()` y lo usan Bot, WhatsAppAccount, KnowledgeBase, Conversation y Lead.
+- En Conversation y Lead **se rellena solo** al guardar (hooks `presave`), a partir del bot o de la cuenta. Nunca se escribe a mano.
+- El usuario tiene el campo `ai_whatsapp_client` (añadido en `hook_entity_base_field_info`). El formulario de usuario exige elegirlo si el rol es «Atención a clientes».
+- **Acceso:** el rol `ai_whatsapp_client_agent` tiene `access own client ai whatsapp records`, `operate own client ai whatsapp conversations`, `view ai whatsapp automation dashboard` y `view the administration theme`. Las consultas se restringen en `hook_query_TAG_alter` (`_ai_whatsapp_automation_restrict_to_client`), y las operaciones en `Access\ClientAccess`. **Los agentes de cliente no editan bots ni cuentas:** solo ven y operan conversaciones y prospectos de su empresa.
+
+## Flujos
+
+### WhatsApp
+
+```
+Proveedor ─▶ WebhookController ─▶ WebhookProviderService (normaliza Twilio / Cloud API / Evolution)
+          ─▶ WebhookQueueService (procesa al momento; si falla, va a la cola, que el cron vacía)
+          ─▶ WebhookProcessorService ─▶ ConversationEngineService ─▶ OpenAIService
+          ─▶ WhatsAppTextFormatter ─▶ ProviderMessageSenderService ─▶ Proveedor
+                                     └▶ LeadHandoffService (¿prospecto listo? crear y avisar)
+```
+
+- Notas de voz y adjuntos se guardan con un marcador (🎤 Nota de voz, 🖼️ Imagen…) y se contesta con `media_reply_text` del bot.
+- El formato de WhatsApp no es Markdown: el formateador convierte negritas y listas (viñetas anidadas como `◦`).
+
+### Chat web
+
+```
+Sitio del cliente
+  <script async src="/ai-whatsapp-automation/embed/{token}">   ← WebChatController::embed
+      pinta el botón flotante y crea el iframe (oculto hasta el clic)
+  <iframe src="/ai-whatsapp-automation/chat/{token}">          ← WebChatController::page
+      HTML autónomo + css/web-chat.css + js/web-chat.js
+      js/web-chat.js ─▶ POST /ai-whatsapp-automation/api/web-chat/{token}  ← WebChatController::message
+                       ─▶ WebChatService::processMessage ─▶ el mismo motor de conversación
+```
+
+- `{token}` es `web_widget_token` o, si está vacío, el UUID del bot.
+- **Dominios permitidos** (`web_widget_allowed_domains`): `WebChatService::isRequestAllowed()` comprueba Origin/Referer; `WebChatFrameResponseSubscriber` pone `Content-Security-Policy: frame-ancestors` con esos dominios y quita `X-Frame-Options`. Por eso **el chat real no se puede incrustar en el propio panel** si el dominio del panel no está en la lista.
+- Límites por bot: mensajes por ventana, conversaciones diarias y presupuesto diario (`WebChatLimitException` → 429).
+- `widgetConfig()` en `WebChatService` es la única fuente de la configuración pública (nombre, colores, logo, bienvenida, posición, icono, tamaño, idioma).
+
+### El motor de conversación
+
+`ConversationEngineService` es el único punto por el que pasan los dos canales:
+
+1. **Filtro de ruido** (`UnintelligibleMessageDetector`): un mensaje sin sentido no llega al modelo, así que no se paga. La escalera es invitar a reescribir, luego ofrecer una salida, y después silencio. Los textos son por bot.
+2. `PromptBuilderService` arma el prompt del bot con el contexto del RAG (`RAGService`).
+3. `OpenAIService` llama al modelo con el `reasoning_effort` del bot.
+
+### Prospectos
+
+`LeadHandoffService::isLeadReady()` exige a la vez: un contacto, N grupos de señales (`handoff_required_fields`, **un grupo por línea**, y las comas son alternativas dentro de la línea) y una frase de traspaso o de resumen en la respuesta. Ojo: un bot con menos grupos que `handoff_minimum_fields` **nunca** crea prospectos, y no avisa. Está documentado como deuda en la memoria del proyecto.
+
+### Operador humano
+
+`HumanOperatorService` detiene la IA, asigna a una persona, permite responder a mano y reactivar la IA. Cada acción queda en OperatorAction. Las conversaciones inactivas se cierran por cron (`ai_whatsapp_automation_close_stale_conversations`).
+
+## Configuración
+
+- `ai_whatsapp_automation.settings`: claves de `openai`, `twilio`, `whatsapp_cloud`, `evolution` y `options` (textos por defecto, entre otros). En local, la llave de OpenAI va en `settings.local.php` como sobrescritura de configuración. Ojo: el SID y el token de Twilio de cada número **sí se guardan en la base de datos**, en los campos de WhatsAppAccount.
+- `ai_whatsapp_automation.client_mail`: correos a los agentes de cliente (con vista previa).
+- **Idioma:** el sitio está en español. Los formularios de configuración del bot y de ajustes se quedan en inglés **por decisión de José** («solo yo las veo»). Todo lo que ve un cliente va en español.
+
+## Tema y panel
+
+- `josera_mkt`: el armazón del panel (barra lateral, barra superior con «Cerrar sesión», menú plegable en móvil). Los tokens de color viven en `css/brand.css`.
+- `josera_access`: la pantalla de acceso, con la marca tomada de la configuración del sitio.
+- `Ui\ResponsiveTable` + `css/responsive-tables.css`: tablas que se desplazan dentro de su contenedor en pantallas estrechas.
+
+## Convenciones
+
+- **Actualizaciones de base de datos:** `ai_whatsapp_automation_update_110NN`, sin huecos. La última es la **11038**. Un campo nuevo en una entidad necesita su update con `installFieldStorageDefinition()`.
+- **Pruebas:** `ddev exec "SIMPLETEST_DB=mysql://db:db@db/db vendor/bin/phpunit -c web/core web/modules/custom/ai_whatsapp_automation/tests"`. Son 111 pruebas y 956 aserciones, con una deprecación conocida (`#[LegacyRequirementsHook]`). Las llamadas HTTP están simuladas, así que no gastan dinero.
+- **Revisión visual:** `scripts/revision-visual.mjs` recorre 14 pantallas en 5 anchos. Hay que correrlo como `josera` y como `agente_jg`.
+- **Despliegue:** no se pisa nunca el `web/.htaccess` de producción (lleva el manejador de PHP 8.4). Ver [DEPLOY.md](DEPLOY.md).
+
+## Deuda conocida
+
+- **El botón del chat web ignora parte de su configuración.** El script del botón vive como una cadena de JavaScript dentro de `WebChatController::embedScript()`, y no usa `web_widget_icon` ni el logo. El icono está dibujado con bordes de CSS. Los colores son texto libre sin validar ni vista previa. En trabajo desde el 2026-10-09.
+- La configuración de prospectos puede quedar imposible en silencio (ver «Prospectos»).
+- `#[LegacyRequirementsHook]` por migrar.

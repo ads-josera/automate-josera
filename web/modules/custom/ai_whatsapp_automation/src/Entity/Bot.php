@@ -78,9 +78,11 @@ final class Bot extends ContentEntityBase {
   public const DEFAULT_PRIMARY_COLOR = '#155EEF';
 
   /**
-   * Secondary widget colour of a bot that never chose one.
+   * Chat header colour of a bot that never chose one.
+   *
+   * The navy every header showed while the header ignored this field.
    */
-  public const DEFAULT_SECONDARY_COLOR = '#111827';
+  public const DEFAULT_SECONDARY_COLOR = '#12336E';
 
   /**
    * {@inheritdoc}
@@ -441,12 +443,13 @@ final class Bot extends ContentEntityBase {
       ->setDisplayConfigurable('view', TRUE);
 
     $fields['web_widget_secondary_color'] = BaseFieldDefinition::create('string')
-      ->setLabel(t('Web widget secondary color'))
+      ->setLabel(t('Web widget header color'))
+      ->setDescription(t('Background of the chat header. Its text turns white or dark on its own to stay readable. A hex colour such as #12336E.'))
       ->setSetting('max_length', 16)
       ->setDefaultValue(self::DEFAULT_SECONDARY_COLOR)
       ->addPropertyConstraints('value', ['Regex' => [
         'pattern' => self::COLOR_PATTERN,
-        'message' => t('Use a hex colour such as #111827.'),
+        'message' => t('Use a hex colour such as #12336E.'),
       ]])
       ->setDisplayOptions('form', [
         'type' => 'string_textfield',

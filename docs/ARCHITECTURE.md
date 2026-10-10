@@ -92,8 +92,9 @@ Sitio del cliente
 
 - **Un solo dibujante:** `js/widget-launcher.js` (`window.AIWhatsAppAutomationLauncher.paint()`) pinta el color y el icono. `WebChatController::embed()` sirve en **una sola respuesta** la configuración, `widget-launcher.js` y `js/widget-embed.js` (que monta el botón y el iframe). El formulario del bot carga el mismo `widget-launcher.js` para la vista previa, así que la vista previa no puede divergir del botón real. No se divide en varias peticiones: el código que un cliente ya pegó en su sitio es una sola etiqueta `<script>`.
 - **Iconos:** `chat`, `sparkles`, `help` (SVG) e `image`, que usa `web_widget_button_image` o, si no hay, el logo; si la imagen no carga, vuelve al icono de chat. El color del icono (blanco u oscuro) se elige por contraste WCAG.
-- **Colores:** restricción `Regex` en la propia definición del campo (`Bot::COLOR_PATTERN`, solo `#RGB` o `#RRGGBB`), así que valida el formulario y cualquier otro guardado.
+- **Colores:** restricción `Regex` en la propia definición del campo (`Bot::COLOR_PATTERN`, solo `#RGB` o `#RRGGBB`), así que valida el formulario y cualquier otro guardado. El **principal** pinta el botón, la línea bajo la cabecera, las burbujas del visitante y el botón de enviar. El **secundario** (en el formulario, *header color*) pinta la **cabecera del chat** desde el 2026-10-09; su texto sale blanco u oscuro según el contraste (`WebChatService::readableInk()`, la misma regla que `inkFor()` en JS). La actualización 11040 pasó los secundarios sin tocar (`#111827`, que nunca se vio) al azul marino `#12336E` que todas las cabeceras ya mostraban: ningún sitio cambió de aspecto.
 - **Vista previa** (`js/bot-widget-preview.js`, `css/bot-widget-preview.css`): una maqueta, no el chat real en un iframe, porque `frame-ancestors` solo deja incrustar el chat en los dominios del bot. Añade un selector de color nativo junto a cada campo hex, sigue el idioma del widget y avisa si el texto blanco sobre el color principal baja de 4.5:1. La cabecera de la maqueta copia la de `css/web-chat.css`: si cambia una, hay que cambiar la otra.
+- Las animaciones del chat se apagan con `prefers-reduced-motion: reduce`.
 - Pruebas: `tests/src/Kernel/WebChat/WebChatWidgetAppearanceTest.php`.
 
 ### El motor de conversación
@@ -126,14 +127,12 @@ Sitio del cliente
 
 ## Convenciones
 
-- **Actualizaciones de base de datos:** `ai_whatsapp_automation_update_110NN`, sin huecos. La última es la **11039** (imagen del botón del chat). Un campo nuevo en una entidad necesita su update con `installFieldStorageDefinition()`.
-- **Pruebas:** `ddev exec "SIMPLETEST_DB=mysql://db:db@db/db vendor/bin/phpunit -c web/core web/modules/custom/ai_whatsapp_automation/tests"`. Son 115 pruebas y 1011 aserciones, con una deprecación conocida (`#[LegacyRequirementsHook]`). Las llamadas HTTP están simuladas, así que no gastan dinero.
+- **Actualizaciones de base de datos:** `ai_whatsapp_automation_update_110NN`, sin huecos. La última es la **11040** (la cabecera del chat sigue el color secundario). Un campo nuevo en una entidad necesita su update con `installFieldStorageDefinition()`.
+- **Pruebas:** `ddev exec "SIMPLETEST_DB=mysql://db:db@db/db vendor/bin/phpunit -c web/core web/modules/custom/ai_whatsapp_automation/tests"`. Son 117 pruebas y 1033 aserciones, con una deprecación conocida (`#[LegacyRequirementsHook]`). Las llamadas HTTP están simuladas, así que no gastan dinero.
 - **Revisión visual:** `scripts/revision-visual.mjs` recorre 14 pantallas en 5 anchos. Hay que correrlo como `josera` y como `agente_jg`.
 - **Despliegue:** no se pisa nunca el `web/.htaccess` de producción (lleva el manejador de PHP 8.4). Ver [DEPLOY.md](DEPLOY.md).
 
 ## Deuda conocida
 
-- **La cabecera del chat es siempre azul marino** (`#12336e`, fijo en `css/web-chat.css`): el color principal solo pinta la línea inferior, las burbujas del visitante y el botón de enviar. **El color secundario no se usa en ningún sitio.** No se cambió el 2026-10-09 porque alteraría el chat de JG en vivo; pendiente de decisión de José.
-- Las animaciones del chat no respetan `prefers-reduced-motion`.
 - La configuración de prospectos puede quedar imposible en silencio (ver «Prospectos»).
 - `#[LegacyRequirementsHook]` por migrar.

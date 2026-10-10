@@ -121,6 +121,9 @@
     const launcher = window.AIWhatsAppAutomationLauncher;
     const primary = fullHex(control(form, 'web_widget_primary_color[0][value]')?.value);
     const color = primary || '#155EEF';
+    const secondary = fullHex(control(form, 'web_widget_secondary_color[0][value]')?.value);
+    const header = secondary || '#12336E';
+    const headerInk = launcher.inkFor(header);
     const icon = control(form, 'web_widget_icon')?.value || 'chat';
     const position = control(form, 'web_widget_position')?.value || 'right';
     const name = control(form, 'web_widget_assistant_name[0][value]')?.value.trim()
@@ -135,6 +138,8 @@
 
     const { stage, notes } = parts;
     stage.style.setProperty('--aiwa-preview-primary', color);
+    stage.style.setProperty('--aiwa-preview-secondary', header);
+    stage.style.setProperty('--aiwa-preview-header-ink', headerInk);
     stage.classList.toggle('is-left', position === 'left');
 
     stage.querySelector('.aiwa-widget-preview__title strong').textContent = name;
@@ -170,6 +175,15 @@
         '@ratio': ratio.toFixed(1),
       }));
     }
+    if (!secondary) {
+      messages.push(Drupal.t('The header colour is not a valid hex colour, so the default navy is shown. Use a value such as #12336E.'));
+    }
+    const headerRatio = launcher.contrast(header, headerInk);
+    if (secondary && headerRatio < MIN_CONTRAST) {
+      messages.push(Drupal.t('Neither white nor dark text reads comfortably on this header colour (best contrast @ratio:1). Choose a lighter or darker shade.', {
+        '@ratio': headerRatio.toFixed(1),
+      }));
+    }
     if (icon === 'image' && !buttonImageUrl) {
       messages.push(Drupal.t('No image uploaded yet: the button shows the chat icon until you add one, or a logo.'));
     }
@@ -192,7 +206,7 @@
         preview.aiwaParts = buildStage(preview);
         [
           ['web_widget_primary_color[0][value]', Drupal.t('Pick the primary colour')],
-          ['web_widget_secondary_color[0][value]', Drupal.t('Pick the secondary colour')],
+          ['web_widget_secondary_color[0][value]', Drupal.t('Pick the header colour')],
         ].forEach(([name, label]) => {
           const input = control(form, name);
           if (input) {

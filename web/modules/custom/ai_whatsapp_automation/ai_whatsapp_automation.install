@@ -1139,6 +1139,28 @@ function ai_whatsapp_automation_update_11039(): string {
 }
 
 /**
+ * Makes the secondary colour paint the chat header, without changing it.
+ *
+ * The header was always navy (#12336E) and the secondary colour was used
+ * nowhere, so every bot still holds the untouched default #111827. Those
+ * move to the navy their header already shows: nothing changes on any
+ * client's website until someone picks a colour.
+ */
+function ai_whatsapp_automation_update_11040(): string {
+  $storage = \Drupal::entityTypeManager()->getStorage('ai_whatsapp_bot');
+  $moved = 0;
+  foreach ($storage->loadMultiple() as $bot) {
+    $current = strtoupper(trim((string) $bot->get('web_widget_secondary_color')->value));
+    if ($current === '' || $current === '#111827') {
+      $bot->set('web_widget_secondary_color', '#12336E')->save();
+      $moved++;
+    }
+  }
+
+  return (string) t('The chat header now follows each bot\'s header colour; @count bots kept the navy they showed.', ['@count' => $moved]);
+}
+
+/**
  * Returns the permissions of the client agent role.
  *
  * @return string[]

@@ -2,8 +2,9 @@
  * @file
  * Live preview of the chat button on the bot form, and the colour pickers.
  *
- * The chat mock-up mirrors css/web-chat.css (header #12336e, primary-coloured
- * border and visitor bubbles). Keep the two in step.
+ * The chat mock-up mirrors css/web-chat.css (header in the secondary colour
+ * with readable ink, primary-coloured border and visitor bubbles). Keep the
+ * two in step.
  */
 
 .aiwa-widget-preview {
@@ -19,6 +20,8 @@
 
 .aiwa-widget-preview__stage {
   --aiwa-preview-primary: #155eef;
+  --aiwa-preview-secondary: #12336e;
+  --aiwa-preview-header-ink: #fff;
   position: relative;
   max-width: 440px;
   height: 380px;
@@ -53,8 +56,8 @@
   gap: 10px;
   padding: 12px 14px;
   border-bottom: 3px solid var(--aiwa-preview-primary);
-  background: #12336e;
-  color: #fff;
+  background: var(--aiwa-preview-secondary, #12336e);
+  color: var(--aiwa-preview-header-ink, #fff);
 }
 
 .aiwa-widget-preview__logo {

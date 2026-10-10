@@ -80,7 +80,7 @@ final class WebChatWidgetAppearanceTest extends KernelTestBase {
 
     $config = $this->container->get('ai_whatsapp_automation.web_chat')->widgetConfig($bot);
     $this->assertSame('#155EEF', $config['primaryColor']);
-    $this->assertSame('#111827', $config['secondaryColor']);
+    $this->assertSame('#12336E', $config['secondaryColor']);
 
     $embed = $this->embed($bot);
     $this->assertStringNotContainsString('red;top', $embed);
@@ -102,8 +102,47 @@ final class WebChatWidgetAppearanceTest extends KernelTestBase {
       $this->assertCount(1, $bot->validate()->getByField('web_widget_primary_color'), $invalid);
       $bot->set('web_widget_secondary_color', $invalid);
       $this->assertCount(1, $bot->validate()->getByField('web_widget_secondary_color'), $invalid);
-      $bot->set('web_widget_secondary_color', '#111827');
+      $bot->set('web_widget_secondary_color', '#12336E');
     }
+  }
+
+  /**
+   * The chat header wears the bot's header colour, with text that reads.
+   */
+  public function testHeaderFollowsTheHeaderColourWithReadableText(): void {
+    $web_chat = $this->container->get('ai_whatsapp_automation.web_chat');
+
+    $navy = $this->bot([]);
+    $config = $web_chat->widgetConfig($navy);
+    $this->assertSame('#12336E', $config['secondaryColor'], 'A new bot keeps the navy every header showed.');
+    $this->assertSame('#FFFFFF', $config['headerInk']);
+
+    $pale = $this->bot(['web_widget_secondary_color' => '#FDE68A']);
+    $this->assertSame('#111827', $web_chat->widgetConfig($pale)['headerInk'], 'White on pale yellow would be unreadable.');
+
+    $page = $this->chatPage($pale);
+    $this->assertStringContainsString('--aiwa-secondary:#FDE68A;--aiwa-header-ink:#111827;', $page);
+  }
+
+  /**
+   * Update 11040 moves only untouched secondary colours to the navy.
+   *
+   * The header ignored the secondary colour until then, so #111827 was never
+   * seen anywhere; the navy is what visitors saw, and must stay.
+   */
+  public function testUpdateKeepsEveryHeaderAsItLooked(): void {
+    $untouched = $this->bot(['web_widget_secondary_color' => '#111827']);
+    $padded = $this->bot(['web_widget_secondary_color' => '#111827']);
+    $padded->set('web_widget_secondary_color', '#111827 ')->save();
+    $chosen = $this->bot(['web_widget_secondary_color' => '#7B2D8E']);
+
+    \Drupal::moduleHandler()->loadInclude('ai_whatsapp_automation', 'install');
+    ai_whatsapp_automation_update_11040();
+
+    $storage = $this->container->get('entity_type.manager')->getStorage('ai_whatsapp_bot');
+    $this->assertSame('#12336E', $storage->loadUnchanged($untouched->id())->get('web_widget_secondary_color')->value);
+    $this->assertSame('#12336E', $storage->loadUnchanged($padded->id())->get('web_widget_secondary_color')->value);
+    $this->assertSame('#7B2D8E', $storage->loadUnchanged($chosen->id())->get('web_widget_secondary_color')->value, 'A colour someone chose is kept.');
   }
 
   /**
@@ -156,6 +195,17 @@ final class WebChatWidgetAppearanceTest extends KernelTestBase {
     $file->save();
 
     return $file;
+  }
+
+  /**
+   * Returns the chat page HTML for a bot.
+   */
+  private function chatPage(ContentEntityInterface $bot): string {
+    $controller = WebChatController::create($this->container);
+    $response = $controller->page(Request::create('https://app.josera.com.mx/ai-whatsapp-automation/chat/x'), (string) $bot->uuid());
+    $this->assertSame(200, $response->getStatusCode());
+
+    return (string) $response->getContent();
   }
 
   /**

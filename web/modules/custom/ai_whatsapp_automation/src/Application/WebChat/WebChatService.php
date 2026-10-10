@@ -198,11 +198,13 @@ final class WebChatService {
     $name = $this->getFieldValue($bot, 'web_widget_assistant_name') ?: (string) $bot->label();
 
     $logo_url = $this->logoUrl($bot);
+    $secondary = self::safeColor($this->getFieldValue($bot, 'web_widget_secondary_color'), Bot::DEFAULT_SECONDARY_COLOR);
 
     return [
       'name' => $name,
       'primaryColor' => self::safeColor($this->getFieldValue($bot, 'web_widget_primary_color'), Bot::DEFAULT_PRIMARY_COLOR),
-      'secondaryColor' => self::safeColor($this->getFieldValue($bot, 'web_widget_secondary_color'), Bot::DEFAULT_SECONDARY_COLOR),
+      'secondaryColor' => $secondary,
+      'headerInk' => self::readableInk($secondary),
       'logoUrl' => $logo_url,
       'buttonImageUrl' => $this->fileFieldUrl($bot, 'web_widget_button_image') ?: $logo_url,
       'welcomeMessage' => $this->getFieldValue($bot, 'web_widget_welcome_message') ?: 'Hola, ¿en qué puedo ayudarte?',
@@ -221,6 +223,46 @@ final class WebChatService {
    */
   public static function safeColor(string $color, string $fallback): string {
     return preg_match(Bot::COLOR_PATTERN, trim($color)) ? trim($color) : $fallback;
+  }
+
+  /**
+   * Returns the text colour that reads best on a background: white or ink.
+   *
+   * The same WCAG contrast rule as inkFor() in js/widget-launcher.js, which
+   * colours the button icon; the header text is decided here so the chat
+   * never paints white on a pale header, even for a moment.
+   */
+  public static function readableInk(string $background): string {
+    $white = '#FFFFFF';
+    $ink = '#111827';
+
+    return self::contrast($background, $white) >= self::contrast($background, $ink) ? $white : $ink;
+  }
+
+  /**
+   * WCAG contrast ratio between two hex colours, from 1 to 21.
+   */
+  public static function contrast(string $first, string $second): float {
+    $a = self::relativeLuminance($first);
+    $b = self::relativeLuminance($second);
+
+    return (max($a, $b) + 0.05) / (min($a, $b) + 0.05);
+  }
+
+  /**
+   * WCAG relative luminance of a #RGB or #RRGGBB colour.
+   */
+  private static function relativeLuminance(string $hex): float {
+    $digits = ltrim(trim($hex), '#');
+    if (strlen($digits) === 3) {
+      $digits = $digits[0] . $digits[0] . $digits[1] . $digits[1] . $digits[2] . $digits[2];
+    }
+    $channels = array_map(static function (string $pair): float {
+      $c = hexdec($pair) / 255;
+      return $c <= 0.03928 ? $c / 12.92 : (($c + 0.055) / 1.055) ** 2.4;
+    }, str_split(str_pad(substr($digits, 0, 6), 6, '0'), 2));
+
+    return 0.2126 * $channels[0] + 0.7152 * $channels[1] + 0.0722 * $channels[2];
   }
 
   /**

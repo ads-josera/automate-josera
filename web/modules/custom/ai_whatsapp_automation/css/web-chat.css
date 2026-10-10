@@ -30,8 +30,9 @@ body {
   align-items: center;
   gap: 13px;
   padding: 17px 18px;
-  color: #fff;
-  background: #12336e;
+  /* Each bot's header colour; the controller picks the readable ink. */
+  color: var(--aiwa-header-ink, #fff);
+  background: var(--aiwa-secondary, #12336e);
   border-bottom: 3px solid var(--aiwa-primary);
   box-shadow: 0 2px 12px rgba(16, 42, 91, .18);
 }
@@ -94,15 +95,16 @@ body {
   appearance: none;
   border: 0;
   border-radius: 50%;
-  background: rgba(255, 255, 255, .12);
-  color: #fff;
+  /* Follows the header ink, so it stays visible on a pale header too. */
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  color: inherit;
   cursor: pointer;
   font: 500 22px/1 Arial, sans-serif;
   transition: background-color 150ms ease, transform 150ms ease, opacity 150ms ease;
 }
 
 .aiwa-chat__minimize:hover {
-  background: rgba(255, 255, 255, .23);
+  background: color-mix(in srgb, currentColor 23%, transparent);
   transform: translateY(-1px);
 }
 
@@ -301,5 +303,15 @@ body {
 
   .aiwa-message {
     max-width: 90%;
+  }
+}
+
+/* Visitors who asked their system for less motion get none. */
+@media (prefers-reduced-motion: reduce) {
+  .aiwa-chat *,
+  .aiwa-chat *::before,
+  .aiwa-chat *::after {
+    animation: none !important;
+    transition: none !important;
   }
 }

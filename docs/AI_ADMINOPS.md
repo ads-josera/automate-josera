@@ -62,6 +62,10 @@ Desplegados en producción el 2026-10-09 (`2b9c8f4`):
 - `ea-php84` = 2, login 200 y los ajustes devuelven 403 sin sesión.
 - Respaldo previo en `~/backups/db-antes-adminops-2026-10-09.sql.gz`.
 
+**Verificado en vivo el 2026-10-09 a las 23:29**: una ronda disparada a mano (`queueDueChecks(TRUE)` + `drush queue:run ai_adminops_monitoring`, solo lectura, igual que cron) escribió Exim y SSL como `no_data` y las otras cuatro como `succeeded`, en 3 s y sin errores. Totales: 5,598 cada una.
+
+**Registro saturado, confirmado en producción el 2026-10-09:** de las 1,000 filas de `dblog`, 653 son de `cron` y 337 de `ai_adminops`. **Solo 11 son de otra cosa.** Un error real del sitio dura poco antes de que lo empujen fuera. Arreglo pendiente (siguiente mejora): bajar a debug o quitar los avisos rutinarios de cada lectura y de cada cron, o subir `row_limit`.
+
 **El paso 4 (encender) lo hace José desde los ajustes**, después de comprobar con el botón de prueba que el correo le llega.
 
 José aprobó estos cuatro pasos, sin tocar `ai_whatsapp_automation`:

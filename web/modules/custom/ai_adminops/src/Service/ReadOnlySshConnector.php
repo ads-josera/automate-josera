@@ -14,7 +14,7 @@ use Symfony\Component\Process\Process;
  * The remote key must use a forced-command wrapper. This class does not accept
  * arbitrary commands, passwords, command arguments, or host-key prompts.
  */
-final class ReadOnlySshConnector {
+final class ReadOnlySshConnector implements MonitoringCollectorInterface {
 
   /**
    * Tool IDs accepted by both the local client and the remote wrapper.

@@ -21,7 +21,7 @@ final class MonitoringJobProcessor {
     private readonly EntityTypeManagerInterface $entityTypeManager,
     private readonly StateInterface $state,
     private readonly TimeInterface $time,
-    private readonly ReadOnlySshConnector $sshConnector,
+    private readonly MonitoringCollectorInterface $sshConnector,
     private readonly AdminOpsExecutionAudit $executionAudit,
     private readonly MonitoringAlertEvaluator $alertEvaluator,
     private readonly LoggerInterface $logger,
@@ -62,9 +62,15 @@ final class MonitoringJobProcessor {
       $this->executionAudit->markRunning((int) $execution->id());
       try {
         $checks[$tool_id] = $this->sshConnector->collect($server, $tool_id);
-        $this->executionAudit->markSucceeded((int) $execution->id(), $checks[$tool_id]);
+        // The server answered, whatever the check reported: it is reachable.
         $successful_checks++;
-        $this->alertEvaluator->evaluate($server_id, $tool_id, $checks[$tool_id]);
+        if (($checks[$tool_id]['status'] ?? '') === 'ok') {
+          $this->executionAudit->markSucceeded((int) $execution->id(), $checks[$tool_id]);
+          $this->alertEvaluator->evaluate($server_id, $tool_id, $checks[$tool_id]);
+        }
+        else {
+          $this->executionAudit->markNoData((int) $execution->id(), $checks[$tool_id]);
+        }
       }
       catch (\Throwable $exception) {
         $checks[$tool_id] = ['status' => 'failed'];

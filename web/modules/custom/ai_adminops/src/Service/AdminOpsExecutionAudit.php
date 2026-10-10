@@ -81,6 +81,20 @@ final class AdminOpsExecutionAudit {
   }
 
   /**
+   * Marks a reading that reached the server but carried no measurements.
+   *
+   * The check answered (for example "unavailable" or "not_configured"), so
+   * it did not fail, but calling it a success hid for two months that the
+   * Exim and SSL checks never returned a value.
+   *
+   * @param array<string, mixed> $result
+   *   Result payload.
+   */
+  public function markNoData(int $execution_id, array $result = []): ContentEntityInterface {
+    return $this->complete($execution_id, 'no_data', $result);
+  }
+
+  /**
    * Marks an execution as failed without exposing raw infrastructure details.
    *
    * @param array<string, mixed> $result

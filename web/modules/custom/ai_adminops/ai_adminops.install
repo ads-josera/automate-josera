@@ -72,3 +72,32 @@ function ai_adminops_update_10003(): string {
 
   return t('Added monitoring alert defaults for AI AdminOps.');
 }
+
+/**
+ * Lets the audit log tell a reading without measurements from a success.
+ */
+function ai_adminops_update_10004(): string {
+  $definition = \Drupal::service('entity_field.manager')->getFieldStorageDefinitions('ai_adminops_tool_execution')['status'];
+  \Drupal::entityDefinitionUpdateManager()->updateFieldStorageDefinition($definition);
+
+  return (string) t('The AdminOps audit log now marks readings that carried no data.');
+}
+
+/**
+ * Relabels past readings that carried no data, which were logged as successes.
+ *
+ * Only the status label changes; the stored result is untouched. A single
+ * query on purpose: production holds tens of thousands of rows, and the
+ * entity API would load each one.
+ */
+function ai_adminops_update_10005(): string {
+  $relabelled = \Drupal::database()->update('ai_adminops_tool_execution')
+    ->fields(['status' => 'no_data'])
+    ->condition('status', 'succeeded')
+    ->condition('result', \Drupal::database()->escapeLike('{"status":"ok"') . '%', 'NOT LIKE')
+    ->execute();
+  \Drupal::entityTypeManager()->getStorage('ai_adminops_tool_execution')->resetCache();
+
+  return (string) t('@count past AdminOps readings without data are no longer labelled as successes.', ['@count' => $relabelled]);
+}
+

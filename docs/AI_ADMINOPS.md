@@ -20,7 +20,7 @@ Cada 15 minutos lee por SSH seis indicadores de los servidores registrados, guar
 | Solicitudes de acción con aprobación | Funciona solo como registro | Aprobar no ejecuta nada (lo dice la pantalla). |
 | Herramientas (9 plugins `AdminOpsTool`) | **Catálogo sin ejecución** | `execute()` lanza "no connector enabled yet" en las nueve, incluidas las de lectura. El monitoreo no pasa por ellas: llama directo al conector. Los reinicios (Apache, MySQL, PHP-FPM) no pueden hacer nada, lo cual hoy es lo seguro. |
 | **IA** (`AdminOpsAiClient`) | **No se usa** | Registrado como servicio; nadie lo llama. El propósito central de la especificación (un agente que ayude mediante IA) no está implementado. |
-| Pruebas automáticas | **No hay** | Ni una. |
+| Pruebas automáticas | Desde el 2026-10-09 | `tests/src/Kernel/`: `AdminOpsKernelTestBase` sustituye el SSH por lecturas simuladas (`MonitoringCollectorInterface`), así que ninguna prueba toca un servidor real. |
 
 ## Seguridad (revisada, está bien)
 
@@ -33,7 +33,8 @@ Cada 15 minutos lee por SSH seis indicadores de los servidores registrados, guar
 
 ## Defectos encontrados el 2026-10-09 (sin corregir)
 
-1. **La bitácora marca "Succeeded" lecturas que no dieron datos** (Exim `unavailable`, SSL `not_configured`): la pantalla dice que todo va bien cuando dos de seis indicadores no funcionan.
+1. ~~**La bitácora marca "Succeeded" lecturas que no dieron datos**~~ **Corregido el 2026-10-09 (paso 1).** Ahora salen como "No data" en ámbar. La actualización 10005 corrigió también la etiqueta de las lecturas pasadas (6,832 en la copia local: todas las de Exim y SSL).
+1b. ~~**Ninguna etiqueta de estado tenía color**~~ **Corregido el 2026-10-09.** `AdminOpsConsoleController::badge()` imprimía las clases `--status` y `--failed` por separado, y el CSS espera `--status-failed`, así que «Failed», «Critical» y «Healthy» salían en el mismo gris. Se añadió la clase combinada.
 2. **No hay ninguna pantalla con los valores medidos**: más de 20,000 lecturas solo se ven en crudo en la bitácora. El tablero muestra conteos, no cómo está el servidor.
 3. **"Servidores 1 · 0 activos"** en el tablero: "activos" se refiere al monitoreo, no al servidor, y se lee como un error.
 4. **Sin limpieza de la bitácora**: unas 4,000 filas por semana (~11 MB cada 5 semanas en la copia), sin límite.
@@ -56,12 +57,80 @@ Cada lectura escribe un aviso en el registro de Drupal (`AdminOps execution … 
 
 José aprobó estos cuatro pasos, sin tocar `ai_whatsapp_automation`:
 
-1. **Bitácora honesta**: un estado nuevo `no_data` («No data», en ámbar) cuando una lectura llega por SSH pero no trae valores (`unavailable`, `not_configured`), en lugar de «Succeeded». Requiere actualizar el campo `status` de `ai_adminops_tool_execution`.
+1. ✅ **Hecho** — **Bitácora honesta**: un estado nuevo `no_data` («No data», en ámbar) cuando una lectura llega por SSH pero no trae valores (`unavailable`, `not_configured`), en lugar de «Succeeded». Requiere actualizar el campo `status` de `ai_adminops_tool_execution`.
 2. **Alertas sin ruido**: un valor alto solo abre evento si **las últimas N lecturas** de ese indicador lo superan (`alerts.consecutive_readings`, 2 por defecto), leídas de la propia bitácora. «Servidor sin respuesta» exige también N trabajos seguidos sin respuesta (contador en State). La resolución sigue siendo inmediata en cuanto el valor baja.
 3. **Botón «enviar aviso de prueba»** en los ajustes, para comprobar de punta a punta el correo y el WhatsApp con los valores del formulario.
 4. **Encenderlo**: alertas, aviso de servidor sin respuesta y correo a José. Lo hace José desde los ajustes después del despliegue, verificándolo con el botón de prueba.
 
 Después, sin fecha: un tablero con los valores medidos, limpieza automática de la bitácora, bajar el nivel de esos avisos del registro, arreglar Exim y SSL en el script remoto del servidor (no en Drupal), y corregir acentos e idioma. La IA y las acciones (reinicios) quedan a decisión de José.
+
+## Arquitectura
+
+### El flujo, de cron al aviso
+
+```
+cron ── ai_adminops_cron()
+        └▶ MonitoringScheduler::queueDueChecks()
+             ¿monitoring.enabled? ¿pasaron interval_minutes desde la última vez? (State)
+             └▶ un elemento por servidor activo en la cola «ai_adminops_monitoring»
+
+cola (cron, 45 s de trabajo) ── MonitoringQueueWorker
+        └▶ MonitoringJobProcessor::process()
+             ¿el servidor tiene perfil SSH en settings.php? si no: se anota y no se conecta
+             por cada lectura (las seis fijas):
+               AdminOpsExecutionAudit::begin() ─ registro en la bitácora ANTES de conectar
+               MonitoringCollectorInterface::collect() ─ ReadOnlySshConnector (ssh, sin shell)
+               ├ trae valores ("ok")   → markSucceeded() → MonitoringAlertEvaluator::evaluate()
+               ├ responde sin valores  → markNoData()   (desde 2026-10-09)
+               └ falla                 → markFailed()
+             si ninguna lectura respondió → evento «servidor sin respuesta»; si alguna, se resuelve
+
+MonitoringAlertEvaluator ── compara con alerts.* y llama a AdminOpsEventManager
+        ├ valor ≥ umbral → record():  UN evento abierto por servidor y tipo (huella sha256);
+        │                              si ya hay uno, lo actualiza y NO vuelve a avisar
+        └ valor < umbral → resolveCondition(): lo cierra
+
+AdminOpsEventManager::record() ── solo al CREAR un evento
+        └▶ NotificationBridge::notifyEvent()
+             ¿notifications.enabled? ¿severidad ≥ minimum_severity? ¿fuera del enfriamiento? (State)
+             ├ correo: plugin.manager.mail (SES del sitio)
+             └ WhatsApp: ai_whatsapp_automation.provider_message_sender (con plantilla de Twilio)
+             Si el aviso falla, el evento queda guardado igual y se registra el error.
+```
+
+### Entidades
+
+| Entidad | Tipo | Para qué |
+|---|---|---|
+| `ai_adminops_server` | Configuración | Un servidor: nombre, hostname, puerto, proveedor, tipo de conexión, **referencia** al perfil SSH de `settings.php`, activo y estado. Nunca guarda secretos. |
+| `ai_adminops_tool_execution` | Contenido | **La bitácora**: una fila por lectura, con herramienta, estado (`queued`, `running`, `succeeded`, `no_data`, `failed`, `denied`), riesgo, resultado saneado y tiempos. Crece unas 4,000 filas por semana. |
+| `ai_adminops_event` | Contenido | Un problema detectado: tipo, severidad (`info`, `warning`, `critical`), estado (`open`, `acknowledged`, `resolved`), evidencia y huella para no duplicarlo. |
+| `ai_adminops_action_request` | Contenido | Una petición de acción controlada o crítica, que alguien aprueba o rechaza. **Aprobarla no ejecuta nada.** |
+
+Todas apuntan al servidor por su id. Los datos que salen de un servidor pasan por `PayloadSanitizer` antes de guardarse.
+
+### Herramientas
+
+Plugins con el atributo `#[AdminOpsTool(id, label, description, risk, parameters, permissions)]`, en `src/Plugin/AdminOpsTool/` y gestionados por `AdminOpsToolManager`. `AdminOpsToolPolicy` comprueba los permisos declarados y decide si el riesgo (`controlled`, `critical`) exige aprobación. **Hoy ninguna ejecuta nada**: el monitoreo usa directamente el conector, y el catálogo está listo para cuando se implementen.
+
+### Relación con `ai_whatsapp_automation`
+
+Depende de él, pero **no lo modifica**, por regla de la especificación. Consume solo dos servicios: `provider_message_sender`, para enviar WhatsApp, y `OpenAIServiceInterface`, a través de `AdminOpsAiClient` (sin uso). Para documentar ese módulo, ver [ARCHITECTURE.md](ARCHITECTURE.md).
+
+### Permisos
+
+- `access ai adminops dashboard`: ver el tablero, los eventos, las solicitudes y la bitácora.
+- `administer ai adminops`: ajustes, servidores, y cambiar el estado de eventos y solicitudes.
+
+Solo los usa el administrador. Los agentes de los clientes de AI WhatsApp no tienen ninguno.
+
+### Pruebas
+
+Desde el 2026-10-09 (antes no había ninguna):
+
+```
+ddev exec "SIMPLETEST_DB=mysql://db:db@db/db vendor/bin/phpunit -c web/core web/modules/custom/ai_adminops/tests"
+```
 
 ## Estructura
 
@@ -73,7 +142,7 @@ ai_adminops/
                          read_only / controlled / critical)
   src/Plugin/QueueWorker/   MonitoringQueueWorker
   src/Service/           MonitoringScheduler (cron → cola), MonitoringJobProcessor (lee y
-                         evalúa), ReadOnlySshConnector, MonitoringAlertEvaluator,
+                         evalúa), MonitoringCollectorInterface + ReadOnlySshConnector, MonitoringAlertEvaluator,
                          AdminOpsEventManager, NotificationBridge, AdminOpsExecutionAudit,
                          AdminOpsToolPolicy, AdminOpsActionRequestManager, PayloadSanitizer,
                          AdminOpsAiClient (sin uso)

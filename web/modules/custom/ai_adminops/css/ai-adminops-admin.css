@@ -197,7 +197,8 @@
 .ai-adminops-badge--severity-warning,
 .ai-adminops-badge--risk-critical,
 .ai-adminops-badge--status-pending,
-.ai-adminops-badge--status-degraded {
+.ai-adminops-badge--status-degraded,
+.ai-adminops-badge--status-no-data {
   background: #fef0c7;
   color: #b54708;
 }

@@ -271,7 +271,11 @@ final class AdminOpsConsoleController extends ControllerBase {
    */
   private function badge(string $value, string $type): string {
     $value = trim($value);
-    $class = 'ai-adminops-badge ai-adminops-badge--' . Html::getClass($type) . ' ai-adminops-badge--' . Html::getClass(strtr(strtolower($value), ['_' => '-']));
+    $value_class = Html::getClass(strtr(strtolower($value), ['_' => '-']));
+    // The stylesheet colours badges by type and value together
+    // (".ai-adminops-badge--status-failed"). Until 2026-10-09 only the two
+    // separate classes were printed, so every badge rendered the same grey.
+    $class = 'ai-adminops-badge ai-adminops-badge--' . Html::getClass($type) . ' ai-adminops-badge--' . $value_class . ' ai-adminops-badge--' . Html::getClass($type) . '-' . $value_class;
     return '<span class="' . $class . '">' . $this->escape(ucwords(strtr($value, ['_' => ' ']))) . '</span>';
   }
 

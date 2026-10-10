@@ -2,7 +2,7 @@
 
 Documento de referencia del módulo `ai_whatsapp_automation` (Drupal 11.4, PHP 8.4). Explica qué hace cada pieza, cómo se relacionan y qué reglas no son obvias leyendo el código. Revisado contra el código el 2026-10-09.
 
-Para desplegar, ver [DEPLOY.md](DEPLOY.md). Para el correo por Amazon SES, [SES_API_SETUP.md](SES_API_SETUP.md).
+Para desplegar, ver [DEPLOY.md](DEPLOY.md). Para el correo por Amazon SES, [SES_API_SETUP.md](SES_API_SETUP.md). El otro módulo propio, el monitoreo de servidores `ai_adminops`, tiene su propio documento: [AI_ADMINOPS.md](AI_ADMINOPS.md).
 
 ## Qué es
 

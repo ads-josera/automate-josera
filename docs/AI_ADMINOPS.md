@@ -53,7 +53,16 @@ Cada 15 minutos lee por SSH seis indicadores de los servidores registrados, guar
 
 Cada lectura escribe un aviso en el registro de Drupal (`AdminOps execution … finished`): unas 576 líneas al día. El registro (`dblog`) guarda **solo las últimas 1,000 filas** (`row_limit`), así que AdminOps **puede estar empujando fuera los errores reales del sitio**. En la copia local, `ai_adminops` es el tercer tipo más frecuente (340 de 2,293 filas). Falta confirmarlo en producción.
 
-## Plan aprobado el 2026-10-09 (en curso)
+## Plan aprobado el 2026-10-09 — pasos 1 a 3 DESPLEGADOS
+
+Desplegados en producción el 2026-10-09 (`2b9c8f4`):
+- Corrieron las actualizaciones 10004 a 10006, con las definiciones al día.
+- `consecutive_readings` quedó en 2.
+- **11,194 lecturas pasadas de Exim y SSL reetiquetadas como `no_data`**; las otras cuatro lecturas siguen como `succeeded` (5,597 cada una).
+- `ea-php84` = 2, login 200 y los ajustes devuelven 403 sin sesión.
+- Respaldo previo en `~/backups/db-antes-adminops-2026-10-09.sql.gz`.
+
+**El paso 4 (encender) lo hace José desde los ajustes**, después de comprobar con el botón de prueba que el correo le llega.
 
 José aprobó estos cuatro pasos, sin tocar `ai_whatsapp_automation`:
 

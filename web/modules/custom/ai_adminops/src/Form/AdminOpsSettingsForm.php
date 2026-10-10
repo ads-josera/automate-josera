@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\ai_adminops\Form;
 
+use Drupal\ai_adminops\Service\NotificationBridge;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Config\TypedConfigManagerInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
@@ -18,11 +19,19 @@ final class AdminOpsSettingsForm extends ConfigFormBase {
 
   /**
    * Creates an AdminOpsSettingsForm instance.
+   *
+   * The services are plain protected properties, not readonly. "Send test
+   * notification" rebuilds the form, so Drupal caches this object and later
+   * restores its services through DependencySerializationTrait, which runs
+   * in a parent class and cannot initialise a readonly property declared
+   * here: the second submission failed with "must not be accessed before
+   * initialization".
    */
   public function __construct(
     ConfigFactoryInterface $config_factory,
     TypedConfigManagerInterface $typed_config_manager,
-    private readonly EntityTypeManagerInterface $entityTypeManager,
+    protected EntityTypeManagerInterface $entityTypeManager,
+    protected NotificationBridge $notificationBridge,
   ) {
     parent::__construct($config_factory, $typed_config_manager);
   }
@@ -35,6 +44,7 @@ final class AdminOpsSettingsForm extends ConfigFormBase {
       $container->get('config.factory'),
       $container->get('config.typed'),
       $container->get('entity_type.manager'),
+      $container->get('ai_adminops.notification_bridge'),
     );
   }
 
@@ -218,8 +228,56 @@ final class AdminOpsSettingsForm extends ConfigFormBase {
       '#default_value' => (string) ($whatsapp['template_sid'] ?? ''),
       '#description' => $this->t('Optional for non-Twilio providers. For Twilio, configure a template with variable {{1}} to support alerts outside the 24-hour messaging window.'),
     ];
+    // Buttons do not render a #description, so the explanation is its own
+    // item: the button sends real messages and does not save.
+    $form['notifications']['send_test_help'] = [
+      '#type' => 'item',
+      '#markup' => $this->t('Check delivery before relying on it: the button below sends a test message to the recipients above, on the channels ticked above, through exactly the code real alerts use. It works even with notifications switched off, and it does not save the form.'),
+    ];
+    $form['notifications']['send_test'] = [
+      '#type' => 'submit',
+      '#value' => $this->t('Send test notification'),
+      '#submit' => ['::sendTestNotification'],
+      // Only the notification fields matter here, and nothing is saved.
+      '#limit_validation_errors' => [['notifications']],
+    ];
 
     return parent::buildForm($form, $form_state);
+  }
+
+  /**
+   * Sends a test message with the channel values currently in the form.
+   *
+   * The values typed in are used whether or not they were saved, so a
+   * delivery can be checked before alerts are switched on.
+   */
+  public function sendTestNotification(array &$form, FormStateInterface $form_state): void {
+    $form_state->setRebuild();
+    $email = [
+      'enabled' => (bool) $form_state->getValue(['notifications', 'email', 'enabled']),
+      'recipients' => $this->lines($form_state->getValue(['notifications', 'email', 'recipients'])),
+    ];
+    $whatsapp = [
+      'enabled' => (bool) $form_state->getValue(['notifications', 'whatsapp', 'enabled']),
+      'account_id' => (string) $form_state->getValue(['notifications', 'whatsapp', 'account_id']),
+      'recipients' => $this->lines($form_state->getValue(['notifications', 'whatsapp', 'recipients'])),
+      'template_sid' => trim((string) $form_state->getValue(['notifications', 'whatsapp', 'template_sid'])),
+    ];
+
+    $results = $this->notificationBridge->sendTest($email, $whatsapp);
+    $deliveries = array_merge($results['email'], $results['whatsapp']);
+    if ($deliveries === []) {
+      $this->messenger()->addWarning($this->t('Nothing was sent: tick at least one channel and give it a valid recipient. For WhatsApp, the account must be active.'));
+      return;
+    }
+
+    foreach ($deliveries as $delivery) {
+      $sent = in_array($delivery['status'], ['sent', 'queued', 'accepted', 'delivered'], TRUE);
+      $arguments = ['@recipient' => $delivery['recipient'], '@status' => $delivery['status']];
+      $sent
+        ? $this->messenger()->addStatus($this->t('Test sent to @recipient (@status). Check that it arrived.', $arguments))
+        : $this->messenger()->addError($this->t('Test to @recipient was not delivered (@status). Check the channel settings and the site log.', $arguments));
+    }
   }
 
   /**

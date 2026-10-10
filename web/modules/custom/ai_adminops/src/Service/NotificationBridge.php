@@ -83,6 +83,40 @@ final class NotificationBridge {
   }
 
   /**
+   * Sends a test message through the given channel settings.
+   *
+   * Uses the same delivery code as real alerts, so a test that arrives proves
+   * alerts will. It ignores the master switch, the minimum severity and the
+   * cooldown on purpose: the point is to check delivery before relying on it.
+   *
+   * @param array<string, mixed> $email
+   *   Email channel settings: enabled, recipients.
+   * @param array<string, mixed> $whatsapp
+   *   WhatsApp channel settings: enabled, account_id, recipients,
+   *   template_sid.
+   *
+   * @return array{email: array<int, array<string, mixed>>, whatsapp: array<int, array<string, mixed>>}
+   *   Per-recipient results.
+   */
+  public function sendTest(array $email, array $whatsapp): array {
+    $message = [
+      'subject' => '[AdminOps][TEST] Notification check',
+      'body' => implode("\n", [
+        'AI AdminOps test notification',
+        'If you are reading this, alerts from this site reach you through this channel.',
+        'Sent: ' . date('Y-m-d H:i:s T', $this->time->getRequestTime()),
+      ]),
+    ];
+    $results = [
+      'email' => $this->sendEmail($email, $message),
+      'whatsapp' => $this->sendWhatsApp($whatsapp, $message),
+    ];
+    $this->logger->notice('AdminOps test notification attempted.');
+
+    return $results;
+  }
+
+  /**
    * Determines whether an event should generate an alert.
    */
   private function isEligible(ContentEntityInterface $event, string $minimum_severity): bool {

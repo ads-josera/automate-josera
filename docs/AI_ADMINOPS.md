@@ -59,7 +59,7 @@ José aprobó estos cuatro pasos, sin tocar `ai_whatsapp_automation`:
 
 1. ✅ **Hecho** — **Bitácora honesta**: un estado nuevo `no_data` («No data», en ámbar) cuando una lectura llega por SSH pero no trae valores (`unavailable`, `not_configured`), en lugar de «Succeeded». Requiere actualizar el campo `status` de `ai_adminops_tool_execution`.
 2. ✅ **Hecho** — **Alertas sin ruido**: un valor alto solo abre evento si **las últimas N lecturas** de ese indicador lo superan (`alerts.consecutive_readings`, 2 por defecto), leídas de la propia bitácora. «Servidor sin respuesta» exige también N trabajos seguidos sin respuesta (contador en State). La resolución sigue siendo inmediata en cuanto el valor baja.
-3. **Botón «enviar aviso de prueba»** en los ajustes, para comprobar de punta a punta el correo y el WhatsApp con los valores del formulario.
+3. ✅ **Hecho** — **Botón «enviar aviso de prueba»** en los ajustes, para comprobar de punta a punta el correo y el WhatsApp con los valores del formulario.
 4. **Encenderlo**: alertas, aviso de servidor sin respuesta y correo a José. Lo hace José desde los ajustes después del despliegue, verificándolo con el botón de prueba.
 
 Después, sin fecha: un tablero con los valores medidos, limpieza automática de la bitácora, bajar el nivel de esos avisos del registro, arreglar Exim y SSL en el script remoto del servidor (no en Drupal), y corregir acentos e idioma. La IA y las acciones (reinicios) quedan a decisión de José.
@@ -130,6 +130,12 @@ Depende de él, pero **no lo modifica**, por regla de la especificación. Consum
 - `administer ai adminops`: ajustes, servidores, y cambiar el estado de eventos y solicitudes.
 
 Solo los usa el administrador. Los agentes de los clientes de AI WhatsApp no tienen ninguno.
+
+### Aviso de prueba
+
+`NotificationBridge::sendTest()` envía un mensaje `[AdminOps][TEST]` por los mismos `sendEmail()` y `sendWhatsApp()` que las alertas reales, con los valores que estén escritos en el formulario (guardados o no). Ignora a propósito el interruptor general, la severidad mínima y el enfriamiento: sirve para comprobar la entrega **antes** de encender las alertas. El botón está al final de la sección de notificaciones de los ajustes, no guarda el formulario y muestra el resultado por destinatario.
+
+**Lección (vale para cualquier formulario de Drupal):** los servicios inyectados en un formulario **no pueden ser `private readonly`** si el formulario se reconstruye (un botón con `#submit` propio, AJAX). Drupal guarda el formulario en caché y restaura sus servicios con `DependencySerializationTrait`, que vive en una clase padre y no puede inicializar una propiedad `readonly` declarada en la hija. El primer clic funciona y el segundo falla con *must not be accessed before initialization*. Por eso se usan propiedades `protected` normales, como en el core. `NotificationTestSendTest::testButtonWorksOnARestoredForm` lo cubre.
 
 ### Pruebas
 

@@ -47,7 +47,7 @@ Cada 15 minutos lee por SSH seis indicadores de los servidores registrados, guar
 - **De los 25 picos de carga por encima de 4** (2026-08-11 a 2026-09-16), **24 fueron una sola lectura** hacia las 02:00, seguramente los respaldos nocturnos, con la carga a 15 min todavía baja. A los 15 minutos ya había bajado.
 - **Solo uno se sostuvo**: el 2026-09-03 a las 15:23 y 15:38, en pleno día (5.72 y 4.29, carga a 15 min en 3.7). Ese sí merecía aviso.
 - Conclusión: exigir **dos lecturas seguidas** por encima del umbral filtra el 100 % del ruido de los respaldos y conserva el episodio real.
-- La actualización `ai_adminops_update_10003` dejaba las alertas **encendidas** por defecto. En producción están apagadas: **alguien las apagó a propósito**. Hay que preguntarle a José por qué antes de volver a encenderlas.
+- La actualización `ai_adminops_update_10003` dejaba las alertas **encendidas** por defecto. En producción están apagadas. **José las apagó porque el módulo no estaba terminado: iba a conectar un número de WhatsApp para recibir los avisos** (respuesta del 2026-10-09). No fue por ruido.
 
 ## Registro de Drupal saturado (por verificar en producción)
 
@@ -65,6 +65,11 @@ Desplegados en producción el 2026-10-09 (`2b9c8f4`):
 **Verificado en vivo el 2026-10-09 a las 23:29**: una ronda disparada a mano (`queueDueChecks(TRUE)` + `drush queue:run ai_adminops_monitoring`, solo lectura, igual que cron) escribió Exim y SSL como `no_data` y las otras cuatro como `succeeded`, en 3 s y sin errores. Totales: 5,598 cada una.
 
 **Registro saturado, confirmado en producción el 2026-10-09:** de las 1,000 filas de `dblog`, 653 son de `cron` y 337 de `ai_adminops`. **Solo 11 son de otra cosa.** Un error real del sitio dura poco antes de que lo empujen fuera. Arreglo pendiente (siguiente mejora): bajar a debug o quitar los avisos rutinarios de cada lectura y de cada cron, o subir `row_limit`.
+
+**Pendiente para el 2026-10-10 (José: "lo hacemos, pero mañana"):**
+1. **Paso 4**: probar la entrega con el botón y encender las alertas. José quería recibirlas **por WhatsApp**; el canal de WhatsApp está construido (cuenta activa de `ai_whatsapp_account` + destinatarios + plantilla de Twilio opcional) pero nunca se ha probado. Correo también disponible.
+2. **Registro saturado** (`dblog`): la siguiente mejora recomendada.
+3. Después, sin prioridad decidida: tablero con valores medidos, limpieza de la bitácora, Exim y SSL en el script remoto, acentos e idioma.
 
 **El paso 4 (encender) lo hace José desde los ajustes**, después de comprobar con el botón de prueba que el correo le llega.
 

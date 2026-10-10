@@ -131,6 +131,34 @@ final class LeadHandoffService {
   }
 
   /**
+   * Returns how many signal groups a bot's configuration really has.
+   *
+   * Counted by the same parser lead detection uses: one group per line, so a
+   * whole list typed on one line is one group.
+   */
+  public function signalGroupCount(ContentEntityInterface $bot): int {
+    return count($this->handoffRequiredSignals($bot));
+  }
+
+  /**
+   * Returns how many signal groups a bot requires before creating a lead.
+   */
+  public function requiredSignalCount(ContentEntityInterface $bot): int {
+    return $this->minimumSignals($bot);
+  }
+
+  /**
+   * Whether a bot's handoff settings can ever create a lead.
+   *
+   * A minimum above the number of groups can never be reached, and nothing
+   * says so: on 2026-09-24 a bot had 1 group (a list typed on one line) and
+   * a minimum of 5, and on 2026-10-10 another was saved with 2 and 5.
+   */
+  public function canEverCreateLead(ContentEntityInterface $bot): bool {
+    return $this->requiredSignalCount($bot) <= $this->signalGroupCount($bot);
+  }
+
+  /**
    * Counts configured signal groups detected in conversation text.
    */
   private function countSignalGroups(string $text, array $signal_groups): int {

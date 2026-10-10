@@ -109,6 +109,15 @@ final class AutomationEntityForm extends ContentEntityForm {
     if ($entity->getEntityTypeId() === 'ai_whatsapp_account') {
       $this->validateOwnerRouting($entity, $form_state);
     }
+    if ($entity->getEntityTypeId() === 'ai_whatsapp_bot' && (bool) $entity->get('handoff_enabled')->value) {
+      $handoff = \Drupal::service('ai_whatsapp_automation.lead_handoff');
+      if (!$handoff->canEverCreateLead($entity)) {
+        $form_state->setErrorByName('handoff_minimum_fields', $this->t('Con esta configuración este bot nunca crearía un prospecto: pide @minimum grupos de señales y solo tiene @groups. Cada línea de «Lead handoff required signals» es un grupo (las comas separan alternativas dentro de la misma línea). Baja el mínimo o escribe un grupo por línea.', [
+          '@minimum' => $handoff->requiredSignalCount($entity),
+          '@groups' => $handoff->signalGroupCount($entity),
+        ]));
+      }
+    }
     if ($entity->getEntityTypeId() === 'ai_whatsapp_account' && WhatsAppAccount::answers($entity)) {
       // Two active accounts on one number make the routing pick one of them
       // without saying so; on 2026-10-10 a test account kept answering the
@@ -270,6 +279,7 @@ final class AutomationEntityForm extends ContentEntityForm {
     }
 
     $this->addWidgetPreview($form);
+    $this->describeSignalGroups($form);
 
     if (!$is_new) {
       $entity = $this->getEntity();
@@ -285,6 +295,22 @@ final class AutomationEntityForm extends ContentEntityForm {
         '#weight' => -100,
       ];
     }
+  }
+
+  /**
+   * Says, under the minimum, how many signal groups the bot really has.
+   *
+   * A list typed on one line is one group, which is how two bots ended up
+   * unable to ever create a lead; showing the count makes it visible before
+   * saving, not only as an error after.
+   */
+  private function describeSignalGroups(array &$form): void {
+    $element = &$form['handoff']['handoff_minimum_fields']['widget'][0]['value'];
+    if (!isset($element)) {
+      return;
+    }
+    $groups = \Drupal::service('ai_whatsapp_automation.lead_handoff')->signalGroupCount($this->getEntity());
+    $element['#description'] = $this->formatPlural($groups, 'Este bot tiene hoy 1 grupo de señales (cada línea de «Lead handoff required signals» es un grupo). El mínimo no puede ser mayor.', 'Este bot tiene hoy @count grupos de señales (cada línea de «Lead handoff required signals» es un grupo). El mínimo no puede ser mayor.');
   }
 
   /**

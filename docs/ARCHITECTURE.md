@@ -109,7 +109,7 @@ Sitio del cliente
 
 ### Prospectos
 
-`LeadHandoffService::isLeadReady()` exige a la vez: un contacto, N grupos de señales (`handoff_required_fields`, **un grupo por línea**, y las comas son alternativas dentro de la línea) y una frase de traspaso o de resumen en la respuesta. Ojo: un bot con menos grupos que `handoff_minimum_fields` **nunca** crea prospectos, y no avisa. Está documentado como deuda en la memoria del proyecto.
+`LeadHandoffService::isLeadReady()` exige a la vez: un contacto, N grupos de señales (`handoff_required_fields`, **un grupo por línea**, y las comas son alternativas dentro de la línea) y una frase de traspaso o de resumen en la respuesta. Un bot con menos grupos que `handoff_minimum_fields` **nunca** crearía prospectos, y le pasó dos veces (Laboratorio JVC el 2026-09-24 y Hermes el 2026-10-10), así que desde el 2026-10-10 el formulario del bot **no deja guardar** esa combinación cuando el traspaso está activo. Además muestra bajo el mínimo cuántos grupos tiene el bot de verdad (`LeadHandoffService::signalGroupCount()`, contados con el mismo analizador que usa la detección). Pruebas en `tests/src/Kernel/Lead/HandoffConfigurationTest.php`, incluida la configuración exacta de JG Mylard (8 grupos, mínimo 6), que debe seguir aceptándose.
 
 ### Operador humano
 
@@ -130,7 +130,7 @@ Sitio del cliente
 ## Convenciones
 
 - **Actualizaciones de base de datos:** `ai_whatsapp_automation_update_110NN`, sin huecos. La última es la **11041** (ruteo por remitente: `owner_bot` y `owner_numbers` en las cuentas). Un campo nuevo en una entidad necesita su update con `installFieldStorageDefinition()`.
-- **Pruebas:** `ddev exec "SIMPLETEST_DB=mysql://db:db@db/db vendor/bin/phpunit -c web/core web/modules/custom/ai_whatsapp_automation/tests"`. Son 130 pruebas y 1211 aserciones, con una deprecación conocida (`#[LegacyRequirementsHook]`). Las llamadas HTTP están simuladas, así que no gastan dinero.
+- **Pruebas:** `ddev exec "SIMPLETEST_DB=mysql://db:db@db/db vendor/bin/phpunit -c web/core web/modules/custom/ai_whatsapp_automation/tests"`. Son 133 pruebas y 1240 aserciones, con una deprecación conocida (`#[LegacyRequirementsHook]`). Las llamadas HTTP están simuladas, así que no gastan dinero.
 - **Revisión visual:** `scripts/revision-visual.mjs` recorre 14 pantallas en 5 anchos. Hay que correrlo como `josera` y como el agente del cliente (`agente_jg` en la base anterior, `aseguramientojg` en la importada de producción el 2026-10-10). Lo que está dentro de un `<svg>` solo cuenta como desborde si el `svg` mismo se sale, porque el svg recorta su contenido; está probado que un desborde real de la gráfica se sigue detectando.
 - **Despliegue:** no se pisa nunca el `web/.htaccess` de producción (lleva el manejador de PHP 8.4). Ver [DEPLOY.md](DEPLOY.md).
 

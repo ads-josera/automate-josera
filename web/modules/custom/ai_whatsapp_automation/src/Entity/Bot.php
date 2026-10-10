@@ -65,6 +65,24 @@ use Drupal\views\EntityViewsData;
 final class Bot extends ContentEntityBase {
 
   /**
+   * A CSS hex colour: #RGB or #RRGGBB.
+   *
+   * Widget colours are printed into CSS on clients' websites, so nothing else
+   * may be stored in them.
+   */
+  public const COLOR_PATTERN = '/^#(?:[0-9A-Fa-f]{3}){1,2}$/';
+
+  /**
+   * Primary widget colour of a bot that never chose one.
+   */
+  public const DEFAULT_PRIMARY_COLOR = '#155EEF';
+
+  /**
+   * Secondary widget colour of a bot that never chose one.
+   */
+  public const DEFAULT_SECONDARY_COLOR = '#111827';
+
+  /**
    * {@inheritdoc}
    */
   public static function baseFieldDefinitions(EntityTypeInterface $entity_type): array {
@@ -404,8 +422,13 @@ final class Bot extends ContentEntityBase {
 
     $fields['web_widget_primary_color'] = BaseFieldDefinition::create('string')
       ->setLabel(t('Web widget primary color'))
+      ->setDescription(t('Button, accents and your visitor\'s messages. A hex colour such as #155EEF.'))
       ->setSetting('max_length', 16)
-      ->setDefaultValue('#155EEF')
+      ->setDefaultValue(self::DEFAULT_PRIMARY_COLOR)
+      ->addPropertyConstraints('value', ['Regex' => [
+        'pattern' => self::COLOR_PATTERN,
+        'message' => t('Use a hex colour such as #155EEF.'),
+      ]])
       ->setDisplayOptions('form', [
         'type' => 'string_textfield',
         'weight' => 53,
@@ -420,7 +443,11 @@ final class Bot extends ContentEntityBase {
     $fields['web_widget_secondary_color'] = BaseFieldDefinition::create('string')
       ->setLabel(t('Web widget secondary color'))
       ->setSetting('max_length', 16)
-      ->setDefaultValue('#111827')
+      ->setDefaultValue(self::DEFAULT_SECONDARY_COLOR)
+      ->addPropertyConstraints('value', ['Regex' => [
+        'pattern' => self::COLOR_PATTERN,
+        'message' => t('Use a hex colour such as #111827.'),
+      ]])
       ->setDisplayOptions('form', [
         'type' => 'string_textfield',
         'weight' => 54,
@@ -520,6 +547,7 @@ final class Bot extends ContentEntityBase {
           'chat' => 'Chat',
           'sparkles' => 'Sparkles',
           'help' => 'Help',
+          'image' => 'Custom image',
         ],
       ])
       ->setDisplayOptions('form', [
@@ -528,6 +556,26 @@ final class Bot extends ContentEntityBase {
       ])
       ->setDisplayOptions('view', [
         'type' => 'list_default',
+        'weight' => 59,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    // The launcher's own picture, separate from the chat header logo because
+    // a wide wordmark that reads well in the header is unreadable in a 62 px
+    // circle. When empty, the launcher falls back to the logo.
+    $fields['web_widget_button_image'] = BaseFieldDefinition::create('file')
+      ->setLabel(t('Web widget button image'))
+      ->setDescription(t('Used when the button icon is "Custom image". A square image of at least 128 x 128 px; it fills the round button. Leave empty to use the logo.'))
+      ->setSetting('file_directory', 'ai-whatsapp-widget-logos')
+      ->setSetting('file_extensions', 'jpg jpeg png svg webp')
+      ->setSetting('max_filesize', '1 MB')
+      ->setDisplayOptions('form', [
+        'type' => 'file_generic',
+        'weight' => 59,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'file_default',
         'weight' => 59,
       ])
       ->setDisplayConfigurable('form', TRUE)

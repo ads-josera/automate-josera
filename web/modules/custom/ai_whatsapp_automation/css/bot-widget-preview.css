@@ -1,0 +1,199 @@
+/**
+ * @file
+ * Live preview of the chat button on the bot form, and the colour pickers.
+ *
+ * The chat mock-up mirrors css/web-chat.css (header #12336e, primary-coloured
+ * border and visitor bubbles). Keep the two in step.
+ */
+
+.aiwa-widget-preview {
+  margin: 0 0 24px;
+}
+
+.aiwa-widget-preview__heading {
+  margin: 0 0 8px;
+  color: #162a50;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.aiwa-widget-preview__stage {
+  --aiwa-preview-primary: #155eef;
+  position: relative;
+  max-width: 440px;
+  height: 380px;
+  border: 1px solid #d7deea;
+  border-radius: 8px;
+  background:
+    linear-gradient(#e9edf5 0 0) 16px 16px / 55% 10px no-repeat,
+    linear-gradient(#e9edf5 0 0) 16px 36px / 35% 10px no-repeat,
+    #f7f8fb;
+  overflow: hidden;
+}
+
+.aiwa-widget-preview__chat {
+  position: absolute;
+  right: 16px;
+  bottom: 84px;
+  width: min(300px, calc(100% - 32px));
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 16px 40px rgb(15 23 42 / 22%);
+  overflow: hidden;
+}
+
+.aiwa-widget-preview__stage.is-left .aiwa-widget-preview__chat {
+  right: auto;
+  left: 16px;
+}
+
+.aiwa-widget-preview__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 3px solid var(--aiwa-preview-primary);
+  background: #12336e;
+  color: #fff;
+}
+
+.aiwa-widget-preview__logo {
+  display: grid;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 11px;
+  background: #3e6ed6;
+  font-size: 0.8rem;
+  font-weight: 800;
+  overflow: hidden;
+}
+
+.aiwa-widget-preview__logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.aiwa-widget-preview__title {
+  min-width: 0;
+}
+
+.aiwa-widget-preview__title strong,
+.aiwa-widget-preview__title span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aiwa-widget-preview__title strong {
+  font-size: 0.95rem;
+}
+
+.aiwa-widget-preview__title span {
+  font-size: 0.75rem;
+  opacity: 0.92;
+}
+
+.aiwa-widget-preview__messages {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: #f3f6fb;
+}
+
+.aiwa-widget-preview__bubble {
+  max-width: 85%;
+  margin: 0;
+  padding: 8px 11px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+/*
+ * A long welcome would push the button out of the stage, so it is cut to
+ * three lines. The cut lives on an inner span: clamping the bubble itself
+ * lets the fourth line show through its bottom padding.
+ */
+.aiwa-widget-preview__bubble > span {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.aiwa-widget-preview__bubble--ai {
+  align-self: flex-start;
+  border: 1px solid #e3e8f1;
+  border-bottom-left-radius: 4px;
+  background: #fff;
+  color: #1f2a44;
+}
+
+.aiwa-widget-preview__bubble--user {
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+  background: var(--aiwa-preview-primary);
+  color: #fff;
+}
+
+.aiwa-widget-preview__launcher {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  width: 56px;
+  height: 56px;
+  border: 0;
+  border-radius: 999px;
+  box-shadow: 0 10px 26px rgb(15 23 42 / 24%);
+  cursor: default;
+}
+
+.aiwa-widget-preview__stage.is-left .aiwa-widget-preview__launcher {
+  right: auto;
+  left: 16px;
+}
+
+.aiwa-widget-preview__notes:empty {
+  display: none;
+}
+
+.aiwa-widget-preview__note {
+  max-width: 440px;
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  border-left: 3px solid #b45309;
+  border-radius: 4px;
+  background: #fff7ed;
+  color: #7c2d12;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+/* Colour picker beside the hex field. */
+.aiwa-color-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.aiwa-color-picker {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  padding: 3px;
+  border: 1px solid #c4cad6;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.aiwa-color-picker:focus-visible {
+  outline: 2px solid #155eef;
+  outline-offset: 2px;
+}

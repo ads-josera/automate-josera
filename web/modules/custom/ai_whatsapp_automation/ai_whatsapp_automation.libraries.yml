@@ -22,6 +22,23 @@ bot_form:
     theme:
       css/bot-form.css: {}
 
+# The chat button painter. WebChatController::embed() also serves this file
+# to clients' websites, so the preview and the real button share one source.
+widget_launcher:
+  js:
+    js/widget-launcher.js: {}
+
+bot_widget_preview:
+  css:
+    theme:
+      css/bot-widget-preview.css: {}
+  js:
+    js/bot-widget-preview.js: {}
+  dependencies:
+    - core/drupal
+    - core/once
+    - ai_whatsapp_automation/widget_launcher
+
 multibot_routing:
   css:
     theme:

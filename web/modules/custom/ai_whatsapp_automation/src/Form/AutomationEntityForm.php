@@ -158,6 +158,7 @@ final class AutomationEntityForm extends ContentEntityForm {
           'web_widget_welcome_message',
           'web_widget_position',
           'web_widget_icon',
+          'web_widget_button_image',
           'web_widget_size',
           'web_widget_language',
           'web_widget_allowed_domains',
@@ -211,6 +212,8 @@ final class AutomationEntityForm extends ContentEntityForm {
       }
     }
 
+    $this->addWidgetPreview($form);
+
     if (!$is_new) {
       $entity = $this->getEntity();
       $form['web_integration_action'] = [
@@ -223,6 +226,42 @@ final class AutomationEntityForm extends ContentEntityForm {
           'class' => ['button', 'button--primary', 'aiwa-web-integration-form-link'],
         ],
         '#weight' => -100,
+      ];
+    }
+  }
+
+  /**
+   * Adds the live preview of the chat button and header to the widget section.
+   *
+   * The preview is drawn by js/widget-launcher.js, the same painter the embed
+   * script serves to clients' websites, so it cannot drift from what visitors
+   * see. It is a mock-up rather than the real chat in an iframe: the chat page
+   * only allows framing from each bot's own domains, and loosening that for a
+   * preview would weaken it for everyone.
+   */
+  private function addWidgetPreview(array &$form): void {
+    if (!isset($form['web_widget'])) {
+      return;
+    }
+
+    $form['#attached']['library'][] = 'ai_whatsapp_automation/bot_widget_preview';
+    $form['web_widget']['widget_preview'] = [
+      '#type' => 'container',
+      '#weight' => -50,
+      '#attributes' => [
+        'class' => ['aiwa-widget-preview'],
+        'data-aiwa-widget-preview' => '',
+      ],
+      'heading' => [
+        '#markup' => '<p class="aiwa-widget-preview__heading">' . $this->t('Preview') . '</p>',
+      ],
+    ];
+
+    if (isset($form['web_widget']['web_widget_button_image'])) {
+      $form['web_widget']['web_widget_button_image']['#states'] = [
+        'visible' => [
+          ':input[name="web_widget_icon"]' => ['value' => 'image'],
+        ],
       ];
     }
   }

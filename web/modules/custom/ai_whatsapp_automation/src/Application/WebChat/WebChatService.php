@@ -6,6 +6,7 @@ namespace Drupal\ai_whatsapp_automation\Application\WebChat;
 
 use Drupal\ai_whatsapp_automation\Application\AI\ConversationEngineService;
 use Drupal\ai_whatsapp_automation\Application\Lead\LeadHandoffService;
+use Drupal\ai_whatsapp_automation\Entity\Bot;
 use Drupal\ai_whatsapp_automation\Exception\WebChatLimitException;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
@@ -196,17 +197,30 @@ final class WebChatService {
   public function widgetConfig(ContentEntityInterface $bot): array {
     $name = $this->getFieldValue($bot, 'web_widget_assistant_name') ?: (string) $bot->label();
 
+    $logo_url = $this->logoUrl($bot);
+
     return [
       'name' => $name,
-      'primaryColor' => $this->getFieldValue($bot, 'web_widget_primary_color') ?: '#155EEF',
-      'secondaryColor' => $this->getFieldValue($bot, 'web_widget_secondary_color') ?: '#111827',
-      'logoUrl' => $this->logoUrl($bot),
+      'primaryColor' => self::safeColor($this->getFieldValue($bot, 'web_widget_primary_color'), Bot::DEFAULT_PRIMARY_COLOR),
+      'secondaryColor' => self::safeColor($this->getFieldValue($bot, 'web_widget_secondary_color'), Bot::DEFAULT_SECONDARY_COLOR),
+      'logoUrl' => $logo_url,
+      'buttonImageUrl' => $this->fileFieldUrl($bot, 'web_widget_button_image') ?: $logo_url,
       'welcomeMessage' => $this->getFieldValue($bot, 'web_widget_welcome_message') ?: 'Hola, ¿en qué puedo ayudarte?',
       'position' => $this->getFieldValue($bot, 'web_widget_position') ?: 'right',
       'icon' => $this->getFieldValue($bot, 'web_widget_icon') ?: 'chat',
       'size' => $this->getFieldValue($bot, 'web_widget_size') ?: 'medium',
       'language' => $this->getFieldValue($bot, 'web_widget_language') ?: 'es',
     ];
+  }
+
+  /**
+   * Returns a colour safe to print into CSS, or the fallback.
+   *
+   * The form validates what is saved, but values saved before that check
+   * existed, or written by code, still reach a third-party page from here.
+   */
+  public static function safeColor(string $color, string $fallback): string {
+    return preg_match(Bot::COLOR_PATTERN, trim($color)) ? trim($color) : $fallback;
   }
 
   /**
@@ -402,14 +416,23 @@ final class WebChatService {
    * Returns the uploaded logo URL, with legacy URL support as a fallback.
    */
   private function logoUrl(ContentEntityInterface $bot): string {
-    if ($bot->hasField('web_widget_logo_file') && !$bot->get('web_widget_logo_file')->isEmpty()) {
-      $file = $bot->get('web_widget_logo_file')->entity;
-      if ($file !== NULL && method_exists($file, 'getFileUri')) {
-        return $this->fileUrlGenerator->generateAbsoluteString($file->getFileUri());
-      }
+    return $this->fileFieldUrl($bot, 'web_widget_logo_file') ?: $this->getFieldValue($bot, 'web_widget_logo_url');
+  }
+
+  /**
+   * Returns the absolute URL of the file in a file field, or ''.
+   */
+  private function fileFieldUrl(ContentEntityInterface $bot, string $field_name): string {
+    if (!$bot->hasField($field_name) || $bot->get($field_name)->isEmpty()) {
+      return '';
     }
 
-    return $this->getFieldValue($bot, 'web_widget_logo_url');
+    $file = $bot->get($field_name)->entity;
+    if ($file === NULL || !method_exists($file, 'getFileUri')) {
+      return '';
+    }
+
+    return $this->fileUrlGenerator->generateAbsoluteString($file->getFileUri());
   }
 
   /**

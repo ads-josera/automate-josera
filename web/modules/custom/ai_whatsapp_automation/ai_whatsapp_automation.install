@@ -1114,6 +1114,31 @@ function ai_whatsapp_automation_update_11038(): string {
 }
 
 /**
+ * Lets each bot's chat button use its own picture.
+ *
+ * Adds the button image field and the "Custom image" icon option. Existing
+ * bots keep the icon they had.
+ */
+function ai_whatsapp_automation_update_11039(): string {
+  $definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+  $definitions = \Drupal::service('entity_field.manager')->getFieldStorageDefinitions('ai_whatsapp_bot');
+
+  if ($definition_update_manager->getFieldStorageDefinition('web_widget_button_image', 'ai_whatsapp_bot') === NULL) {
+    $definition_update_manager->installFieldStorageDefinition(
+      'web_widget_button_image',
+      'ai_whatsapp_bot',
+      'ai_whatsapp_automation',
+      $definitions['web_widget_button_image']
+    );
+  }
+
+  // The new allowed value lives in the storage definition of a base field.
+  $definition_update_manager->updateFieldStorageDefinition($definitions['web_widget_icon']);
+
+  return (string) t('Each bot can now give its chat button its own picture.');
+}
+
+/**
  * Returns the permissions of the client agent role.
  *
  * @return string[]

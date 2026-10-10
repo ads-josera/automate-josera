@@ -86,7 +86,15 @@ Sitio del cliente
 - `{token}` es `web_widget_token` o, si está vacío, el UUID del bot.
 - **Dominios permitidos** (`web_widget_allowed_domains`): `WebChatService::isRequestAllowed()` comprueba Origin/Referer; `WebChatFrameResponseSubscriber` pone `Content-Security-Policy: frame-ancestors` con esos dominios y quita `X-Frame-Options`. Por eso **el chat real no se puede incrustar en el propio panel** si el dominio del panel no está en la lista.
 - Límites por bot: mensajes por ventana, conversaciones diarias y presupuesto diario (`WebChatLimitException` → 429).
-- `widgetConfig()` en `WebChatService` es la única fuente de la configuración pública (nombre, colores, logo, bienvenida, posición, icono, tamaño, idioma).
+- `widgetConfig()` en `WebChatService` es la única fuente de la configuración pública (nombre, colores, logo, imagen del botón, bienvenida, posición, icono, tamaño, idioma). Los colores salen siempre saneados (`WebChatService::safeColor()`): lo que se imprime en el sitio de un cliente nunca es texto libre.
+
+#### El botón flotante (desde el 2026-10-09)
+
+- **Un solo dibujante:** `js/widget-launcher.js` (`window.AIWhatsAppAutomationLauncher.paint()`) pinta el color y el icono. `WebChatController::embed()` sirve en **una sola respuesta** la configuración, `widget-launcher.js` y `js/widget-embed.js` (que monta el botón y el iframe). El formulario del bot carga el mismo `widget-launcher.js` para la vista previa, así que la vista previa no puede divergir del botón real. No se divide en varias peticiones: el código que un cliente ya pegó en su sitio es una sola etiqueta `<script>`.
+- **Iconos:** `chat`, `sparkles`, `help` (SVG) e `image`, que usa `web_widget_button_image` o, si no hay, el logo; si la imagen no carga, vuelve al icono de chat. El color del icono (blanco u oscuro) se elige por contraste WCAG.
+- **Colores:** restricción `Regex` en la propia definición del campo (`Bot::COLOR_PATTERN`, solo `#RGB` o `#RRGGBB`), así que valida el formulario y cualquier otro guardado.
+- **Vista previa** (`js/bot-widget-preview.js`, `css/bot-widget-preview.css`): una maqueta, no el chat real en un iframe, porque `frame-ancestors` solo deja incrustar el chat en los dominios del bot. Añade un selector de color nativo junto a cada campo hex, sigue el idioma del widget y avisa si el texto blanco sobre el color principal baja de 4.5:1. La cabecera de la maqueta copia la de `css/web-chat.css`: si cambia una, hay que cambiar la otra.
+- Pruebas: `tests/src/Kernel/WebChat/WebChatWidgetAppearanceTest.php`.
 
 ### El motor de conversación
 
@@ -118,13 +126,14 @@ Sitio del cliente
 
 ## Convenciones
 
-- **Actualizaciones de base de datos:** `ai_whatsapp_automation_update_110NN`, sin huecos. La última es la **11038**. Un campo nuevo en una entidad necesita su update con `installFieldStorageDefinition()`.
-- **Pruebas:** `ddev exec "SIMPLETEST_DB=mysql://db:db@db/db vendor/bin/phpunit -c web/core web/modules/custom/ai_whatsapp_automation/tests"`. Son 111 pruebas y 956 aserciones, con una deprecación conocida (`#[LegacyRequirementsHook]`). Las llamadas HTTP están simuladas, así que no gastan dinero.
+- **Actualizaciones de base de datos:** `ai_whatsapp_automation_update_110NN`, sin huecos. La última es la **11039** (imagen del botón del chat). Un campo nuevo en una entidad necesita su update con `installFieldStorageDefinition()`.
+- **Pruebas:** `ddev exec "SIMPLETEST_DB=mysql://db:db@db/db vendor/bin/phpunit -c web/core web/modules/custom/ai_whatsapp_automation/tests"`. Son 115 pruebas y 1011 aserciones, con una deprecación conocida (`#[LegacyRequirementsHook]`). Las llamadas HTTP están simuladas, así que no gastan dinero.
 - **Revisión visual:** `scripts/revision-visual.mjs` recorre 14 pantallas en 5 anchos. Hay que correrlo como `josera` y como `agente_jg`.
 - **Despliegue:** no se pisa nunca el `web/.htaccess` de producción (lleva el manejador de PHP 8.4). Ver [DEPLOY.md](DEPLOY.md).
 
 ## Deuda conocida
 
-- **El botón del chat web ignora parte de su configuración.** El script del botón vive como una cadena de JavaScript dentro de `WebChatController::embedScript()`, y no usa `web_widget_icon` ni el logo. El icono está dibujado con bordes de CSS. Los colores son texto libre sin validar ni vista previa. En trabajo desde el 2026-10-09.
+- **La cabecera del chat es siempre azul marino** (`#12336e`, fijo en `css/web-chat.css`): el color principal solo pinta la línea inferior, las burbujas del visitante y el botón de enviar. **El color secundario no se usa en ningún sitio.** No se cambió el 2026-10-09 porque alteraría el chat de JG en vivo; pendiente de decisión de José.
+- Las animaciones del chat no respetan `prefers-reduced-motion`.
 - La configuración de prospectos puede quedar imposible en silencio (ver «Prospectos»).
 - `#[LegacyRequirementsHook]` por migrar.

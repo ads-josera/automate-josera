@@ -442,6 +442,21 @@ final class WebhookProcessorService {
   }
 
   /**
+   * Returns the bot ID a new conversation records for a sender.
+   *
+   * Accounts without owner routing record their bot exactly as before
+   * 2026-10-10, active or not; only owner-routed accounts depend on who
+   * writes.
+   */
+  private function storedBotId(ContentEntityInterface $account, string $phone): int|string|null {
+    if (!$this->botManager->hasOwnerRouting($account)) {
+      return $account->hasField('bot') && !$account->get('bot')->isEmpty() ? $account->get('bot')->target_id : NULL;
+    }
+
+    return $this->botManager->botForSender($account, $phone)?->id();
+  }
+
+  /**
    * Loads or creates a conversation for the incoming message.
    *
    * @param array<string, mixed> $message
@@ -479,10 +494,9 @@ final class WebhookProcessorService {
           $account instanceof ContentEntityInterface
           && $conversation->hasField('bot')
           && $conversation->get('bot')->isEmpty()
-          && $account->hasField('bot')
-          && !$account->get('bot')->isEmpty()
+          && ($stored_bot_id = $this->storedBotId($account, (string) $message['phone'])) !== NULL
         ) {
-          $conversation->set('bot', $account->get('bot')->target_id);
+          $conversation->set('bot', $stored_bot_id);
           $conversation->save();
         }
         return $conversation;
@@ -508,7 +522,9 @@ final class WebhookProcessorService {
       'provider' => $provider,
       'status' => 'AI_ACTIVE',
       'whatsapp_account' => $account instanceof ContentEntityInterface ? $account->id() : NULL,
-      'bot' => $account instanceof ContentEntityInterface && $account->hasField('bot') ? $account->get('bot')->target_id : NULL,
+      // Records who answers this sender, for lists and metrics. Answering
+      // itself is decided again on every message (botForSender()).
+      'bot' => $account instanceof ContentEntityInterface ? $this->storedBotId($account, (string) $message['phone']) : NULL,
     ]);
     $conversation->save();
     $is_new_conversation = TRUE;

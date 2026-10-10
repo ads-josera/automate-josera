@@ -1195,3 +1195,22 @@ function ai_whatsapp_automation_entity_type_ids(): array {
     'ai_whatsapp_knowledge_chunk',
   ];
 }
+
+/**
+ * Lets an account send its owner's numbers to a private bot.
+ *
+ * Adds the owner bot and owner numbers to WhatsApp accounts. Empty on every
+ * existing account, so nothing changes until an owner is configured.
+ */
+function ai_whatsapp_automation_update_11041(): string {
+  $definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+  $definitions = \Drupal::service('entity_field.manager')->getFieldStorageDefinitions('ai_whatsapp_account');
+  foreach (['owner_bot', 'owner_numbers'] as $field_name) {
+    if ($definition_update_manager->getFieldStorageDefinition($field_name, 'ai_whatsapp_account') === NULL) {
+      $definition_update_manager->installFieldStorageDefinition($field_name, 'ai_whatsapp_account', 'ai_whatsapp_automation', $definitions[$field_name]);
+    }
+  }
+
+  return (string) t('WhatsApp accounts can now route their owner to a private bot.');
+}
+

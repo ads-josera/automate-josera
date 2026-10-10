@@ -286,6 +286,40 @@ final class WhatsAppAccount extends ContentEntityBase {
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
+    // Owner routing: the owner's own numbers reach a private bot (an
+    // infrastructure assistant), everyone else reaches the account's bot.
+    // BotManagerService decides on every message, never from what a
+    // conversation stored, so a stranger can never reach the owner bot.
+    $fields['owner_bot'] = BaseFieldDefinition::create('entity_reference')
+      ->setLabel(t('Owner bot'))
+      ->setDescription(t('Optional. Answers only the owner numbers below; everyone else gets the Bot above. Leave empty on client accounts.'))
+      ->setSetting('target_type', 'ai_whatsapp_bot')
+      ->setSetting('handler', 'default')
+      ->setDisplayOptions('form', [
+        'type' => 'entity_reference_autocomplete',
+        'weight' => 51,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'entity_reference_label',
+        'weight' => 51,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['owner_numbers'] = BaseFieldDefinition::create('string_long')
+      ->setLabel(t('Owner numbers'))
+      ->setDescription(t('One WhatsApp number per line, in full international format, for example +5215530050231. Only these numbers reach the Owner bot.'))
+      ->setDisplayOptions('form', [
+        'type' => 'string_textarea',
+        'weight' => 52,
+      ])
+      ->setDisplayOptions('view', [
+        'type' => 'basic_string',
+        'weight' => 52,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
     $fields['prompt_override'] = BaseFieldDefinition::create('string_long')
       ->setLabel(t('Prompt override'))
       ->setDescription(t('Optional account-specific instructions. When empty, the selected bot prompt is used.'))

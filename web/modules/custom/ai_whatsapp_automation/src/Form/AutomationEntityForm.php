@@ -106,6 +106,9 @@ final class AutomationEntityForm extends ContentEntityForm {
     foreach (\Drupal::service('ai_whatsapp_automation.client_consistency')->conflicts($entity) as $field_name => $message) {
       $form_state->setErrorByName($field_name, $message);
     }
+    if ($entity->getEntityTypeId() === 'ai_whatsapp_account') {
+      $this->validateOwnerRouting($entity, $form_state);
+    }
     if ($entity->getEntityTypeId() === 'ai_whatsapp_account' && WhatsAppAccount::answers($entity)) {
       // Two active accounts on one number make the routing pick one of them
       // without saying so; on 2026-10-10 a test account kept answering the
@@ -123,6 +126,44 @@ final class AutomationEntityForm extends ContentEntityForm {
     }
 
     return $entity;
+  }
+
+  /**
+   * Refuses owner routing that could expose the owner bot or never work.
+   */
+  private function validateOwnerRouting(ContentEntityInterface $account, FormStateInterface $form_state): void {
+    $bot_manager = \Drupal::service('ai_whatsapp_automation.bot_manager');
+    $lines = array_filter(array_map('trim', preg_split('/\R+/', (string) $account->get('owner_numbers')->value) ?: []));
+    $owner_bot = $account->get('owner_bot')->entity;
+
+    foreach ($lines as $line) {
+      if ($bot_manager->comparablePhone($line) === '') {
+        $form_state->setErrorByName('owner_numbers', $this->t('%number no es un número completo. Escríbelo con lada de país, por ejemplo +5215530050231.', ['%number' => $line]));
+      }
+    }
+    if ($lines !== [] && $owner_bot === NULL) {
+      $form_state->setErrorByName('owner_bot', $this->t('Elige el bot del dueño, o borra los números: sin bot, los números no se usan.'));
+    }
+    if ($owner_bot === NULL) {
+      return;
+    }
+    if ($lines === []) {
+      $form_state->setErrorByName('owner_numbers', $this->t('Escribe al menos un número del dueño: sin números, el bot del dueño no contestaría a nadie.'));
+    }
+    if ((string) $owner_bot->id() === (string) $account->get('bot')->target_id) {
+      $form_state->setErrorByName('owner_bot', $this->t('El bot del dueño no puede ser también el bot de la cuenta: cualquiera que escriba a este número hablaría con él.'));
+    }
+    // The account's knowledge base answers through the public bot: the owner
+    // bot's private one must not be put there.
+    $owner_knowledge_base = $owner_bot->hasField('knowledge_base') ? (string) $owner_bot->get('knowledge_base')->target_id : '';
+    if ($owner_knowledge_base !== '' && $owner_knowledge_base === (string) $account->get('knowledge_base')->target_id) {
+      $form_state->setErrorByName('knowledge_base', $this->t('Esta base de conocimiento es la del bot del dueño. Puesta en la cuenta, el bot público la usaría para contestar a cualquiera.'));
+    }
+    $account_client = (string) $account->get('client')->target_id;
+    $owner_client = $owner_bot->hasField('client') ? (string) $owner_bot->get('client')->target_id : '';
+    if ($account_client !== '' && $owner_client !== '' && $account_client !== $owner_client) {
+      $form_state->setErrorByName('owner_bot', $this->t('El bot del dueño pertenece a otro cliente.'));
+    }
   }
 
   /**

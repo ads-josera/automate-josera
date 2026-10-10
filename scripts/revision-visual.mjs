@@ -63,6 +63,12 @@ async function walk(page) {
         const r = el.getBoundingClientRect();
         if (r.width === 0 || r.height === 0) continue;
         if (r.right > mainRect.right + 2) {
+          // Inside an <svg> only the svg's own box is visible: it clips its
+          // contents. A chart's invisible hover area past the edge reported a
+          // 2px "overflow" nobody could see (2026-10-10); the svg element
+          // itself is still checked like any other.
+          const svg = el.ownerSVGElement;
+          if (svg && svg.getBoundingClientRect().right <= mainRect.right + 2) continue;
           // A scrolling ancestor makes the overflow reachable on purpose.
           let scrolls = false;
           for (let p = el.parentElement; p && p !== main; p = p.parentElement) {

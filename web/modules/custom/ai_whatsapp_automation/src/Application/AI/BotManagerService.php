@@ -26,6 +26,15 @@ final class BotManagerService {
    * Loads the active bot associated with a conversation.
    */
   public function getBotForConversation(ContentEntityInterface $conversation): ?ContentEntityInterface {
+    // An account with owner routing decides from the sender on every
+    // message, ignoring the bot the conversation stored: the owner bot must
+    // never answer anyone else, whatever a conversation was created with.
+    $account = $this->getAccountForConversation($conversation);
+    if ($account instanceof ContentEntityInterface && $this->hasOwnerRouting($account)) {
+      $phone = $conversation->hasField('phone') ? (string) $conversation->get('phone')->value : '';
+      return $this->botForSender($account, $phone);
+    }
+
     if ($conversation->hasField('bot') && !$conversation->get('bot')->isEmpty()) {
       $bot = $conversation->get('bot')->entity;
       if ($bot instanceof ContentEntityInterface && $this->isActive($bot)) {
@@ -151,6 +160,100 @@ final class BotManagerService {
   }
 
   /**
+   * Returns the bot that answers a sender on an account.
+   *
+   * Without owner routing it is the account's bot. With it, an owner number
+   * gets the owner bot and anybody else the account's bot, and the owner bot
+   * never answers a non-owner: if it is also the account's bot, the
+   * stranger gets no answer rather than the private bot.
+   */
+  public function botForSender(ContentEntityInterface $account, string $phone): ?ContentEntityInterface {
+    $account_bot = $this->getBotForAccount($account);
+    if (!$this->hasOwnerRouting($account)) {
+      return $account_bot;
+    }
+
+    $owner_bot = $account->get('owner_bot')->entity;
+    if ($this->isOwner($account, $phone)) {
+      return $owner_bot instanceof ContentEntityInterface && $this->isActive($owner_bot) ? $owner_bot : $account_bot;
+    }
+
+    if ($account_bot instanceof ContentEntityInterface && $account_bot->id() === $owner_bot?->id()) {
+      $this->loggerFactory->get('ai_whatsapp_automation')->warning('Account @account uses its owner bot as its public bot too; a message from a non-owner number was left unanswered.', [
+        '@account' => (string) $account->id(),
+      ]);
+      return NULL;
+    }
+
+    return $account_bot;
+  }
+
+  /**
+   * Whether an account's prompt, model and knowledge base apply to a bot.
+   *
+   * They do, except to the owner bot of an owner-routed account: those
+   * account settings belong to the public side, and the owner bot keeps its
+   * own, so the public prompt or model never replaces the owner bot's. The
+   * owner's private knowledge base must therefore live on the owner bot,
+   * never on the account, where the public bot would use it; the account
+   * form refuses the owner bot's knowledge base on the account.
+   */
+  private function accountOverridesApply(ContentEntityInterface $bot, ?ContentEntityInterface $account): bool {
+    if (!$account instanceof ContentEntityInterface) {
+      return FALSE;
+    }
+    if (!$this->hasOwnerRouting($account)) {
+      return TRUE;
+    }
+
+    return (string) $account->get('owner_bot')->target_id !== (string) $bot->id();
+  }
+
+  /**
+   * Whether an account sends its owner numbers to a separate bot.
+   */
+  public function hasOwnerRouting(ContentEntityInterface $account): bool {
+    return $account->hasField('owner_bot') && !$account->get('owner_bot')->isEmpty();
+  }
+
+  /**
+   * Whether a sender is one of the account's owner numbers.
+   */
+  public function isOwner(ContentEntityInterface $account, string $phone): bool {
+    $phone = $this->comparablePhone($phone);
+    if ($phone === '' || !$account->hasField('owner_numbers')) {
+      return FALSE;
+    }
+
+    foreach (preg_split('/\R+/', (string) $account->get('owner_numbers')->value) ?: [] as $line) {
+      if ($this->comparablePhone($line) === $phone) {
+        return TRUE;
+      }
+    }
+
+    return FALSE;
+  }
+
+  /**
+   * Reduces a WhatsApp number to digits that compare reliably.
+   *
+   * Mexican mobiles arrive as +521… from WhatsApp and are often written
+   * +52… by people; both mean the same phone. Numbers without a country code
+   * do not compare to anything: an owner list must be unambiguous.
+   */
+  public function comparablePhone(string $phone): string {
+    $digits = $this->normalizeIdentifier($phone);
+    if (strlen($digits) < 11) {
+      return '';
+    }
+    if (strlen($digits) === 12 && str_starts_with($digits, '52')) {
+      $digits = '521' . substr($digits, 2);
+    }
+
+    return $digits;
+  }
+
+  /**
    * Checks whether any account of a provider, active or not, has a number.
    */
   private function isKnownNumber(string $provider, string $identifier, string $normalized_identifier): bool {
@@ -223,7 +326,7 @@ final class BotManagerService {
    * Returns the effective system prompt for a bot in an account.
    */
   public function getEffectivePrompt(ContentEntityInterface $bot, ?ContentEntityInterface $account = NULL): string {
-    $override = $account instanceof ContentEntityInterface ? $this->getFieldValue($account, 'prompt_override') : '';
+    $override = $this->accountOverridesApply($bot, $account) ? $this->getFieldValue($account, 'prompt_override') : '';
 
     return $override !== '' ? $override : $this->getFieldValue($bot, 'system_prompt');
   }
@@ -232,7 +335,7 @@ final class BotManagerService {
    * Returns the effective OpenAI model for a bot in an account.
    */
   public function getEffectiveModel(ContentEntityInterface $bot, ?ContentEntityInterface $account = NULL): ?string {
-    $override = $account instanceof ContentEntityInterface ? $this->getFieldValue($account, 'model_override') : '';
+    $override = $this->accountOverridesApply($bot, $account) ? $this->getFieldValue($account, 'model_override') : '';
     if ($override !== '') {
       return $this->normalizeModel($override);
     }
@@ -246,7 +349,7 @@ final class BotManagerService {
    * Returns the effective knowledge base for a bot in an account.
    */
   public function getEffectiveKnowledgeBase(ContentEntityInterface $bot, ?ContentEntityInterface $account = NULL): ?ContentEntityInterface {
-    if ($account instanceof ContentEntityInterface && $account->hasField('knowledge_base') && !$account->get('knowledge_base')->isEmpty()) {
+    if ($this->accountOverridesApply($bot, $account) && $account->hasField('knowledge_base') && !$account->get('knowledge_base')->isEmpty()) {
       $knowledge_base = $account->get('knowledge_base')->entity;
       if ($knowledge_base instanceof ContentEntityInterface && $this->isActive($knowledge_base)) {
         return $knowledge_base;

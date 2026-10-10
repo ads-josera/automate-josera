@@ -10,6 +10,7 @@ use Drupal\ai_whatsapp_automation\Entity\Storage\AutomationEntityStorage;
 use Drupal\ai_whatsapp_automation\Form\AutomationEntityForm;
 use Drupal\Core\Entity\Attribute\ContentEntityType;
 use Drupal\Core\Entity\ContentEntityBase;
+use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\ContentEntityDeleteForm;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Entity\EntityViewBuilder;
@@ -63,6 +64,20 @@ use Drupal\views\EntityViewsData;
   ],
 )]
 final class WhatsAppAccount extends ContentEntityBase {
+
+  /**
+   * Whether an account answers messages sent to its number.
+   *
+   * Only its status decides. Until 2026-10-10 an account also answered while
+   * its connection status read CONNECTED, which for Twilio accounts is a stale
+   * value nobody updates: a deactivated account kept answering, and with two
+   * accounts on one number the wrong bot replied. Evolution keeps the status
+   * in step with the connection itself (InstanceManagerService), so it loses
+   * nothing by this.
+   */
+  public static function answers(ContentEntityInterface $account): bool {
+    return $account->hasField('status') && $account->get('status')->value === 'active';
+  }
 
   /**
    * {@inheritdoc}

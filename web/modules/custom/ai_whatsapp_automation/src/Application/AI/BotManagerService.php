@@ -6,6 +6,7 @@ namespace Drupal\ai_whatsapp_automation\Application\AI;
 
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 
 /**
  * Resolves bots for WhatsApp accounts and conversations.
@@ -17,6 +18,7 @@ final class BotManagerService {
    */
   public function __construct(
     private readonly EntityTypeManagerInterface $entityTypeManager,
+    private readonly LoggerChannelFactoryInterface $loggerFactory,
   ) {
   }
 
@@ -102,15 +104,15 @@ final class BotManagerService {
     $account_identifier = (string) ($message['account_phone'] ?? '');
     $normalized_identifier = $this->normalizeIdentifier($account_identifier);
 
+    // Only active accounts answer (WhatsAppAccount::answers()). Two are
+    // fetched so a duplicate number is reported instead of silently routed
+    // to whichever the database returns first.
     $query = $storage->getQuery()
       ->accessCheck(FALSE)
       ->condition('provider', $provider)
-      ->range(0, 1);
-
-    $active_group = $query->orConditionGroup()
       ->condition('status', 'active')
-      ->condition('connection_status', 'CONNECTED');
-    $query->condition($active_group);
+      ->sort('id')
+      ->range(0, 2);
 
     if ($account_identifier !== '') {
       $identifier_group = $query->orConditionGroup()
@@ -123,7 +125,19 @@ final class BotManagerService {
     }
 
     $ids = $query->execute();
+    if (count($ids) > 1) {
+      $this->loggerFactory->get('ai_whatsapp_automation')->warning('Two active @provider accounts answer @number (IDs @ids); the oldest one received the message. Deactivate one of them.', [
+        '@provider' => $provider,
+        '@number' => $account_identifier,
+        '@ids' => implode(', ', $ids),
+      ]);
+    }
     if ($ids === [] && $account_identifier !== '') {
+      // A number that belongs to a deactivated account was switched off on
+      // purpose: it must not fall through to whichever account is left.
+      if ($this->isKnownNumber($provider, $account_identifier, $normalized_identifier)) {
+        return NULL;
+      }
       $ids = $this->loadActiveAccountIdsForProvider($provider);
     }
 
@@ -134,6 +148,53 @@ final class BotManagerService {
     $account = $storage->load(reset($ids));
 
     return $account instanceof ContentEntityInterface ? $account : NULL;
+  }
+
+  /**
+   * Checks whether any account of a provider, active or not, has a number.
+   */
+  private function isKnownNumber(string $provider, string $identifier, string $normalized_identifier): bool {
+    $query = $this->entityTypeManager->getStorage('ai_whatsapp_account')->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('provider', $provider)
+      ->range(0, 1);
+    $numbers = $query->orConditionGroup()
+      ->condition('phone_number', $identifier)
+      ->condition('phone_number', $normalized_identifier)
+      ->condition('phone_number', '+' . $normalized_identifier);
+    $query->condition($numbers);
+
+    return $query->execute() !== [];
+  }
+
+  /**
+   * Returns other active accounts of a provider that answer the same number.
+   *
+   * @return \Drupal\Core\Entity\ContentEntityInterface[]
+   *   Conflicting accounts, keyed by ID.
+   */
+  public function otherActiveAccountsWithNumber(string $provider, string $number, int|string|null $exclude_id = NULL): array {
+    $number = $this->normalizeIdentifier($number);
+    if ($number === '') {
+      return [];
+    }
+
+    $storage = $this->entityTypeManager->getStorage('ai_whatsapp_account');
+    $ids = $storage->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('provider', $provider)
+      ->condition('status', 'active')
+      ->execute();
+    unset($ids[$exclude_id ?? '']);
+
+    $conflicts = [];
+    foreach ($storage->loadMultiple($ids) as $id => $account) {
+      if ($this->normalizeIdentifier((string) $account->get('phone_number')->value) === $number) {
+        $conflicts[$id] = $account;
+      }
+    }
+
+    return $conflicts;
   }
 
   /**
@@ -150,12 +211,8 @@ final class BotManagerService {
     $query = $storage->getQuery()
       ->accessCheck(FALSE)
       ->condition('provider', $provider)
-      ->range(0, 2);
-
-    $active_group = $query->orConditionGroup()
       ->condition('status', 'active')
-      ->condition('connection_status', 'CONNECTED');
-    $query->condition($active_group);
+      ->range(0, 2);
 
     $ids = $query->execute();
 

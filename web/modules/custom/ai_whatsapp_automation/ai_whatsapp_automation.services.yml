@@ -13,6 +13,7 @@ services:
     class: Drupal\ai_whatsapp_automation\Application\AI\BotManagerService
     arguments:
       - '@entity_type.manager'
+      - '@logger.factory'
 
   ai_whatsapp_automation.prompt_builder:
     class: Drupal\ai_whatsapp_automation\Application\AI\PromptBuilderService

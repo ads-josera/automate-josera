@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\ai_whatsapp_automation\Form;
 
+use Drupal\ai_whatsapp_automation\Entity\WhatsAppAccount;
 use Drupal\Core\Entity\ContentEntityForm;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Form\FormStateInterface;
@@ -104,6 +105,21 @@ final class AutomationEntityForm extends ContentEntityForm {
     $entity = parent::validateForm($form, $form_state);
     foreach (\Drupal::service('ai_whatsapp_automation.client_consistency')->conflicts($entity) as $field_name => $message) {
       $form_state->setErrorByName($field_name, $message);
+    }
+    if ($entity->getEntityTypeId() === 'ai_whatsapp_account' && WhatsAppAccount::answers($entity)) {
+      // Two active accounts on one number make the routing pick one of them
+      // without saying so; on 2026-10-10 a test account kept answering the
+      // number meant for a new bot.
+      $conflicts = \Drupal::service('ai_whatsapp_automation.bot_manager')->otherActiveAccountsWithNumber(
+        (string) $entity->get('provider')->value,
+        (string) $entity->get('phone_number')->value,
+        $entity->id(),
+      );
+      if ($conflicts !== []) {
+        $form_state->setErrorByName('phone_number', $this->t('La cuenta activa %account ya contesta este número. Desactívala primero, o deja esta cuenta inactiva: con dos cuentas activas en un número, los mensajes llegarían solo a una de ellas.', [
+          '%account' => reset($conflicts)->label(),
+        ]));
+      }
     }
 
     return $entity;
@@ -319,7 +335,7 @@ final class AutomationEntityForm extends ContentEntityForm {
         ':web' => Url::fromRoute('ai_whatsapp_automation.bot_web_integration', ['ai_whatsapp_bot' => $entity->id()])->toString(),
       ]));
     }
-    if ($type === 'ai_whatsapp_account' && $entity->get('status')->value !== 'active' && $entity->get('connection_status')->value !== 'CONNECTED') {
+    if ($type === 'ai_whatsapp_account' && !WhatsAppAccount::answers($entity)) {
       $this->messenger()->addWarning($this->t('La cuenta %account está inactiva: los mensajes que lleguen a su número no se responderán. Cambia su Estado a «Active» cuando tenga sus credenciales.', [
         '%account' => $entity->label(),
       ]));

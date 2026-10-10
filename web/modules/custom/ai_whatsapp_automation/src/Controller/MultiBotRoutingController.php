@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\ai_whatsapp_automation\Controller;
 
+use Drupal\ai_whatsapp_automation\Entity\WhatsAppAccount;
 use Drupal\ai_whatsapp_automation\Application\AI\BotManagerService;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Entity\ContentEntityInterface;
@@ -64,8 +65,7 @@ final class MultiBotRoutingController extends ControllerBase {
         : NULL;
 
       $client = $account->get('client')->entity ?? ($bot instanceof ContentEntityInterface ? $bot->get('client')->entity : NULL);
-      // Incoming messages are only routed to active or connected accounts.
-      $answers = $this->fieldValue($account, 'status') === 'active' || $this->fieldValue($account, 'connection_status') === 'CONNECTED';
+      $answers = WhatsAppAccount::answers($account);
       $rows[] = [
         'client' => $client instanceof ContentEntityInterface ? $client->label() : $this->t('Sin cliente'),
         'account' => $account->toLink(),

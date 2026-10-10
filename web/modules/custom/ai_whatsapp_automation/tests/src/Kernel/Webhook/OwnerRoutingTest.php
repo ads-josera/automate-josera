@@ -213,6 +213,57 @@ final class OwnerRoutingTest extends KernelTestBase {
   }
 
   /**
+   * The owner reaches the owner bot even when he also receives the alerts.
+   */
+  public function testTheOwnerIsNotBlockedAsAnAlertRecipient(): void {
+    $this->account->set('lead_notification_numbers', self::OWNER)->save();
+
+    $result = $this->send(self::OWNER, 'SM1');
+
+    $this->assertNotSame('blocked_notification_recipient', $result['status'] ?? NULL);
+    $this->assertSame(['OWNER-PROMPT'], $this->promptsSent());
+  }
+
+  /**
+   * Any other alert recipient is still kept out of every bot.
+   *
+   * Alert recipients answering an alert must not start a conversation with
+   * the public bot; only the configured owner is let through.
+   */
+  public function testOtherAlertRecipientsAreStillBlocked(): void {
+    $recipient = '+5215585473903';
+    $this->account->set('lead_notification_numbers', self::OWNER . "\n" . $recipient)->save();
+
+    $result = $this->send($recipient, 'SM1');
+
+    $this->assertSame('blocked_notification_recipient', $result['status'] ?? NULL);
+    $this->assertSame([], $this->promptsSent(), 'No model call for a blocked recipient.');
+  }
+
+  /**
+   * On an account without an owner, alert recipients stay blocked as before.
+   */
+  public function testClientAccountAlertRecipientsAreStillBlocked(): void {
+    $client_bot = $this->container->get('entity_type.manager')->getStorage('ai_whatsapp_bot')->create(['name' => 'JG Mylard', 'status' => 'active', 'system_prompt' => 'CLIENT-PROMPT']);
+    $client_bot->save();
+    $this->container->get('entity_type.manager')->getStorage('ai_whatsapp_account')->create([
+      'name' => 'JG Mylard WhatsApp',
+      'provider' => 'twilio',
+      'phone_number' => '+5213342701566',
+      'twilio_account_sid' => 'ACtest',
+      'twilio_auth_token' => 'test-token',
+      'status' => 'active',
+      'bot' => $client_bot->id(),
+      'lead_notification_numbers' => self::OWNER,
+    ])->save();
+
+    $result = $this->send(self::OWNER, 'SM1', '+5213342701566');
+
+    $this->assertSame('blocked_notification_recipient', $result['status'] ?? NULL, 'On a client line José is an alert recipient, not an owner.');
+    $this->assertSame([], $this->promptsSent());
+  }
+
+  /**
    * Returns the model of every request sent to OpenAI.
    *
    * @return string[]
@@ -232,8 +283,8 @@ final class OwnerRoutingTest extends KernelTestBase {
   /**
    * Sends one WhatsApp message through the webhook processor.
    */
-  private function send(string $from, string $sid, string $to = self::NUMBER): void {
-    $this->container->get('ai_whatsapp_automation.webhook_processor')->process([
+  private function send(string $from, string $sid, string $to = self::NUMBER): array {
+    return $this->container->get('ai_whatsapp_automation.webhook_processor')->process([
       'provider' => 'twilio',
       'message' => [
         'phone' => $from,

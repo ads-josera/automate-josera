@@ -339,6 +339,15 @@ final class WebhookProcessorService {
       return FALSE;
     }
 
+    // An owner configured on this account always reaches the owner bot,
+    // even when the same number also receives the lead alerts: on
+    // 2026-10-10 José, owner and alert recipient on his line, got the
+    // "notifications only" auto-reply instead of his own assistant, and
+    // after it (once per 24 h) nothing at all.
+    if ($this->botManager->hasOwnerRouting($account) && $this->botManager->isOwner($account, (string) ($message['phone'] ?? ''))) {
+      return FALSE;
+    }
+
     foreach ($this->notificationNumbers($account) as $number) {
       if ($sender === $this->normalizePhone($number)) {
         return TRUE;

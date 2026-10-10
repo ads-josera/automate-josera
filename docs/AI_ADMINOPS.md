@@ -40,6 +40,29 @@ Cada 15 minutos lee por SSH seis indicadores de los servidores registrados, guar
 5. **Idioma**: mezcla de español e inglés y **faltan acentos** en todos los textos en español ("ADMINISTRACION", "auditoria", "Bitacora", "Configuracion", "revision").
 6. Los valores decimales se guardan con ruido de coma flotante (`1.0900000000000000799…`).
 
+## Datos para calibrar las alertas (2026-10-09)
+
+- **El servidor de producción tiene 4 núcleos** (`nproc`). Una carga de 4 = los cuatro ocupados: el umbral de 4 es razonable.
+- **De los 25 picos de carga por encima de 4** (2026-08-11 a 2026-09-16), **24 fueron una sola lectura** hacia las 02:00, seguramente los respaldos nocturnos, con la carga a 15 min todavía baja. A los 15 minutos ya había bajado.
+- **Solo uno se sostuvo**: el 2026-09-03 a las 15:23 y 15:38, en pleno día (5.72 y 4.29, carga a 15 min en 3.7). Ese sí merecía aviso.
+- Conclusión: exigir **dos lecturas seguidas** por encima del umbral filtra el 100 % del ruido de los respaldos y conserva el episodio real.
+- La actualización `ai_adminops_update_10003` dejaba las alertas **encendidas** por defecto. En producción están apagadas: **alguien las apagó a propósito**. Hay que preguntarle a José por qué antes de volver a encenderlas.
+
+## Registro de Drupal saturado (por verificar en producción)
+
+Cada lectura escribe un aviso en el registro de Drupal (`AdminOps execution … finished`): unas 576 líneas al día. El registro (`dblog`) guarda **solo las últimas 1,000 filas** (`row_limit`), así que AdminOps **puede estar empujando fuera los errores reales del sitio**. En la copia local, `ai_adminops` es el tercer tipo más frecuente (340 de 2,293 filas). Falta confirmarlo en producción.
+
+## Plan aprobado el 2026-10-09 (en curso)
+
+José aprobó estos cuatro pasos, sin tocar `ai_whatsapp_automation`:
+
+1. **Bitácora honesta**: un estado nuevo `no_data` («No data», en ámbar) cuando una lectura llega por SSH pero no trae valores (`unavailable`, `not_configured`), en lugar de «Succeeded». Requiere actualizar el campo `status` de `ai_adminops_tool_execution`.
+2. **Alertas sin ruido**: un valor alto solo abre evento si **las últimas N lecturas** de ese indicador lo superan (`alerts.consecutive_readings`, 2 por defecto), leídas de la propia bitácora. «Servidor sin respuesta» exige también N trabajos seguidos sin respuesta (contador en State). La resolución sigue siendo inmediata en cuanto el valor baja.
+3. **Botón «enviar aviso de prueba»** en los ajustes, para comprobar de punta a punta el correo y el WhatsApp con los valores del formulario.
+4. **Encenderlo**: alertas, aviso de servidor sin respuesta y correo a José. Lo hace José desde los ajustes después del despliegue, verificándolo con el botón de prueba.
+
+Después, sin fecha: un tablero con los valores medidos, limpieza automática de la bitácora, bajar el nivel de esos avisos del registro, arreglar Exim y SSL en el script remoto del servidor (no en Drupal), y corregir acentos e idioma. La IA y las acciones (reinicios) quedan a decisión de José.
+
 ## Estructura
 
 ```

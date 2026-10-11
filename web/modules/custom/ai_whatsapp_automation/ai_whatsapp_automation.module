@@ -189,6 +189,13 @@ function ai_whatsapp_automation_entity_base_field_info(EntityTypeInterface $enti
  * a client user editing their own profile must not switch clients.
  */
 function ai_whatsapp_automation_entity_field_access(string $operation, FieldDefinitionInterface $field_definition, AccountInterface $account, ?FieldItemListInterface $items = NULL): AccessResultInterface {
+  // Owner tools: nobody without the dedicated permission sees or changes
+  // them, whatever else they may edit on a bot.
+  if ($field_definition->getName() === 'owner_tools_enabled' && $field_definition->getTargetEntityTypeId() === 'ai_whatsapp_bot') {
+    return AccessResult::forbiddenIf(!$account->hasPermission('administer ai whatsapp owner tools'))
+      ->cachePerPermissions();
+  }
+
   if ($field_definition->getName() !== 'ai_whatsapp_client' || $field_definition->getTargetEntityTypeId() !== 'user') {
     return AccessResult::neutral();
   }

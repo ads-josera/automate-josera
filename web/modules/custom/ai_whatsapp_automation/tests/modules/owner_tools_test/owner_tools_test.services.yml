@@ -1,0 +1,5 @@
+services:
+  owner_tools_test.provider:
+    class: Drupal\owner_tools_test\FakeServerTools
+    tags:
+      - { name: ai_whatsapp_automation.owner_tool_provider }

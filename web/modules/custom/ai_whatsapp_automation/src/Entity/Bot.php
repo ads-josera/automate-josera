@@ -388,6 +388,20 @@ final class Bot extends ContentEntityBase {
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
+    // Lock 1 of 3 for owner tools: only users with "administer ai whatsapp
+    // owner tools" can see or change this field (field access in the
+    // .module). Locks 2 and 3 are in OwnerToolRunner.
+    $fields['owner_tools_enabled'] = BaseFieldDefinition::create('boolean')
+      ->setLabel(t('Owner tools'))
+      ->setDescription(t('Lets this bot use the owner tools (read-only server data) when it answers as the Owner bot of a line and the person writing is one of its owner numbers. Has no effect on a public bot.'))
+      ->setDefaultValue(FALSE)
+      ->setDisplayOptions('form', [
+        'type' => 'boolean_checkbox',
+        'weight' => 35,
+      ])
+      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE);
+
     $fields['web_widget_enabled'] = BaseFieldDefinition::create('boolean')
       ->setLabel(t('Enable web widget'))
       ->setDescription(t('Allow this bot to be embedded as a public web chat widget.'))

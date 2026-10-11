@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\ai_whatsapp_automation\Application\AI;
 
+use Drupal\ai_whatsapp_automation\Application\AI\Tools\OwnerToolRunner;
 use Drupal\ai_whatsapp_automation\Application\OpenAI\OpenAIServiceInterface;
 use Drupal\ai_whatsapp_automation\Exception\OpenAIServiceException;
 use Drupal\Core\Config\ConfigFactoryInterface;
@@ -42,6 +43,7 @@ final class ConversationEngineService {
     private readonly UnintelligibleMessageDetector $unintelligibleDetector,
     private readonly ConfigFactoryInterface $configFactory,
     LoggerChannelFactoryInterface $loggerFactory,
+    private readonly OwnerToolRunner $ownerToolRunner,
   ) {
     $this->logger = $loggerFactory->get('ai_whatsapp_automation');
   }
@@ -104,11 +106,15 @@ final class ConversationEngineService {
     }
 
     $prompt_data = $this->promptBuilder->build($bot, $conversation, $incoming_message);
-    $response = $this->openAIService->sendPrompt(
-      (string) $prompt_data['prompt'],
-      $prompt_data['model'] ?? NULL,
-      is_array($prompt_data['options'] ?? NULL) ? $prompt_data['options'] : [],
-    );
+    // Owner tools only behind all three locks (see OwnerToolRunner); every
+    // other conversation sends exactly the request it always sent.
+    $response = $this->ownerToolRunner->isAvailable($conversation, $bot)
+      ? $this->ownerToolRunner->respond($prompt_data, $conversation)
+      : $this->openAIService->sendPrompt(
+        (string) $prompt_data['prompt'],
+        $prompt_data['model'] ?? NULL,
+        is_array($prompt_data['options'] ?? NULL) ? $prompt_data['options'] : [],
+      );
 
     $outgoing = $this->saveMessage($conversation, [
       'sender' => 'ai',

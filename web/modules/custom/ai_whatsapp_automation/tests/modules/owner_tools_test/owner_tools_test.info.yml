@@ -1,0 +1,7 @@
+name: 'Owner tools test'
+type: module
+description: 'Provides fake owner tools for the AI WhatsApp Automation tests.'
+package: Testing
+core_version_requirement: ^11
+dependencies:
+  - ai_whatsapp_automation:ai_whatsapp_automation

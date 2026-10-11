@@ -48,7 +48,9 @@ final class OpenAIService implements OpenAIServiceInterface {
    */
   public function sendPrompt(string $prompt, ?string $model = NULL, array $options = []): array {
     $prompt = trim($prompt);
-    if ($prompt === '') {
+    // A tool round sends the tool results as input items instead of a
+    // prompt; every other call must carry a prompt.
+    if ($prompt === '' && empty($options['input_items'])) {
       throw new OpenAIServiceException('The prompt cannot be empty.');
     }
 
@@ -118,6 +120,7 @@ final class OpenAIService implements OpenAIServiceInterface {
       'id' => $response_data['id'] ?? NULL,
       'model' => $selected_model,
       'text' => $this->extractText($response_data),
+      'function_calls' => $this->extractFunctionCalls($response_data),
       'usage' => $tokens,
       'cost' => $cost,
       'raw' => $response_data,
@@ -258,10 +261,13 @@ final class OpenAIService implements OpenAIServiceInterface {
   private function buildRequestPayload(string $prompt, string $model, array $options): array {
     $payload = [
       'model' => $model,
-      'input' => $prompt,
+      'input' => is_array($options['input_items'] ?? NULL) && $options['input_items'] !== [] ? $options['input_items'] : $prompt,
     ];
 
-    foreach (['instructions', 'metadata', 'text', 'reasoning', 'max_output_tokens'] as $key) {
+    // "tools", "tool_choice" and "previous_response_id" are only sent by owner
+    // tool rounds (OwnerToolRunner); every other call keeps exactly its former
+    // payload.
+    foreach (['instructions', 'metadata', 'text', 'reasoning', 'max_output_tokens', 'tools', 'tool_choice', 'previous_response_id'] as $key) {
       if (array_key_exists($key, $options)) {
         $payload[$key] = $options[$key];
       }
@@ -273,6 +279,30 @@ final class OpenAIService implements OpenAIServiceInterface {
     }
 
     return $payload;
+  }
+
+  /**
+   * Extracts the function calls a Responses API payload asks for.
+   *
+   * @param array<string, mixed> $response_data
+   *   The decoded response data.
+   *
+   * @return array<int, array{call_id: string, name: string, arguments: string}>
+   *   Calls in the order the model made them.
+   */
+  private function extractFunctionCalls(array $response_data): array {
+    $calls = [];
+    foreach (is_array($response_data['output'] ?? NULL) ? $response_data['output'] : [] as $item) {
+      if (is_array($item) && ($item['type'] ?? '') === 'function_call') {
+        $calls[] = [
+          'call_id' => (string) ($item['call_id'] ?? ''),
+          'name' => (string) ($item['name'] ?? ''),
+          'arguments' => (string) ($item['arguments'] ?? '{}'),
+        ];
+      }
+    }
+
+    return $calls;
   }
 
   /**

@@ -1214,3 +1214,20 @@ function ai_whatsapp_automation_update_11041(): string {
   return (string) t('WhatsApp accounts can now route their owner to a private bot.');
 }
 
+/**
+ * Adds the owner tools switch to bots, off everywhere.
+ */
+function ai_whatsapp_automation_update_11042(): string {
+  $definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+  if ($definition_update_manager->getFieldStorageDefinition('owner_tools_enabled', 'ai_whatsapp_bot') === NULL) {
+    $definition_update_manager->installFieldStorageDefinition(
+      'owner_tools_enabled',
+      'ai_whatsapp_bot',
+      'ai_whatsapp_automation',
+      \Drupal::service('entity_field.manager')->getFieldStorageDefinitions('ai_whatsapp_bot')['owner_tools_enabled']
+    );
+  }
+
+  return (string) t('Bots have an owner tools switch, off on every bot.');
+}
+

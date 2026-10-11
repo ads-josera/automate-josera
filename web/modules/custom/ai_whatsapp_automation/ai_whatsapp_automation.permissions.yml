@@ -29,3 +29,9 @@ access own client ai whatsapp records:
 operate own client ai whatsapp conversations:
   title: 'Operate own client conversations and leads'
   description: 'For client users: reply, pause or reactivate the AI, close and assign conversations, and change lead status, only for their own client.'
+
+administer ai whatsapp owner tools:
+  title: 'Turn on owner tools for bots'
+  description: 'See and change the "Owner tools" setting of a bot, which lets the owner bot of a line read the owner''s servers. Never grant it to client roles: it is separate from editing bots so a client allowed to edit its own bot still cannot see or enable it.'
+  restrict access: true
+

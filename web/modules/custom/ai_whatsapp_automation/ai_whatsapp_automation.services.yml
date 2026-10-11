@@ -36,6 +36,18 @@ services:
       - '@ai_whatsapp_automation.unintelligible_message_detector'
       - '@config.factory'
       - '@logger.factory'
+      - '@ai_whatsapp_automation.owner_tool_runner'
+
+  # Owner tools for a line's owner bot (Sentinel). Providers live in other
+  # modules, tagged ai_whatsapp_automation.owner_tool_provider.
+  ai_whatsapp_automation.owner_tool_runner:
+    class: Drupal\ai_whatsapp_automation\Application\AI\Tools\OwnerToolRunner
+    arguments:
+      - '@ai_whatsapp_automation.bot_manager'
+      - '@ai_whatsapp_automation.openai_service'
+      - '@logger.factory'
+    tags:
+      - { name: service_collector, tag: ai_whatsapp_automation.owner_tool_provider, call: addProvider }
 
   ai_whatsapp_automation.web_chat:
     class: Drupal\ai_whatsapp_automation\Application\WebChat\WebChatService

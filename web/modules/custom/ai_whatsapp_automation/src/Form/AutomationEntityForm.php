@@ -187,7 +187,7 @@ final class AutomationEntityForm extends ContentEntityForm {
         'title' => $this->t('Bot profile'),
         'description' => $this->t('Identity, model, and knowledge source used for each conversation.'),
         'open' => TRUE,
-        'fields' => ['client', 'name', 'description', 'status', 'model', 'reasoning_effort', 'temperature', 'knowledge_base'],
+        'fields' => ['client', 'name', 'description', 'status', 'model', 'reasoning_effort', 'temperature', 'knowledge_base', 'owner_tools_enabled'],
       ],
       'instructions' => [
         'title' => $this->t('AI instructions'),

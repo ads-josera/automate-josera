@@ -92,3 +92,18 @@ services:
       - '@ai_adminops.execution_audit'
       - '@ai_adminops.monitoring_alert_evaluator'
       - '@logger.channel.ai_adminops'
+
+  # Sentinel's server tools. ai_whatsapp_automation's OwnerToolRunner decides
+  # who may call them (owner bot, owner number, owner tools switched on).
+  ai_adminops.sentinel_server_tools:
+    class: Drupal\ai_adminops\Service\SentinelServerTools
+    arguments:
+      - '@entity_type.manager'
+      - '@config.factory'
+      - '@state'
+      - '@datetime.time'
+      - '@date.formatter'
+      - '@ai_adminops.read_only_ssh_connector'
+      - '@ai_adminops.execution_audit'
+    tags:
+      - { name: ai_whatsapp_automation.owner_tool_provider }

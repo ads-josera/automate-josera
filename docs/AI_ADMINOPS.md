@@ -140,7 +140,25 @@ Plugins con el atributo `#[AdminOpsTool(id, label, description, risk, parameters
 
 ### Relación con `ai_whatsapp_automation`
 
-Depende de él, pero **no lo modifica**, por regla de la especificación. Consume solo dos servicios: `provider_message_sender`, para enviar WhatsApp, y `OpenAIServiceInterface`, a través de `AdminOpsAiClient` (sin uso). Para documentar ese módulo, ver [ARCHITECTURE.md](ARCHITECTURE.md).
+Depende de él, pero **no lo modifica**, por regla de la especificación. Consume `provider_message_sender`, para enviar WhatsApp, y `OpenAIServiceInterface`, a través de `AdminOpsAiClient` (sin uso). Desde el 2026-10-11 además **le ofrece herramientas a Sentinel** (abajo). Para documentar ese módulo, ver [ARCHITECTURE.md](ARCHITECTURE.md).
+
+### Herramientas de Sentinel (fase A, 2026-10-11)
+
+`SentinelServerTools` implementa `OwnerToolProviderInterface` de `ai_whatsapp_automation` y se registra con la etiqueta `ai_whatsapp_automation.owner_tool_provider`. **Quién** puede usarlas lo decide `OwnerToolRunner` en el otro módulo (tres candados: interruptor «Owner tools» del bot, bot del dueño de la línea, número del dueño). Todas son de **solo lectura**:
+
+| Herramienta | Qué da | ¿Se conecta al servidor? |
+|---|---|---|
+| `servidores` | Servidores activos: id, nombre, hostname, sistema, proveedor, estado, última lectura. **Nunca** `credential_reference`. | No |
+| `estado_servidor` | Última lectura programada (lo que guardó `MonitoringJobProcessor` en *state*) y los umbrales de alerta. | No |
+| `eventos_abiertos` | Hasta 10 eventos `open` o `acknowledged`, los más recientes primero. | No |
+| `historial` | Últimas lecturas de una revisión (máx. 12) desde la bitácora. | No |
+| `leer_ahora` | Las seis revisiones fijas por `ReadOnlySshConnector`. | Sí, **una vez por minuto como máximo** por servidor |
+
+- El servidor es un `enum` con los servidores **activos**: el modelo no puede nombrar otro, y uno inactivo se rechaza. Sin servidores activos no se manda el `enum` vacío, que OpenAI rechaza junto con toda la petición.
+- Cada lectura de `leer_ahora` queda en la bitácora (`ai_adminops_tool_execution`) con `{"source":"sentinel","conversation":"<id>"}` en los parámetros.
+- **Una lectura en vivo no cuenta para las alertas**: no pasa por `MonitoringAlertEvaluator` ni toca la lectura programada guardada. Si contara, preguntarle dos veces a Sentinel podría abrir o cerrar un evento.
+- Las horas salen en la zona del sitio, con `hace_minutos` para que Sentinel diga de cuándo es el dato.
+- Pruebas: `tests/src/Kernel/SentinelServerToolsTest.php` (8). Se rompió a propósito cada salvaguarda (límite por minuto, servidores inactivos, fuga de la referencia de credencial, `enum` vacío, tope del historial, eventos resueltos, parámetros de auditoría) y cada una hizo fallar su prueba.
 
 ### Permisos
 

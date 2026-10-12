@@ -77,6 +77,6 @@ privilegios en esta fase.
 
 El `forced-command` real es `/usr/local/sbin/adminops-read` (cuenta `adminops_observer`). Desde el 2026-10-11 su fuente vive en **`scripts/server/adminops-read`** y se instala desde `_repo`. Cambios de esa versión:
 
-- **Exim**: la cuenta observadora no puede contar la cola (solo root), por eso siempre daba `unavailable`. Ahora usa `sudo -n /usr/sbin/exim -bpc`, con un `sudoers` (`/etc/sudoers.d/adminops_observer`) que permite **solo ese comando**.
+- **Exim**: la cuenta observadora no puede contar la cola (solo root), por eso siempre daba `unavailable`. Ahora usa `sudo -n /usr/sbin/exim -bp`, con un `sudoers` (`/etc/sudoers.d/adminops_observer`) que permite **solo ese comando**, y devuelve solo conteos: `queue_count` (mensajes **activos**, el valor que leen las alertas), `frozen_count` y `total_count`. Los congelados van aparte porque no son correo esperando salir: el 2026-10-11 había ~530, todos rebotes (`<>`) al hostname, renovándose solos cada 24 h, y habrían disparado una alerta permanente.
 - **SSL**: lee los certificados de los dominios listados en `/etc/adminops/ssl-domains` (uno por línea, `#` comenta), conectando a `127.0.0.1:443` con SNI. Devuelve `days_left` y `matches_domain` por dominio, y `min_days_left` solo de los que coinciden (un certificado de otro nombre es el predeterminado del servidor y no dice nada del dominio).
 - **Reinicio pendiente** (`get_reboot_status`, nueva): `needs-restarting -r`, el kernel en uso y el más nuevo instalado. Sentinel avisa; reiniciar es cosa de José en WHM.

@@ -2,7 +2,7 @@
 # Forced command for the adminops_observer key (AI AdminOps monitoring).
 # Installed as /usr/local/sbin/adminops-read, root:root 755. Read only: each
 # check prints one JSON object. Versioned in the repo (scripts/server/).
-# 2026-10-11: Exim through a single sudo rule, real SSL readings, and a
+# 2026-10-11: Exim through a single sudo rule (active and frozen apart), real SSL readings, and a
 # reboot check.
 set -euo pipefail
 
@@ -41,12 +41,17 @@ case "${SSH_ORIGINAL_COMMAND:-}" in
     }'
     ;;
   'adminops-read get_exim_queue')
-    # Only root can count the queue; sudoers allows exactly this command.
-    queue=$(sudo -n /usr/sbin/exim -bpc 2>/dev/null || true)
-    case "$queue" in
-      ''|*[!0-9]*) printf '{"status":"unavailable"}\n' ;;
-      *) printf '{"status":"ok","queue_count":%d}\n' "$queue" ;;
-    esac
+    # Only root can read the queue; sudoers allows exactly "exim -bp".
+    # Frozen messages (2026-10-11: ~530 bounces to the hostname, always
+    # there) are not a delivery backlog, so queue_count, the value alerts
+    # read, counts only the active ones; the frozen are reported apart.
+    if listing=$(sudo -n /usr/sbin/exim -bp 2>/dev/null); then
+      printf '%s\n' "$listing" | awk '
+        /^ *[0-9]+[mhd] / { total++; if (/\*\*\* frozen \*\*\*/) frozen++ }
+        END { printf "{\"status\":\"ok\",\"queue_count\":%d,\"frozen_count\":%d,\"total_count\":%d}\n", total - frozen, frozen, total }'
+    else
+      printf '{"status":"unavailable"}\n'
+    fi
     ;;
   'adminops-read get_ssl_status')
     if [ ! -r "$SSL_DOMAINS_FILE" ]; then

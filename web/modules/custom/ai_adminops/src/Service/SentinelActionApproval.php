@@ -145,7 +145,27 @@ final class SentinelActionApproval {
       'servidor' => $server->id(),
       'codigo_enviado_a' => $this->mask($this->approvalEmail()),
       'vence_en_minutos' => self::CODE_MINUTES,
+      'siguiente_paso' => 'Cuando José escriba el código, llama a confirmar_accion solo con ese código. No pidas otra solicitud.',
     ];
+  }
+
+  /**
+   * Checks a code against the conversation's pending request.
+   *
+   * The model only passes the code: between two WhatsApp messages it keeps
+   * the text, not what its tools returned, so on 2026-10-11 it never knew
+   * the request number and asked for a new code every time José typed one.
+   *
+   * @return array<string, mixed>
+   *   The outcome for the model.
+   */
+  public function confirmPending(string $code, ContentEntityInterface $conversation): array {
+    $pending = $this->state->get($this->key('pending', (string) $conversation->id()));
+    if (!is_array($pending)) {
+      return ['error' => 'No hay ninguna solicitud pendiente en esta conversación. Si José quiere la acción, pídela con solicitar_accion.'];
+    }
+
+    return $this->confirm((int) $pending['request'], $code, $conversation);
   }
 
   /**
@@ -154,7 +174,7 @@ final class SentinelActionApproval {
    * @return array<string, mixed>
    *   The outcome for the model.
    */
-  public function confirm(int $request_id, string $code, ContentEntityInterface $conversation): array {
+  private function confirm(int $request_id, string $code, ContentEntityInterface $conversation): array {
     $conversation_id = (string) $conversation->id();
     $record = $this->state->get($this->key('code', (string) $request_id));
     // Only the conversation that asked can confirm, and only once.

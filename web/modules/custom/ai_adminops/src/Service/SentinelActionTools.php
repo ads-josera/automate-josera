@@ -38,7 +38,7 @@ final class SentinelActionTools implements OwnerToolProviderInterface {
     return [
       [
         'name' => 'solicitar_accion',
-        'description' => 'Pide permiso para una acción en un servidor. Le llega a José un código de 6 dígitos a su correo; nada se ejecuta todavía. Úsala solo cuando José pida la acción.',
+        'description' => 'Pide permiso para una acción en un servidor. Le llega a José un código de 6 dígitos a su correo; nada se ejecuta todavía. Úsala solo cuando José pida la acción. Si ya la pediste y José te escribe un número, NO la pidas otra vez: usa confirmar_accion.',
         'parameters' => [
           'type' => 'object',
           'properties' => [
@@ -52,14 +52,13 @@ final class SentinelActionTools implements OwnerToolProviderInterface {
       ],
       [
         'name' => 'confirmar_accion',
-        'description' => 'Ejecuta una acción pedida con solicitar_accion, con el código de 6 dígitos que José escribió en este chat. Nunca inventes ni adivines el código.',
+        'description' => 'Ejecuta la acción pendiente de esta conversación con el código que José escribió en este chat. Pásale el número tal cual lo escribió, aunque no tenga 6 dígitos: aquí se valida. Nunca inventes ni adivines el código.',
         'parameters' => [
           'type' => 'object',
           'properties' => [
-            'solicitud' => ['type' => 'integer', 'description' => 'Número que devolvió solicitar_accion.'],
-            'codigo' => ['type' => 'string', 'pattern' => '^[0-9]{6}$'],
+            'codigo' => ['type' => 'string', 'description' => 'Lo que José escribió, tal cual.'],
           ],
-          'required' => ['solicitud', 'codigo'],
+          'required' => ['codigo'],
           'additionalProperties' => FALSE,
         ],
       ],
@@ -71,7 +70,7 @@ final class SentinelActionTools implements OwnerToolProviderInterface {
    */
   public function execute(string $name, array $arguments, ContentEntityInterface $conversation): array {
     if ($name === 'confirmar_accion') {
-      return $this->approval->confirm((int) ($arguments['solicitud'] ?? 0), (string) ($arguments['codigo'] ?? ''), $conversation);
+      return $this->approval->confirmPending((string) ($arguments['codigo'] ?? ''), $conversation);
     }
     if ($name !== 'solicitar_accion') {
       throw new \InvalidArgumentException('Unknown tool.');

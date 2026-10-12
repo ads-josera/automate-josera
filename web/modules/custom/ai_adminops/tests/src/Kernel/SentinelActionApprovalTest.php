@@ -111,7 +111,7 @@ final class SentinelActionApprovalTest extends AdminOpsKernelTestBase {
     $result = $this->ask();
     $code = $this->codeFrom($this->getMails()[0]);
 
-    $outcome = $this->tools()->execute('confirmar_accion', ['solicitud' => $result['solicitud'], 'codigo' => $code], $this->conversation);
+    $outcome = $this->confirm($code);
 
     $this->assertSame('ejecutada', $outcome['resultado']);
     $this->assertSame(['restart_apache'], $this->ran);
@@ -121,9 +121,27 @@ final class SentinelActionApprovalTest extends AdminOpsKernelTestBase {
     $this->assertSame('critical', $execution->get('risk')->value);
     $this->assertSame((string) $result['solicitud'], (string) $execution->get('action_request')->target_id);
 
-    $again = $this->tools()->execute('confirmar_accion', ['solicitud' => $result['solicitud'], 'codigo' => $code], $this->conversation);
+    $again = $this->confirm($code);
     $this->assertArrayHasKey('error', $again, 'A code works once.');
     $this->assertSame(['restart_apache'], $this->ran);
+  }
+
+  /**
+   * The model confirms with the code alone, and a wrong length is a try.
+   *
+   * On 2026-10-11 the tool needed the request number, which the model does
+   * not keep between messages, so it asked for a new code every time José
+   * typed one and nothing ever ran.
+   */
+  public function testTheCodeAloneConfirms(): void {
+    $definitions = array_column($this->tools()->definitions(), NULL, 'name');
+    $this->assertSame(['codigo'], $definitions['confirmar_accion']['parameters']['required']);
+
+    $this->ask();
+    $this->assertStringContainsString('Quedan 2', $this->confirm('12344456')['error'], 'Eight digits count as a wrong code.');
+    $this->assertSame('ejecutada', $this->confirm($this->codeFrom($this->getMails()[0]))['resultado']);
+    $this->assertSame(['restart_apache'], $this->ran);
+    $this->assertArrayHasKey('error', $this->confirm('123456'), 'Nothing is pending any more.');
   }
 
   /**
@@ -134,13 +152,13 @@ final class SentinelActionApprovalTest extends AdminOpsKernelTestBase {
     $code = $this->codeFrom($this->getMails()[0]);
     $wrong = $code === '000000' ? '111111' : '000000';
 
-    $first = $this->confirm($result['solicitud'], $wrong);
+    $first = $this->confirm($wrong);
     $this->assertStringContainsString('Quedan 2', $first['error']);
-    $this->confirm($result['solicitud'], $wrong);
-    $this->confirm($result['solicitud'], $wrong);
+    $this->confirm($wrong);
+    $this->confirm($wrong);
 
     $this->assertSame('rejected', $this->request($result['solicitud'])->get('status')->value);
-    $this->assertArrayHasKey('error', $this->confirm($result['solicitud'], $code));
+    $this->assertArrayHasKey('error', $this->confirm($code));
     $this->assertSame([], $this->ran);
   }
 
@@ -152,7 +170,7 @@ final class SentinelActionApprovalTest extends AdminOpsKernelTestBase {
     $code = $this->codeFrom($this->getMails()[0]);
     $this->request($result['solicitud'])->set('expires_at', time() - 1)->save();
 
-    $this->assertArrayHasKey('error', $this->confirm($result['solicitud'], $code));
+    $this->assertArrayHasKey('error', $this->confirm($code));
     $this->assertSame('expired', $this->request($result['solicitud'])->get('status')->value);
     $this->assertSame([], $this->ran);
   }
@@ -164,7 +182,7 @@ final class SentinelActionApprovalTest extends AdminOpsKernelTestBase {
     $result = $this->ask();
     $code = $this->codeFrom($this->getMails()[0]);
 
-    $outcome = $this->tools()->execute('confirmar_accion', ['solicitud' => $result['solicitud'], 'codigo' => $code], $this->newConversation());
+    $outcome = $this->tools()->execute('confirmar_accion', ['codigo' => $code], $this->newConversation());
 
     $this->assertArrayHasKey('error', $outcome);
     $this->assertSame([], $this->ran);
@@ -180,7 +198,7 @@ final class SentinelActionApprovalTest extends AdminOpsKernelTestBase {
     $this->ask('restart_php_fpm');
 
     $this->assertSame('expired', $this->request($first['solicitud'])->get('status')->value);
-    $this->assertArrayHasKey('error', $this->confirm($first['solicitud'], $first_code));
+    $this->assertArrayHasKey('error', $this->confirm($first_code));
     $this->assertSame([], $this->ran);
   }
 
@@ -220,7 +238,7 @@ final class SentinelActionApprovalTest extends AdminOpsKernelTestBase {
     $this->actionResult = new \RuntimeException('Permission denied');
     $result = $this->ask();
 
-    $outcome = $this->confirm($result['solicitud'], $this->codeFrom($this->getMails()[0]));
+    $outcome = $this->confirm($this->codeFrom($this->getMails()[0]));
 
     $this->assertSame('fallida', $outcome['resultado']);
     $this->assertStringNotContainsString('Permission denied', json_encode($outcome));
@@ -246,10 +264,10 @@ final class SentinelActionApprovalTest extends AdminOpsKernelTestBase {
   }
 
   /**
-   * Confirms a request from the test conversation.
+   * Confirms with only the code, as the model does between two messages.
    */
-  private function confirm(int $request_id, string $code): array {
-    return $this->tools()->execute('confirmar_accion', ['solicitud' => $request_id, 'codigo' => $code], $this->conversation);
+  private function confirm(string $code): array {
+    return $this->tools()->execute('confirmar_accion', ['codigo' => $code], $this->conversation);
   }
 
   /**

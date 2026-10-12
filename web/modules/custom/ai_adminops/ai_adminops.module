@@ -18,7 +18,7 @@ function ai_adminops_cron(): void {
  * Implements hook_mail().
  */
 function ai_adminops_mail(string $key, array &$message, array $params): void {
-  if ($key !== 'event_alert') {
+  if (!in_array($key, ['event_alert', 'sentinel_approval'], TRUE)) {
     return;
   }
 

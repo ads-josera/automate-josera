@@ -76,8 +76,12 @@ final class AdminOpsActionRequestManager {
 
   /**
    * Approves a pending request. Execution remains a separate concern.
+   *
+   * @param int|null $approved_by
+   *   The approving user; NULL when approved with a one-time code and no
+   *   user matches the address the code was sent to.
    */
-  public function approve(int $request_id, int $approved_by): ContentEntityInterface {
+  public function approve(int $request_id, ?int $approved_by): ContentEntityInterface {
     $request = $this->loadPendingRequest($request_id);
     $request->set('status', 'approved');
     $request->set('approved_by', $approved_by);
@@ -96,6 +100,40 @@ final class AdminOpsActionRequestManager {
     $request->set('approved_at', $this->time->getRequestTime());
     $request->set('note', trim($note));
     $request->save();
+    return $request;
+  }
+
+  /**
+   * Closes a request that will not, or did no longer, wait for approval.
+   *
+   * @param string $status
+   *   'executed' or 'failed' after an approved request ran; 'expired' or
+   *   'rejected' for a pending one that was replaced or refused.
+   */
+  public function close(int $request_id, string $status, string $note = ''): ContentEntityInterface {
+    $allowed = [
+      'approved' => ['executed', 'failed'],
+      'pending' => ['expired', 'rejected'],
+    ];
+    $request = $this->entityTypeManager->getStorage('ai_adminops_action_request')->load($request_id);
+    if (!$request instanceof ContentEntityInterface || !in_array($status, $allowed[(string) $request->get('status')->value] ?? [], TRUE)) {
+      throw new \LogicException(sprintf('AdminOps action request %d cannot become %s.', $request_id, $status));
+    }
+
+    $request->set('status', $status);
+    if ($note !== '') {
+      $request->set('note', trim($note));
+    }
+    if (in_array($status, ['executed', 'failed'], TRUE)) {
+      $request->set('executed_at', $this->time->getRequestTime());
+    }
+    $request->save();
+
+    $this->logger->notice('AdminOps action request @request is now @status.', [
+      '@request' => (string) $request_id,
+      '@status' => $status,
+    ]);
+
     return $request;
   }
 

@@ -107,3 +107,28 @@ services:
       - '@ai_adminops.execution_audit'
     tags:
       - { name: ai_whatsapp_automation.owner_tool_provider }
+
+  # Phase B: actions with a code emailed to José. Nothing is offered until
+  # settings.php has an action SSH profile and an approval address.
+  ai_adminops.action_ssh_connector:
+    class: Drupal\ai_adminops\Service\ActionSshConnector
+
+  ai_adminops.sentinel_action_approval:
+    class: Drupal\ai_adminops\Service\SentinelActionApproval
+    arguments:
+      - '@entity_type.manager'
+      - '@ai_adminops.action_request_manager'
+      - '@ai_adminops.execution_audit'
+      - '@ai_adminops.action_ssh_connector'
+      - '@plugin.manager.mail'
+      - '@state'
+      - '@datetime.time'
+      - '@logger.channel.ai_adminops'
+
+  ai_adminops.sentinel_action_tools:
+    class: Drupal\ai_adminops\Service\SentinelActionTools
+    arguments:
+      - '@entity_type.manager'
+      - '@ai_adminops.sentinel_action_approval'
+    tags:
+      - { name: ai_whatsapp_automation.owner_tool_provider }

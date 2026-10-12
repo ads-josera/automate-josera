@@ -160,6 +160,21 @@ Depende de él, pero **no lo modifica**, por regla de la especificación. Consum
 - Las horas salen en la zona del sitio, con `hace_minutos` para que Sentinel diga de cuándo es el dato.
 - Pruebas: `tests/src/Kernel/SentinelServerToolsTest.php` (8). Se rompió a propósito cada salvaguarda (límite por minuto, servidores inactivos, fuga de la referencia de credencial, `enum` vacío, tope del historial, eventos resueltos, parámetros de auditoría) y cada una hizo fallar su prueba.
 
+### Acciones de Sentinel con código por correo (fase B, 2026-10-11)
+
+Decisión de José: **el código llega por correo**, nunca al WhatsApp que lo pide, y en la primera versión solo hay **dos acciones**: reinicio *graceful* de Apache y reinicio de PHP-FPM (MySQL queda fuera a propósito). Nunca hay comandos libres.
+
+- `SentinelActionTools` (proveedor) ofrece `solicitar_accion(servidor, accion, motivo)` y `confirmar_accion(solicitud, codigo)`. **Solo aparecen** en servidores donde están configuradas las dos cosas de `settings.php` (abajo); si falta cualquiera, Sentinel ni siquiera sabe que existen.
+- `SentinelActionApproval` hace el flujo:
+  1. `solicitar_accion` crea una **solicitud de acción** (la entidad que ya existía, riesgo `critical`, vence en **10 min**) y un código de 6 dígitos que se manda **solo por correo** a `ai_adminops_sentinel_approval_email`. El código se guarda como HMAC con la sal del sitio y **nunca** se le devuelve al modelo. Si el correo falla, la solicitud se cancela.
+  2. José escribe el código en WhatsApp y Sentinel llama a `confirmar_accion`. Solo la conversación que pidió puede confirmar; **3 códigos incorrectos** rechazan la solicitud; un código vencido no sirve; el correcto se usa **una vez**, aprueba la solicitud (aprobada por el usuario con ese correo) y ejecuta la acción, registrada en la bitácora con riesgo `critical` y la solicitud.
+  3. Una solicitud nueva reemplaza la pendiente de esa conversación. Máximo **5 códigos por hora** por conversación.
+- `ActionSshConnector` ejecuta por **otra llave SSH y otra cuenta remota** (no la del monitoreo): `adminops-act <accion>`, con un `forced-command` y un `sudoers` que solo permiten esos dos scripts de cPanel. Ver [AI_ADMINOPS_ACTIONS_SSH.md](AI_ADMINOPS_ACTIONS_SSH.md).
+- **El correo y el perfil viven en `settings.php` a propósito**: quien entre al panel no puede mandarse los códigos a otro lado ni activar acciones.
+- Pruebas: `tests/src/Kernel/SentinelActionApprovalTest.php` (11). Se rompió a propósito cada salvaguarda (cualquier código, intentos ilimitados, otra conversación, sin vencimiento, código filtrado al modelo, sin límite por hora, sin reemplazo, sin correo configurado, correo fallido ignorado) y cada una hizo fallar su prueba. Borrar el código tras usarlo es redundante: la solicitud deja de estar pendiente y el código ya no sirve, y la prueba lo comprueba.
+
+**Reinicio completo del servidor (pregunta de José, 2026-10-11): no es una acción**, a propósito. Sentinel vive en ese servidor: se apagaría con él y no podría confirmar que regresó, y si no levanta solo se arregla desde la consola del proveedor. Propuesta: una lectura «¿pide reinicio?» (kernel nuevo instalado) para que Sentinel avise y José reinicie desde WHM a la hora que elija.
+
 ### Permisos
 
 - `access ai adminops dashboard`: ver el tablero, los eventos, las solicitudes y la bitácora.

@@ -120,6 +120,7 @@ final class SentinelServerToolsTest extends AdminOpsKernelTestBase {
     $this->assertSame(['succeeded'], $this->auditStatuses('get_server_load'));
     $this->assertSame(['failed'], $this->auditStatuses('get_cpu_usage'));
     $this->assertSame(['no_data'], $this->auditStatuses('get_exim_queue'));
+    $this->assertArrayHasKey('get_reboot_status', $result['revisiones'], 'The reboot check is part of a live reading.');
     $storage = $this->container->get('entity_type.manager')->getStorage('ai_adminops_tool_execution');
     $execution = current($storage->loadByProperties(['tool_id' => 'get_server_load']));
     $this->assertSame(['source' => 'sentinel', 'conversation' => (string) $this->conversation->id()], json_decode($execution->get('parameters_json')->value, TRUE));

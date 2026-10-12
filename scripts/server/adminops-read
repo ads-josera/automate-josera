@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+# Forced command for the adminops_observer key (AI AdminOps monitoring).
+# Installed as /usr/local/sbin/adminops-read, root:root 755. Read only: each
+# check prints one JSON object. Versioned in the repo (scripts/server/).
+# 2026-10-11: Exim through a single sudo rule, real SSL readings, and a
+# reboot check.
+set -euo pipefail
+
+# Domains whose certificates get_ssl_status reads, one per line.
+SSL_DOMAINS_FILE=/etc/adminops/ssl-domains
+
+case "${SSH_ORIGINAL_COMMAND:-}" in
+  'adminops-read get_server_load')
+    awk '{printf "{\"status\":\"ok\",\"load_1m\":%s,\"load_5m\":%s,\"load_15m\":%s}\n", $1, $2, $3}' /proc/loadavg
+    ;;
+  'adminops-read get_cpu_usage')
+    read -r _ u1 n1 s1 i1 w1 irq1 sirq1 st1 _ < /proc/stat
+    total1=$((u1 + n1 + s1 + i1 + w1 + irq1 + sirq1 + st1))
+    idle1=$((i1 + w1))
+    sleep 1
+    read -r _ u2 n2 s2 i2 w2 irq2 sirq2 st2 _ < /proc/stat
+    total2=$((u2 + n2 + s2 + i2 + w2 + irq2 + sirq2 + st2))
+    idle2=$((i2 + w2))
+    delta_total=$((total2 - total1))
+    delta_idle=$((idle2 - idle1))
+    awk -v total="$delta_total" -v idle="$delta_idle" 'BEGIN {
+      if (total <= 0) { usage = 0 } else { usage = (total - idle) * 100 / total }
+      printf "{\"status\":\"ok\",\"cpu_percent\":%.2f}\n", usage
+    }'
+    ;;
+  'adminops-read get_memory_usage')
+    awk '/MemTotal:/ {total=$2} /MemAvailable:/ {available=$2} END {
+      used=total-available
+      printf "{\"status\":\"ok\",\"total_kb\":%d,\"used_kb\":%d,\"used_percent\":%.2f}\n", total, used, (used * 100 / total)
+    }' /proc/meminfo
+    ;;
+  'adminops-read get_disk_usage')
+    df -Pk / | awk 'NR==2 {
+      gsub("%", "", $5)
+      printf "{\"status\":\"ok\",\"mount\":\"/\",\"used_percent\":%d,\"available_kb\":%d}\n", $5, $4
+    }'
+    ;;
+  'adminops-read get_exim_queue')
+    # Only root can count the queue; sudoers allows exactly this command.
+    queue=$(sudo -n /usr/sbin/exim -bpc 2>/dev/null || true)
+    case "$queue" in
+      ''|*[!0-9]*) printf '{"status":"unavailable"}\n' ;;
+      *) printf '{"status":"ok","queue_count":%d}\n' "$queue" ;;
+    esac
+    ;;
+  'adminops-read get_ssl_status')
+    if [ ! -r "$SSL_DOMAINS_FILE" ]; then
+      printf '{"status":"not_configured","message":"No SSL domains listed in %s."}\n' "$SSL_DOMAINS_FILE"
+      exit 0
+    fi
+    now=$(date +%s)
+    items=''
+    min=''
+    while IFS= read -r domain; do
+      domain=${domain%%#*}
+      domain=$(printf '%s' "$domain" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
+      # Plain host names only: the value ends up in JSON and in openssl.
+      [[ "$domain" =~ ^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$ ]] || continue
+      pem=$(timeout 10 openssl s_client -connect 127.0.0.1:443 -servername "$domain" </dev/null 2>/dev/null | openssl x509 2>/dev/null || true)
+      if [ -z "$pem" ]; then
+        item=$(printf '{"domain":"%s","status":"unavailable"}' "$domain")
+      else
+        end=$(printf '%s\n' "$pem" | openssl x509 -noout -enddate | cut -d= -f2)
+        days=$(( ($(date -d "$end" +%s) - now) / 86400 ))
+        matches=false
+        printf '%s\n' "$pem" | openssl x509 -noout -checkhost "$domain" 2>/dev/null | grep -q 'does match' && matches=true
+        item=$(printf '{"domain":"%s","days_left":%d,"matches_domain":%s}' "$domain" "$days" "$matches")
+        # A certificate for another name (the server's default) says
+        # nothing about this domain's own: it is listed, not counted.
+        if [ "$matches" = true ] && { [ -z "$min" ] || [ "$days" -lt "$min" ]; }; then min=$days; fi
+      fi
+      items="${items:+$items,}$item"
+    done < "$SSL_DOMAINS_FILE"
+    if [ -z "$min" ]; then
+      printf '{"status":"unavailable","certificates":[%s]}\n' "$items"
+    else
+      printf '{"status":"ok","min_days_left":%d,"certificates":[%s]}\n' "$min" "$items"
+    fi
+    ;;
+  'adminops-read get_reboot_status')
+    running=$(uname -r)
+    installed=$(rpm -q --last kernel-core 2>/dev/null | head -1 | awk '{print $1}' | sed 's/^kernel-core-//' || true)
+    rc=0
+    needs-restarting -r >/dev/null 2>&1 || rc=$?
+    case "$rc" in
+      0) required=false ;;
+      1) required=true ;;
+      *) printf '{"status":"unavailable","running_kernel":"%s"}\n' "$running"; exit 0 ;;
+    esac
+    printf '{"status":"ok","reboot_required":%s,"running_kernel":"%s","newest_installed_kernel":"%s"}\n' "$required" "$running" "$installed"
+    ;;
+  *)
+    printf '{"status":"denied"}\n' >&2
+    exit 64
+    ;;
+esac

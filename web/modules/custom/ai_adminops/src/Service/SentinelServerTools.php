@@ -19,14 +19,14 @@ use Drupal\Core\State\StateInterface;
  * Who may call them is decided by OwnerToolRunner in ai_whatsapp_automation
  * (owner bot, owner number, owner tools switched on). Nothing here changes a
  * server: four tools read what AdminOps already stored, and "leer_ahora"
- * runs the six fixed read-only checks, each recorded in the AdminOps log.
+ * runs the seven fixed read-only checks, each recorded in the AdminOps log.
  * A live reading does not count towards alerts: those follow the schedule,
  * so asking Sentinel twice cannot open or close an event.
  */
 final class SentinelServerTools implements OwnerToolProviderInterface {
 
   /**
-   * The six fixed checks, with their labels in the AdminOps log.
+   * The seven fixed checks, with their labels in the AdminOps log.
    */
   private const CHECKS = [
     'get_server_load' => 'Get server load',
@@ -35,6 +35,7 @@ final class SentinelServerTools implements OwnerToolProviderInterface {
     'get_disk_usage' => 'Get disk usage',
     'get_exim_queue' => 'Get Exim queue',
     'get_ssl_status' => 'Get SSL status',
+    'get_reboot_status' => 'Get reboot status',
   ];
 
   /**
@@ -81,7 +82,7 @@ final class SentinelServerTools implements OwnerToolProviderInterface {
       ],
       [
         'name' => 'estado_servidor',
-        'description' => 'Última lectura programada de un servidor (carga, CPU, memoria, disco, cola de correo, SSL) y los umbrales de alerta. No se conecta al servidor.',
+        'description' => 'Última lectura programada de un servidor (carga, CPU, memoria, disco, cola de correo, SSL, si pide reinicio) y los umbrales de alerta. No se conecta al servidor.',
         'parameters' => $this->schema(['servidor' => $server]),
       ],
       [
@@ -100,7 +101,7 @@ final class SentinelServerTools implements OwnerToolProviderInterface {
       ],
       [
         'name' => 'leer_ahora',
-        'description' => 'Se conecta al servidor y hace las seis revisiones de solo lectura en este momento. Úsala solo si José pide el dato actual o la última lectura es vieja.',
+        'description' => 'Se conecta al servidor y hace las siete revisiones de solo lectura en este momento. Úsala solo si José pide el dato actual o la última lectura es vieja.',
         'parameters' => $this->schema(['servidor' => $server]),
       ],
     ];
@@ -262,7 +263,7 @@ final class SentinelServerTools implements OwnerToolProviderInterface {
   }
 
   /**
-   * Runs the six checks now, each one in the AdminOps log.
+   * Runs the seven checks now, each one in the AdminOps log.
    *
    * @return array<string, mixed>
    *   The readings, or the previous ones when asked again within a minute.

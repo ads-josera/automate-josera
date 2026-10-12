@@ -110,6 +110,7 @@ final class MonitoringJobProcessor {
       'get_disk_usage' => 'Get disk usage',
       'get_exim_queue' => 'Get Exim queue',
       'get_ssl_status' => 'Get SSL status',
+      'get_reboot_status' => 'Get reboot status',
       default => 'Read-only monitoring check',
     };
   }

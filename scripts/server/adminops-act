@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Forced command for the adminops_actor key (Sentinel's approved actions).
+# Installed as /usr/local/sbin/adminops-act, root:root 755. Two actions,
+# nothing else; Drupal runs one only after José typed the code it emailed.
+# Versioned in the repo (scripts/server/).
+set -uo pipefail
+
+emit() { printf '{"status":"%s","action":"%s","exit_code":%d}\n' "$1" "$2" "$3"; }
+
+case "${SSH_ORIGINAL_COMMAND:-}" in
+  'adminops-act restart_apache')
+    action=restart_apache
+    sudo -n /usr/local/cpanel/scripts/restartsrv_httpd --graceful >/dev/null 2>&1
+    ;;
+  'adminops-act restart_php_fpm')
+    action=restart_php_fpm
+    sudo -n /usr/local/cpanel/scripts/restartsrv_apache_php_fpm >/dev/null 2>&1
+    ;;
+  *)
+    emit rejected unknown 64
+    exit 64
+    ;;
+esac
+rc=$?
+
+logger -t adminops-act "action=$action exit=$rc"
+if [ "$rc" -eq 0 ]; then emit ok "$action" 0; else emit failed "$action" "$rc"; fi

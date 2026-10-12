@@ -5,22 +5,7 @@ Las acciones usan **una cuenta y una llave distintas** a las del monitoreo. Si s
 ## Lo que se instala en el servidor (como root)
 
 1. **Cuenta** `adminops_actor`, sin contraseña y sin shell interactiva útil.
-2. **Script** `/usr/local/bin/adminops-act` (dueño root, permisos 755). Es el `forced-command`: lee `SSH_ORIGINAL_COMMAND`, acepta solo `adminops-act restart_apache` y `adminops-act restart_php_fpm`, y responde un solo JSON:
-
-```bash
-#!/bin/bash
-# Forced command for the adminops_actor key: two actions, nothing else.
-set -u
-emit() { printf '{"status":"%s","action":"%s","exit_code":%d}\n' "$1" "$2" "$3"; }
-read -r cmd action extra <<< "${SSH_ORIGINAL_COMMAND:-}"
-if [ "${cmd:-}" != "adminops-act" ] || [ -n "${extra:-}" ]; then emit rejected unknown 1; exit 1; fi
-case "${action:-}" in
-  restart_apache)  sudo -n /usr/local/cpanel/scripts/restartsrv_httpd --graceful >/dev/null 2>&1; rc=$? ;;
-  restart_php_fpm) sudo -n /usr/local/cpanel/scripts/restartsrv_apache_php_fpm >/dev/null 2>&1; rc=$? ;;
-  *) emit rejected unknown 1; exit 1 ;;
-esac
-if [ "$rc" -eq 0 ]; then emit ok "$action" 0; else emit failed "$action" "$rc"; fi
-```
+2. **Script** `/usr/local/sbin/adminops-act` (dueño root, permisos 755), junto al `adminops-read` del monitoreo. Su fuente está versionada en **`scripts/server/adminops-act`** y se instala desde `_repo` (fuera del webroot). Es el `forced-command`: acepta solo `adminops-act restart_apache` y `adminops-act restart_php_fpm`, responde un solo JSON (`ok`, `failed` o `rejected`) y deja una línea en el syslog (`adminops-act`).
 
 3. **sudoers** `/etc/sudoers.d/adminops_actor` (permisos 440, validar con `visudo -cf`):
 
@@ -32,7 +17,7 @@ adminops_actor ALL=(root) NOPASSWD: /usr/local/cpanel/scripts/restartsrv_httpd -
 4. **Llave pública** en `~adminops_actor/.ssh/authorized_keys`:
 
 ```
-command="/usr/local/bin/adminops-act",no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-pty,no-user-rc ssh-ed25519 AAAA… adminops-actions
+command="/usr/local/sbin/adminops-act",no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-pty,no-user-rc ssh-ed25519 AAAA… adminops-actions
 ```
 
 ## Lo que va en `settings.php` de producción (no en Git)

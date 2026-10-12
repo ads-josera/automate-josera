@@ -91,13 +91,16 @@ case "${SSH_ORIGINAL_COMMAND:-}" in
     running=$(uname -r)
     installed=$(rpm -q --last kernel-core 2>/dev/null | head -1 | awk '{print $1}' | sed 's/^kernel-core-//' || true)
     rc=0
-    needs-restarting -r >/dev/null 2>&1 || rc=$?
+    report=$(needs-restarting -r 2>/dev/null) || rc=$?
     case "$rc" in
       0) required=false ;;
       1) required=true ;;
       *) printf '{"status":"unavailable","running_kernel":"%s"}\n' "$running"; exit 0 ;;
     esac
-    printf '{"status":"ok","reboot_required":%s,"running_kernel":"%s","newest_installed_kernel":"%s"}\n' "$required" "$running" "$installed"
+    # Which updated packages ask for it ("  * glibc" lines). The kernel can
+    # be current and a reboot still due for glibc, systemd, openssl...
+    packages=$(printf '%s\n' "$report" | sed -n 's/^ *\* *\([A-Za-z0-9._+-]*\).*/"\1"/p' | head -10 | paste -sd, -)
+    printf '{"status":"ok","reboot_required":%s,"updated_packages":[%s],"running_kernel":"%s","newest_installed_kernel":"%s"}\n' "$required" "$packages" "$running" "$installed"
     ;;
   *)
     printf '{"status":"denied"}\n' >&2

@@ -145,6 +145,23 @@ final class SentinelActionApprovalTest extends AdminOpsKernelTestBase {
   }
 
   /**
+   * A scheduled action is approved and the model is told not to verify yet.
+   */
+  public function testAScheduledActionIsReportedAsScheduled(): void {
+    $this->actionResult = ['status' => 'scheduled', 'action' => 'restart_apache', 'runs_in_seconds' => 30];
+    $this->ask();
+
+    $outcome = $this->confirm($this->codeFrom($this->getMails()[0]));
+
+    $this->assertSame('programada', $outcome['resultado']);
+    $this->assertSame(30, $outcome['se_ejecuta_en_segundos']);
+    $this->assertStringContainsString('No verifiques ahora', $outcome['siguiente_paso']);
+    $request = current($this->container->get('entity_type.manager')->getStorage('ai_adminops_action_request')->loadMultiple());
+    $this->assertSame('executed', $request->get('status')->value);
+    $this->assertStringContainsString('get_last_action', $request->get('note')->value);
+  }
+
+  /**
    * Three wrong codes refuse the request; the right one is useless after.
    */
   public function testThreeWrongCodesRefuseTheRequest(): void {

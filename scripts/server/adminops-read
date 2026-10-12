@@ -2,7 +2,8 @@
 # Forced command for the adminops_observer key (AI AdminOps monitoring).
 # Installed as /usr/local/sbin/adminops-read, root:root 755. Read only: each
 # check prints one JSON object. Versioned in the repo (scripts/server/).
-# 2026-10-11: Exim through a single sudo rule (active and frozen apart), real SSL readings, and a
+# 2026-10-11: get_last_action (outcome of Sentinel's last action); Exim
+# through a single sudo rule (active and frozen apart), real SSL readings, and a
 # reboot check.
 set -euo pipefail
 
@@ -101,6 +102,14 @@ case "${SSH_ORIGINAL_COMMAND:-}" in
     # be current and a reboot still due for glibc, systemd, openssl...
     packages=$(printf '%s\n' "$report" | sed -n 's/^ *\* *\([A-Za-z0-9._+-]*\).*/"\1"/p' | head -10 | paste -sd, -)
     printf '{"status":"ok","reboot_required":%s,"updated_packages":[%s],"running_kernel":"%s","newest_installed_kernel":"%s"}\n' "$required" "$packages" "$running" "$installed"
+    ;;
+  'adminops-read get_last_action')
+    # Written by adminops-act: the last approved action and how it ended.
+    if [ -r /var/lib/adminops/last-action.json ]; then
+      head -c 512 /var/lib/adminops/last-action.json
+    else
+      printf '{"status":"none"}\n'
+    fi
     ;;
   *)
     printf '{"status":"denied"}\n' >&2

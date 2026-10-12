@@ -239,9 +239,22 @@ final class SentinelActionApproval {
       return ['solicitud' => $request_id, 'resultado' => 'fallida', 'detalle' => 'El servidor no completó la acción. Revisa el estado del servicio.'];
     }
 
-    $ok = ($result['status'] ?? '') === 'ok';
+    // The server schedules the action a few seconds ahead and answers at
+    // once: restarting Apache or PHP-FPM inline killed this very request on
+    // 2026-10-11, and José never got the reply.
+    $scheduled = ($result['status'] ?? '') === 'scheduled';
+    $ok = $scheduled || ($result['status'] ?? '') === 'ok';
     $ok ? $this->executionAudit->markSucceeded((int) $execution->id(), $result) : $this->executionAudit->markFailed((int) $execution->id(), $result);
-    $this->requestManager->close($request_id, $ok ? 'executed' : 'failed');
+    $this->requestManager->close($request_id, $ok ? 'executed' : 'failed', $scheduled ? 'Programada en el servidor; el resultado queda en la revisión get_last_action.' : '');
+
+    if ($scheduled) {
+      return [
+        'solicitud' => $request_id,
+        'resultado' => 'programada',
+        'se_ejecuta_en_segundos' => (int) ($result['runs_in_seconds'] ?? 30),
+        'siguiente_paso' => 'Dile a José que quedó aprobada y que se ejecuta en esos segundos. No verifiques ahora: todavía no ocurre. Cuando José pregunte (en un minuto o más), usa leer_ahora y mira get_last_action.',
+      ];
+    }
 
     return ['solicitud' => $request_id, 'resultado' => $ok ? 'ejecutada' : 'fallida', 'respuesta_del_servidor' => $result];
   }

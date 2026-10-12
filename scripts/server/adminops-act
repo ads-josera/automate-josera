@@ -3,25 +3,44 @@
 # Installed as /usr/local/sbin/adminops-act, root:root 755. Two actions,
 # nothing else; Drupal runs one only after José typed the code it emailed.
 # Versioned in the repo (scripts/server/).
+#
+# The action runs DELAY seconds later, detached, and this script answers
+# "scheduled" at once. On 2026-10-11 a graceful Apache restart run inline
+# also restarted PHP-FPM nine seconds later, killing the very request that
+# was answering José on WhatsApp. The outcome is written to RESULT_FILE,
+# which adminops-read get_last_action reports.
 set -uo pipefail
 
-emit() { printf '{"status":"%s","action":"%s","exit_code":%d}\n' "$1" "$2" "$3"; }
+DELAY=30
+RESULT_FILE=/var/lib/adminops/last-action.json
 
 case "${SSH_ORIGINAL_COMMAND:-}" in
   'adminops-act restart_apache')
     action=restart_apache
-    sudo -n /usr/local/cpanel/scripts/restartsrv_httpd --graceful >/dev/null 2>&1
+    command=(/usr/local/cpanel/scripts/restartsrv_httpd --graceful)
     ;;
   'adminops-act restart_php_fpm')
     action=restart_php_fpm
-    sudo -n /usr/local/cpanel/scripts/restartsrv_apache_php_fpm >/dev/null 2>&1
+    command=(/usr/local/cpanel/scripts/restartsrv_apache_php_fpm)
     ;;
   *)
-    emit rejected unknown 64
+    printf '{"status":"rejected","action":"unknown"}\n'
     exit 64
     ;;
 esac
-rc=$?
 
-logger -t adminops-act "action=$action exit=$rc"
-if [ "$rc" -eq 0 ]; then emit ok "$action" 0; else emit failed "$action" "$rc"; fi
+scheduled_at=$(date +%s)
+printf '{"status":"scheduled","action":"%s","scheduled_at":%d,"runs_at":%d}\n' "$action" "$scheduled_at" "$((scheduled_at + DELAY))" > "$RESULT_FILE.tmp" && mv -f "$RESULT_FILE.tmp" "$RESULT_FILE"
+
+# Detached from this SSH session so it returns now and survives the restart.
+setsid bash -c '
+  sleep "$1"; shift
+  action=$1; result_file=$2; shift 2
+  sudo -n "$@" >/dev/null 2>&1; rc=$?
+  status=ok; [ "$rc" -eq 0 ] || status=failed
+  printf "{\"status\":\"%s\",\"action\":\"%s\",\"exit_code\":%d,\"finished_at\":%d}\n" "$status" "$action" "$rc" "$(date +%s)" > "$result_file.tmp" && mv -f "$result_file.tmp" "$result_file"
+  logger -t adminops-act "action=$action exit=$rc"
+' adminops-act "$DELAY" "$action" "$RESULT_FILE" "${command[@]}" </dev/null >/dev/null 2>&1 &
+
+logger -t adminops-act "action=$action scheduled in ${DELAY}s"
+printf '{"status":"scheduled","action":"%s","runs_in_seconds":%d}\n' "$action" "$DELAY"

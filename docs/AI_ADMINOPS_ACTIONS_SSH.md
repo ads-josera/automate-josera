@@ -5,7 +5,7 @@ Las acciones usan **una cuenta y una llave distintas** a las del monitoreo. Si s
 ## Lo que se instala en el servidor (como root)
 
 1. **Cuenta** `adminops_actor`, sin contraseña y sin shell interactiva útil.
-2. **Script** `/usr/local/sbin/adminops-act` (dueño root, permisos 755), junto al `adminops-read` del monitoreo. Su fuente está versionada en **`scripts/server/adminops-act`** y se instala desde `_repo` (fuera del webroot). Es el `forced-command`: acepta solo `adminops-act restart_apache` y `adminops-act restart_php_fpm`, responde un solo JSON (`ok`, `failed` o `rejected`) y deja una línea en el syslog (`adminops-act`).
+2. **Script** `/usr/local/sbin/adminops-act` (dueño root, permisos 755), junto al `adminops-read` del monitoreo. Su fuente está versionada en **`scripts/server/adminops-act`** y se instala desde `_repo` (fuera del webroot). Es el `forced-command`: acepta solo `adminops-act restart_apache` y `adminops-act restart_php_fpm`, **programa la acción 30 segundos después** (proceso separado de la sesión SSH), responde de inmediato `scheduled` y, al terminar, escribe el resultado en `/var/lib/adminops/last-action.json` (lo lee `adminops-read get_last_action`) y una línea en el syslog. **Por qué:** el 2026-10-11 el reinicio graceful de Apache, ejecutado en línea, provocó que cPanel reiniciara PHP-FPM 9 s después y mató la misma petición que le contestaba a José por WhatsApp. El directorio `/var/lib/adminops` es de `adminops_actor` (755) y el archivo se puede leer por `adminops_observer`.
 
 3. **sudoers** `/etc/sudoers.d/adminops_actor` (permisos 440, validar con `visudo -cf`):
 

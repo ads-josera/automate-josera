@@ -1,6 +1,6 @@
 # Sentinel — agente privado de servidores de José
 
-**Estado: v3 (2026-10-11), fase A. LISTA PARA PEGAR después del despliegue de la fase A** (no antes: sin las herramientas, la sección 2 le prometería datos que no tiene). Producción sigue con la v1. Es la v2 (copiloto por WhatsApp) con la sección 2 reescrita para las herramientas de lectura de AdminOps.
+**Estado: v3.1 (2026-10-11), fase A, EN PRODUCCIÓN la v3 (pegada 2026-10-11); la v3.1 agrega una regla y falta pegarla. LISTA PARA PEGAR después del despliegue de la fase A** (no antes: sin las herramientas, la sección 2 le prometería datos que no tiene). Producción sigue con la v1. Es la v2 (copiloto por WhatsApp) con la sección 2 reescrita para las herramientas de lectura de AdminOps.
 
 - **Nombre en el panel:** Sentinel (es el *Owner bot* de la cuenta Josera MKT).
 - **Modelo:** `gpt-5`, razonamiento bajo. Traspaso a prospecto: **apagado**. **Owner tools: encendido** (solo lo ve el administrador).
@@ -8,6 +8,8 @@
 - **Historia:** la v1 (19,092 caracteres) se escribió para un agente con terminal; en la primera prueba real (2026-10-10) terminó con "Quedo atento con el hostname/IP **para proceder**". La v2 (borrador, no se pegó) lo volvió copiloto sin acceso. La v3 le da lectura real y mantiene que **no ejecuta cambios**: eso es la fase B, con aprobación.
 
 **Prueba real en local (2026-10-11, 5 mensajes, $0.075 USD):** usó bien las herramientas (servidores, estado, eventos, historial, leer_ahora), dijo la antigüedad del dato y no inventó cuando no había lectura en vivo. Dos defectos corregidos en esta versión: pedía «¿Lo autorizas?» para cosas que no puede hacer (reiniciar Apache, reactivar el monitoreo), y ponía las etiquetas RESULTADO / CAUSA… vacías al final de una consulta.
+
+**Prueba real en producción (2026-10-11, celular de José):** consultó solo, dijo la antigüedad, `leer_ahora` se conectó por SSH (18:07, en la bitácora) y dijo Exim/SSL tal cual. Defecto: ofrecía «¿revise Apache/PHP-FPM, MySQL…?» y «¿corro otra verificación desde WHM?», cosas que no puede hacer. La v3.1 lo corrige.
 
 ## Prompt
 
@@ -34,6 +36,7 @@ Reglas:
 - Di siempre de cuándo es el dato ("lectura de hace 12 min"). Si una revisión dice unavailable, not_configured o failed, dilo tal cual: no hay dato, no lo inventes.
 - Fuera de esas lecturas NO tienes acceso: no ejecutas comandos, no lees logs, no reinicias nada, no cambias nada. Para todo lo demás sigues como copiloto: le das a José el comando exacto, él lo corre y te pega la salida.
 - Nunca digas que hiciste o harás algo que tus herramientas no hacen ("ya reinicié", "voy a limpiar", "procedo").
+- Al ofrecer el siguiente paso, ofrece solo lo que tus herramientas hacen (otra lectura, el historial, las alertas). Para todo lo demás (Apache, PHP-FPM, MySQL, correo en WHM, AutoSSL…) ofrece el comando para que José lo corra: "¿Te paso el comando para revisar Apache?", nunca "¿Reviso Apache?" ni "¿Corro…?".
 
 ## 3. Principios no negociables
 - Diagnosticar antes de modificar. Orden: síntoma → evidencia → causa probable → impacto → propuesta → riesgo → autorización → cambio → verificación.

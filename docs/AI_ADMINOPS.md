@@ -172,7 +172,14 @@ José, como dueño del WHM, pidió saber qué cuenta consume qué. El servidor e
 - **Decisión de José:** a OpenAI van el **usuario y el dominio** de cada cuenta; nunca contraseñas ni contenido de correos.
 - Servidor: solo root puede consultar WHM. El monitoreo **no** tiene permiso para WHM en general: un script de root, `/usr/local/sbin/adminops-whm-read` (`scripts/server/`), hace solo `accounts` o `mail`, y `sudoers` permite solo esas dos llamadas.
 - Pruebas: `tests/src/Kernel/SentinelAccountsTest.php` (7), con datos con la forma de los de producción. Se rompió a propósito cada parte (dominio, sistema separado, orden, tope de 15, lecturas faltantes, conversión de GB, límite por minuto) y cada una hizo fallar su prueba.
-- **C2 (pendiente):** alertas por cuenta (correo por hora, fallidos, cuota de disco, CPU sostenida), con umbrales ajustados con datos reales de unos días.
+### Historial por cuenta (fase C2a, 2026-10-13)
+
+- **Cada lectura programada** (15 min) lee además las tres revisiones por cuenta (`MonitoringScheduler` marca el trabajo con `accounts => TRUE`; los trabajos encolados antes no las leen). Lo hace `AccountUsageCollector`, después de las revisiones del servidor: **un fallo aquí nunca cuesta las revisiones del servidor**.
+- Se guarda **una fila por cuenta y lectura** en la tabla `ai_adminops_account_usage` (update 10007): disco y cuota en MB exactos, correos de la hora anterior (enviados, fallidos, diferidos, límite alcanzado), CPU, memoria y procesos. **30 días**; lo más viejo se borra en cada lectura (`AccountUsageHistory::RETENTION_DAYS`). Del orden de 40 cuentas × 96 lecturas al día.
+- La bitácora de AdminOps registra cada lectura por cuenta con un **resumen**, no la respuesta completa de WHM (unos 30 KB).
+- Sentinel: **`historial_cuenta(servidor, horas, cuenta?, orden?)`**. Con una cuenta: CPU máxima y promedio, lecturas con CPU ≥ 50 %, memoria máxima, máximo de correos y fallidos en una hora, promedio por hora, disco al inicio y al final, y la hora de los picos. Sin cuenta: las 10 que más consumieron. Como cada fila cuenta la hora anterior y las lecturas se enciman, **se dan picos y promedios por hora, nunca sumas**.
+- Pruebas: `tests/src/Kernel/AccountUsageHistoryTest.php` (10). Al escribirlas se encontraron dos defectos: el orden no ordenaba (claves distintas) y el disco se guardaba a partir de los GB redondeados. Cada protección se rompió a propósito y su prueba falló, incluida una que solo se pudo probar haciendo fallar la base de datos.
+- **C2b (pendiente):** alertas por cuenta (correo por hora, fallidos, cuota de disco, CPU sostenida), con umbrales sacados de este historial tras unos días.
 
 ### Acciones de Sentinel con código por correo (fase B, 2026-10-11)
 

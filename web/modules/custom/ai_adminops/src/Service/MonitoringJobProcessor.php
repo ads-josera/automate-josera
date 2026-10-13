@@ -25,6 +25,7 @@ final class MonitoringJobProcessor {
     private readonly AdminOpsExecutionAudit $executionAudit,
     private readonly MonitoringAlertEvaluator $alertEvaluator,
     private readonly LoggerInterface $logger,
+    private readonly AccountUsageCollector $accountCollector,
   ) {}
 
   /**
@@ -87,6 +88,20 @@ final class MonitoringJobProcessor {
     }
     elseif ($successful_checks > 0) {
       $this->alertEvaluator->recordServerReachable($server_id);
+    }
+
+    // Usage per cPanel account (phase C2). Only on jobs that ask for it, and a
+    // failure here never costs the server checks above.
+    if (!empty($item['accounts'])) {
+      try {
+        $this->accountCollector->collect($server, $this->time->getRequestTime());
+      }
+      catch (\Throwable $exception) {
+        $this->logger->warning('AdminOps could not store account usage for server @server: @message', [
+          '@server' => $server_id,
+          '@message' => $exception->getMessage(),
+        ]);
+      }
     }
 
     $result = [

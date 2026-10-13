@@ -93,6 +93,42 @@ abstract class AdminOpsKernelTestBase extends KernelTestBase {
   }
 
   /**
+   * Scripts the three per-account readings (phase C).
+   *
+   * Same shape as WHM's answers on the production server on 2026-10-13:
+   * four accounts (one suspended, one with an unlimited quota), mail from
+   * accounts and from the server itself, and processes.
+   */
+  protected function scriptAccountReadings(): void {
+    $this->readings['get_accounts'] = ['status' => 'ok', 'whm' => [
+      'metadata' => ['result' => 1, 'command' => 'listaccts'],
+      'data' => ['acct' => [
+        ['user' => 'humantz', 'domain' => 'humantz.com.mx', 'diskused' => '92M', 'disklimit' => '500M', 'suspended' => 0],
+        ['user' => 'koemx', 'domain' => 'koe.com.mx', 'diskused' => '14630M', 'disklimit' => '21000M', 'suspended' => 0],
+        ['user' => 'esim', 'domain' => 'esimbron.org', 'diskused' => '479M', 'disklimit' => '4500M', 'suspended' => 1],
+        ['user' => 'intec', 'domain' => 'tsd.lat', 'diskused' => '1.5G', 'disklimit' => 'unlimited', 'suspended' => 0],
+      ]],
+    ]];
+    $this->readings['get_mail_by_account'] = ['status' => 'ok',
+      'last_hour' => ['metadata' => ['result' => 1], 'data' => ['records' => [
+        ['USER' => 'intec', 'SENDCOUNT' => 2, 'SUCCESSCOUNT' => 2, 'FAILCOUNT' => 0, 'DEFERCOUNT' => 0, 'REACHED_MAXEMAILS' => 0],
+      ]]],
+      'last_day' => ['metadata' => ['result' => 1], 'data' => ['records' => [
+        ['USER' => '-remote-', 'SENDCOUNT' => 284, 'SUCCESSCOUNT' => 247, 'FAILCOUNT' => 74, 'DEFERCOUNT' => 1, 'REACHED_MAXEMAILS' => 0],
+        ['USER' => 'root', 'SENDCOUNT' => 224, 'SUCCESSCOUNT' => 0, 'FAILCOUNT' => 224, 'DEFERCOUNT' => 0, 'REACHED_MAXEMAILS' => 0],
+        ['USER' => 'intec', 'SENDCOUNT' => 22, 'SUCCESSCOUNT' => 58, 'FAILCOUNT' => 0, 'DEFERCOUNT' => 0, 'REACHED_MAXEMAILS' => 0],
+        ['USER' => 'koemx', 'SENDCOUNT' => 3, 'SUCCESSCOUNT' => 4, 'FAILCOUNT' => 9, 'DEFERCOUNT' => 0, 'REACHED_MAXEMAILS' => 1],
+      ]]],
+    ];
+    $this->readings['get_account_processes'] = ['status' => 'ok', 'users' => [
+      ['user' => 'koemx', 'cpu_percent' => 7.4, 'memory_mb' => 114, 'processes' => 6],
+      ['user' => 'intec', 'cpu_percent' => 0.3, 'memory_mb' => 276, 'processes' => 4],
+      ['user' => 'root', 'cpu_percent' => 9.2, 'memory_mb' => 1965, 'processes' => 120],
+      ['user' => 'mysql', 'cpu_percent' => 2.0, 'memory_mb' => 789, 'processes' => 1],
+    ]];
+  }
+
+  /**
    * Runs one monitoring job for the test server.
    *
    * @param string[] $tools

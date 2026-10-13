@@ -2,8 +2,52 @@
 
 /**
  * @file
- * Update hooks for AI AdminOps.
+ * Install, schema and update hooks for AI AdminOps.
  */
+
+/**
+ * Implements hook_schema().
+ */
+function ai_adminops_schema(): array {
+  return [
+    'ai_adminops_account_usage' => _ai_adminops_account_usage_schema(),
+  ];
+}
+
+/**
+ * Usage of each cPanel account, one row per account and scheduled reading.
+ *
+ * Phase C2 (2026-10-13). The server has no CloudLinux, so nothing else keeps
+ * per-account history; AdminOps keeps 30 days of it (AccountUsageHistory)
+ * to answer "has this account been busy this week?" and to set the
+ * per-account alert thresholds from real data.
+ */
+function _ai_adminops_account_usage_schema(): array {
+  return [
+    'description' => 'Usage of each cPanel account at each scheduled AdminOps reading.',
+    'fields' => [
+      'id' => ['type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE],
+      'server' => ['type' => 'varchar_ascii', 'length' => 64, 'not null' => TRUE, 'description' => 'AdminOps server ID.'],
+      'account' => ['type' => 'varchar_ascii', 'length' => 64, 'not null' => TRUE, 'description' => 'cPanel user.'],
+      'read_at' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE],
+      'suspended' => ['type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0],
+      'disk_mb' => ['type' => 'float', 'not null' => FALSE],
+      'quota_mb' => ['type' => 'float', 'not null' => FALSE, 'description' => 'NULL when unlimited.'],
+      'mail_sent' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => FALSE, 'description' => 'Sent in the hour before read_at; NULL when not read.'],
+      'mail_failed' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => FALSE],
+      'mail_deferred' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => FALSE],
+      'mail_limit_reached' => ['type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0],
+      'cpu_percent' => ['type' => 'float', 'not null' => FALSE, 'description' => 'At read_at; NULL when not read.'],
+      'memory_mb' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => FALSE],
+      'processes' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => FALSE],
+    ],
+    'primary key' => ['id'],
+    'indexes' => [
+      'server_account_read' => ['server', 'account', 'read_at'],
+      'read_at' => ['read_at'],
+    ],
+  ];
+}
 
 /**
  * Installs the content entity schemas introduced after initial installation.
@@ -117,3 +161,15 @@ function ai_adminops_update_10006(): string {
   return (string) t('AdminOps alerts now wait for two readings in a row.');
 }
 
+
+/**
+ * Creates the per-account usage history table (phase C2).
+ */
+function ai_adminops_update_10007(): string {
+  $schema = \Drupal::database()->schema();
+  if (!$schema->tableExists('ai_adminops_account_usage')) {
+    $schema->createTable('ai_adminops_account_usage', _ai_adminops_account_usage_schema());
+  }
+
+  return (string) t('AdminOps keeps 30 days of usage per cPanel account.');
+}

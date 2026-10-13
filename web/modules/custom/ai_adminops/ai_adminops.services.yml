@@ -92,6 +92,7 @@ services:
       - '@ai_adminops.execution_audit'
       - '@ai_adminops.monitoring_alert_evaluator'
       - '@logger.channel.ai_adminops'
+      - '@ai_adminops.account_usage_collector'
 
   # Sentinel's server tools. ai_whatsapp_automation's OwnerToolRunner decides
   # who may call them (owner bot, owner number, owner tools switched on).
@@ -106,6 +107,7 @@ services:
       - '@ai_adminops.read_only_ssh_connector'
       - '@ai_adminops.execution_audit'
       - '@ai_adminops.account_usage_report'
+      - '@ai_adminops.account_usage_history'
     tags:
       - { name: ai_whatsapp_automation.owner_tool_provider }
 
@@ -136,3 +138,20 @@ services:
       - '@ai_adminops.sentinel_action_approval'
     tags:
       - { name: ai_whatsapp_automation.owner_tool_provider }
+
+  # Phase C2: 30 days of usage per cPanel account, filled by the monitoring.
+  ai_adminops.account_usage_history:
+    class: Drupal\ai_adminops\Service\AccountUsageHistory
+    arguments:
+      - '@database'
+      - '@datetime.time'
+      - '@date.formatter'
+
+  ai_adminops.account_usage_collector:
+    class: Drupal\ai_adminops\Service\AccountUsageCollector
+    arguments:
+      - '@ai_adminops.read_only_ssh_connector'
+      - '@ai_adminops.execution_audit'
+      - '@ai_adminops.account_usage_report'
+      - '@ai_adminops.account_usage_history'
+      - '@logger.channel.ai_adminops'

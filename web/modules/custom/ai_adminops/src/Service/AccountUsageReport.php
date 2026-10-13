@@ -18,6 +18,15 @@ namespace Drupal\ai_adminops\Service;
 final class AccountUsageReport {
 
   /**
+   * The per-account checks this report joins, with their AdminOps labels.
+   */
+  public const CHECKS = [
+    'get_accounts' => 'Get cPanel accounts',
+    'get_mail_by_account' => 'Get mail by account',
+    'get_account_processes' => 'Get processes by account',
+  ];
+
+  /**
    * Accounts returned at most, so the reply stays readable on WhatsApp.
    */
   public const MAX_ACCOUNTS = 15;
@@ -46,6 +55,53 @@ final class AccountUsageReport {
    *   What the model receives.
    */
   public function build(array $accounts, array $mail, array $processes, string $order = 'disco', string $account = ''): array {
+    [$rows, $system] = $this->collate($accounts, $mail, $processes);
+
+    $rows = array_map(static fn (array $row) => array_diff_key($row, ['disco_mb' => TRUE, 'cuota_mb' => TRUE]), $rows);
+    $report = [
+      'total_cuentas' => count($rows),
+      'suspendidas' => count(array_filter($rows, static fn (array $row) => $row['suspendida'])),
+      'lecturas_sin_dato' => $this->missing($accounts, $mail, $processes),
+    ];
+
+    $account = mb_strtolower(trim($account));
+    if ($account !== '') {
+      $found = array_values(array_filter($rows, static fn (array $row) => $row['cuenta'] === $account || mb_strtolower($row['dominio']) === $account));
+      return $report + ($found === []
+        ? ['error' => 'No hay ninguna cuenta de cPanel con ese usuario o dominio.']
+        : ['cuentas' => $found]);
+    }
+
+    $order = in_array($order, self::ORDERS, TRUE) ? $order : 'disco';
+    uasort($rows, fn (array $a, array $b) => $this->sortValue($b, $order) <=> $this->sortValue($a, $order));
+
+    return $report + [
+      'orden' => $order,
+      'cuentas' => array_values(array_slice($rows, 0, self::MAX_ACCOUNTS)),
+      'cuentas_omitidas' => max(0, count($rows) - self::MAX_ACCOUNTS),
+      'sistema' => $system,
+    ];
+  }
+
+  /**
+   * Every account's row, uncapped and unsorted, keyed by cPanel user.
+   *
+   * What the scheduled monitoring stores in the usage history.
+   *
+   * @return array<string, array<string, mixed>>
+   *   Rows as in build()'s "cuentas".
+   */
+  public function accountRows(array $accounts, array $mail, array $processes): array {
+    return $this->collate($accounts, $mail, $processes)[0];
+  }
+
+  /**
+   * Joins the three readings: accounts, and the server's own users apart.
+   *
+   * @return array{0: array<string, array<string, mixed>>, 1: array<string, array<string, mixed>>}
+   *   Rows by cPanel user, and the "sistema" block.
+   */
+  private function collate(array $accounts, array $mail, array $processes): array {
     $rows = [];
     foreach ($this->whmAccounts($accounts) as $acct) {
       $user = (string) ($acct['user'] ?? '');
@@ -61,6 +117,10 @@ final class AccountUsageReport {
         // Gigabytes worked out here (1024 MB each): on 2026-10-13 the model
         // converted the same account to 14.6 GB in one reply and 14.3 GB in
         // the next.
+        // Exact megabytes for the usage history; build() leaves them out so
+        // the model only sees the GB.
+        'disco_mb' => $used,
+        'cuota_mb' => $limit,
         'disco_gb' => $used === NULL ? NULL : round($used / 1024, 2),
         'cuota_gb' => $limit === NULL ? NULL : round($limit / 1024, 2),
         'disco_porcentaje' => $used !== NULL && $limit ? round($used * 100 / $limit, 1) : NULL,
@@ -105,29 +165,8 @@ final class AccountUsageReport {
     uasort($system['procesos'], static fn (array $a, array $b) => $b['cpu_porcentaje'] <=> $a['cpu_porcentaje']);
     $system['procesos'] = array_slice($system['procesos'], 0, 5, TRUE);
 
-    $report = [
-      'total_cuentas' => count($rows),
-      'suspendidas' => count(array_filter($rows, static fn (array $row) => $row['suspendida'])),
-      'lecturas_sin_dato' => $this->missing($accounts, $mail, $processes),
-    ];
 
-    $account = mb_strtolower(trim($account));
-    if ($account !== '') {
-      $found = array_values(array_filter($rows, static fn (array $row) => $row['cuenta'] === $account || mb_strtolower($row['dominio']) === $account));
-      return $report + ($found === []
-        ? ['error' => 'No hay ninguna cuenta de cPanel con ese usuario o dominio.']
-        : ['cuentas' => $found]);
-    }
-
-    $order = in_array($order, self::ORDERS, TRUE) ? $order : 'disco';
-    uasort($rows, fn (array $a, array $b) => $this->sortValue($b, $order) <=> $this->sortValue($a, $order));
-
-    return $report + [
-      'orden' => $order,
-      'cuentas' => array_values(array_slice($rows, 0, self::MAX_ACCOUNTS)),
-      'cuentas_omitidas' => max(0, count($rows) - self::MAX_ACCOUNTS),
-      'sistema' => $system,
-    ];
+    return [$rows, $system];
   }
 
   /**

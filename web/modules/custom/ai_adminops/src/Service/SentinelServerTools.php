@@ -40,15 +40,6 @@ final class SentinelServerTools implements OwnerToolProviderInterface {
   ];
 
   /**
-   * The per-account checks behind "cuentas" (phase C), with their labels.
-   */
-  private const ACCOUNT_CHECKS = [
-    'get_accounts' => 'Get cPanel accounts',
-    'get_mail_by_account' => 'Get mail by account',
-    'get_account_processes' => 'Get processes by account',
-  ];
-
-  /**
    * Seconds between two live readings of the same server.
    */
   private const LIVE_READ_INTERVAL = 60;
@@ -70,6 +61,7 @@ final class SentinelServerTools implements OwnerToolProviderInterface {
     private readonly MonitoringCollectorInterface $collector,
     private readonly AdminOpsExecutionAudit $executionAudit,
     private readonly AccountUsageReport $accountReport,
+    private readonly AccountUsageHistory $accountHistory,
   ) {}
 
   /**
@@ -120,6 +112,16 @@ final class SentinelServerTools implements OwnerToolProviderInterface {
         ], ['servidor']),
       ],
       [
+        'name' => 'historial_cuenta',
+        'description' => 'Historial de consumo de las cuentas de cPanel guardado por el monitoreo (cada 15 min, hasta 30 días): CPU máxima y promedio, memoria máxima, el máximo de correos enviados y fallidos en una hora y el promedio por hora. Con una cuenta, además el disco al inicio y al final y la hora de los picos. Sin cuenta, las cuentas que más consumieron. Úsala para preguntas sobre el pasado ("esta semana", "ayer"); para el momento actual usa cuentas.',
+        'parameters' => $this->schema([
+          'servidor' => $server,
+          'cuenta' => ['type' => 'string', 'description' => 'Opcional: usuario de cPanel (no el dominio).'],
+          'horas' => ['type' => 'integer', 'minimum' => 1, 'maximum' => AccountUsageHistory::RETENTION_DAYS * 24, 'description' => 'Cuántas horas hacia atrás: 24 = un día, 168 = una semana.'],
+          'orden' => ['type' => 'string', 'enum' => AccountUsageHistory::ORDERS, 'description' => 'Sin cuenta: por qué ordenar.'],
+        ], ['servidor', 'horas']),
+      ],
+      [
         'name' => 'leer_ahora',
         'description' => 'Se conecta al servidor y hace las ocho revisiones de solo lectura en este momento. Úsala solo si José pide el dato actual o la última lectura es vieja.',
         'parameters' => $this->schema(['servidor' => $server]),
@@ -145,6 +147,7 @@ final class SentinelServerTools implements OwnerToolProviderInterface {
       'estado_servidor' => $this->status($server),
       'historial' => $this->history($server, (string) ($arguments['revision'] ?? ''), (int) ($arguments['lecturas'] ?? 5)),
       'leer_ahora' => $this->readNow($server, $conversation),
+      'historial_cuenta' => ['servidor' => $server->id()] + $this->accountHistory->summarize((string) $server->id(), (string) ($arguments['cuenta'] ?? ''), (int) ($arguments['horas'] ?? 24), (string) ($arguments['orden'] ?? 'correo')),
       'cuentas' => $this->accounts($server, (string) ($arguments['orden'] ?? 'disco'), (string) ($arguments['cuenta'] ?? ''), $conversation),
       default => throw new \InvalidArgumentException('Unknown tool.'),
     };
@@ -335,7 +338,7 @@ final class SentinelServerTools implements OwnerToolProviderInterface {
     else {
       $read_at = $now;
       $readings = [];
-      foreach (self::ACCOUNT_CHECKS as $check => $label) {
+      foreach (AccountUsageReport::CHECKS as $check => $label) {
         $readings[$check] = $this->collectAudited($server, $check, $label, $conversation);
       }
       $this->state->set($key, ['at' => $read_at, 'readings' => $readings]);

@@ -73,6 +73,8 @@ final class MonitoringScheduler {
       $queue->createItem([
         'server_id' => $server->id(),
         'tools' => self::MONITORING_TOOLS,
+        // Also read every cPanel account and keep the history (phase C2).
+        'accounts' => TRUE,
         'scheduled_at' => $now,
       ]);
       $queued++;

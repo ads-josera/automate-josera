@@ -226,7 +226,7 @@ final class AdminOpsSettingsForm extends ConfigFormBase {
       '#type' => 'textfield',
       '#title' => $this->t('Twilio Content Template SID'),
       '#default_value' => (string) ($whatsapp['template_sid'] ?? ''),
-      '#description' => $this->t('Optional for non-Twilio providers. For Twilio, configure a template with variable {{1}} to support alerts outside the 24-hour messaging window.'),
+      '#description' => $this->t('Optional for non-Twilio providers. For Twilio, use an approved template with seven variables, in this order: level, server, affected, problem, detail, since, link (Josera MKT: josera_alerta_servidor, HX836b39336b31a26e3c971d66454f40b2). Without it, alerts only reach recipients who wrote in the last 24 hours.'),
     ];
     // Buttons do not render a #description, so the explanation is its own
     // item: the button sends real messages and does not save.

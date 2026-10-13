@@ -179,6 +179,7 @@ José, como dueño del WHM, pidió saber qué cuenta consume qué. El servidor e
 - La bitácora de AdminOps registra cada lectura por cuenta con un **resumen**, no la respuesta completa de WHM (unos 30 KB).
 - Sentinel: **`historial_cuenta(servidor, horas, cuenta?, orden?)`**. Con una cuenta: CPU máxima y promedio, lecturas con CPU ≥ 50 %, memoria máxima, máximo de correos y fallidos en una hora, promedio por hora, disco al inicio y al final, y la hora de los picos. Sin cuenta: las 10 que más consumieron. Como cada fila cuenta la hora anterior y las lecturas se enciman, **se dan picos y promedios por hora, nunca sumas**.
 - Pruebas: `tests/src/Kernel/AccountUsageHistoryTest.php` (10). Al escribirlas se encontraron dos defectos: el orden no ordenaba (claves distintas) y el disco se guardaba a partir de los GB redondeados. Cada protección se rompió a propósito y su prueba falló, incluida una que solo se pudo probar haciendo fallar la base de datos.
+- **CPU por cuenta corregida el mismo día** (ver `AI_ADMINOPS_READ_ONLY_SSH.md`): medida en 3 s y en % del servidor. Las primeras filas, con la medición vieja, quedaron con la CPU en NULL.
 - **C2b (pendiente):** alertas por cuenta (correo por hora, fallidos, cuota de disco, CPU sostenida), con umbrales sacados de este historial tras unos días.
 
 ### Acciones de Sentinel con código por correo (fase B, 2026-10-11)

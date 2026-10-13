@@ -89,3 +89,5 @@ Tres revisiones más en `adminops-read`: `get_accounts`, `get_mail_by_account` (
 Defaults:adminops_observer !requiretty
 adminops_observer ALL=(root) NOPASSWD: /usr/sbin/exim -bp, /usr/local/sbin/adminops-whm-read accounts, /usr/local/sbin/adminops-whm-read mail
 ```
+
+**CPU por cuenta (corregida el 2026-10-13):** `get_account_processes` mide con dos lecturas de `/proc` separadas 3 s y da el **% del total del servidor** (todos los núcleos), en la misma escala que `get_cpu_usage`. Antes salía de `ps -o pcpu`, que es el promedio de toda la vida de cada proceso y en escala de un solo núcleo: en el contenedor de pruebas, un núcleo ocupado daba 102 % y seguía alto después de terminar; ahora da 25 % (4 núcleos) y 0 % al terminar. Las filas del historial anteriores a la corrección se guardaron con la CPU borrada (NULL).

@@ -104,7 +104,7 @@ final class SentinelServerTools implements OwnerToolProviderInterface {
       ],
       [
         'name' => 'cuentas',
-        'description' => 'Consumo de cada cuenta de cPanel del servidor, leído en este momento: disco contra su cuota, si está suspendida, correos enviados/entregados/fallidos/diferidos de la última hora y del último día, y CPU y memoria de ahora (no hay historial de CPU por cuenta). Úsala para saber qué cuenta consume más o si alguna manda correo masivo.',
+        'description' => 'Consumo de cada cuenta de cPanel del servidor, leído en este momento: disco contra su cuota, si está suspendida, correos enviados/entregados/fallidos/diferidos de la última hora y del último día, y CPU y memoria de ahora (la CPU es el % del total del servidor que la cuenta usó en 3 segundos). Úsala para saber qué cuenta consume más o si alguna manda correo masivo.',
         'parameters' => $this->schema([
           'servidor' => $server,
           'orden' => ['type' => 'string', 'enum' => AccountUsageReport::ORDERS, 'description' => 'Por qué ordenar: disco (porcentaje de cuota), correo (enviados en el día), correo_fallido, cpu o memoria.'],

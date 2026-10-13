@@ -77,9 +77,12 @@ final class SentinelAccountsTest extends AdminOpsKernelTestBase {
     $this->assertSame(69.7, $koemx['disco_porcentaje']);
     $this->assertSame(7.4, $koemx['cpu_porcentaje']);
     $this->assertSame(['enviados' => 3, 'entregados' => 4, 'fallidos' => 9, 'diferidos' => 0, 'limite_alcanzado' => TRUE], $koemx['correo_ultimo_dia']);
-    $this->assertNull($koemx['correo_ultima_hora'], 'No mail in the last hour is not zero: it is no record.');
+    $this->assertSame(['enviados' => 0, 'entregados' => 0, 'fallidos' => 0, 'diferidos' => 0, 'limite_alcanzado' => FALSE], $koemx['correo_ultima_hora'], 'Missing from a window that was read means it sent nothing (2026-10-13: Sentinel said "sin dato").');
+    $this->assertSame(14.29, $koemx['disco_gb'], 'Gigabytes come worked out, so every reply gives the same number.');
+    $this->assertSame(20.51, $koemx['cuota_gb']);
     $this->assertTrue($this->row($report, 'esim')['suspendida']);
-    $this->assertSame(1536.0, $this->row($report, 'intec')['disco_mb'], '"1.5G" is read as megabytes.');
+    $this->assertSame(1.5, $this->row($report, 'intec')['disco_gb'], '"1.5G" is read right.');
+    $this->assertNull($this->row($report, 'intec')['cuota_gb'], 'An unlimited quota has no size.');
     $this->assertNull($this->row($report, 'intec')['disco_porcentaje'], 'An unlimited quota has no percentage.');
 
     $this->assertSame(['-remote-', 'root'], array_keys($report['sistema']['correo_ultimo_dia']));
@@ -132,6 +135,7 @@ final class SentinelAccountsTest extends AdminOpsKernelTestBase {
     $report = $this->ask([]);
 
     $this->assertSame(['correo', 'procesos'], $report['lecturas_sin_dato']);
+    $this->assertNull($report['cuentas'][0]['correo_ultimo_dia'], 'An unread window is unknown, not zero.');
     $this->assertSame(4, $report['total_cuentas']);
   }
 

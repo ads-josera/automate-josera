@@ -58,11 +58,14 @@ final class AccountUsageReport {
         'cuenta' => $user,
         'dominio' => (string) ($acct['domain'] ?? ''),
         'suspendida' => (bool) ($acct['suspended'] ?? FALSE),
-        'disco_mb' => $used,
-        'cuota_mb' => $limit,
+        // Gigabytes worked out here (1024 MB each): on 2026-10-13 the model
+        // converted the same account to 14.6 GB in one reply and 14.3 GB in
+        // the next.
+        'disco_gb' => $used === NULL ? NULL : round($used / 1024, 2),
+        'cuota_gb' => $limit === NULL ? NULL : round($limit / 1024, 2),
         'disco_porcentaje' => $used !== NULL && $limit ? round($used * 100 / $limit, 1) : NULL,
-        'correo_ultima_hora' => NULL,
-        'correo_ultimo_dia' => NULL,
+        'correo_ultima_hora' => $this->noMail($mail['last_hour'] ?? NULL),
+        'correo_ultimo_dia' => $this->noMail($mail['last_day'] ?? NULL),
         'cpu_porcentaje' => 0.0,
         'memoria_mb' => 0,
         'procesos' => 0,
@@ -171,6 +174,22 @@ final class AccountUsageReport {
       'diferidos' => (int) ($record['DEFERCOUNT'] ?? 0),
       'limite_alcanzado' => (bool) ($record['REACHED_MAXEMAILS'] ?? FALSE),
     ];
+  }
+
+  /**
+   * What an account that sent nothing in a window reports.
+   *
+   * WHM lists only the users that sent mail. When the window was read, an
+   * account missing from it sent zero; only an unread window is unknown
+   * (NULL). On 2026-10-13 a missing account was reported as "sin dato".
+   *
+   * @return array<string, int|bool>|null
+   *   Zero counts, or NULL when the window could not be read.
+   */
+  private function noMail(mixed $whm): ?array {
+    return is_array($whm) && (int) ($whm['metadata']['result'] ?? 0) === 1
+      ? ['enviados' => 0, 'entregados' => 0, 'fallidos' => 0, 'diferidos' => 0, 'limite_alcanzado' => FALSE]
+      : NULL;
   }
 
   /**

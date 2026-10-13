@@ -32,6 +32,15 @@ final class OwnerToolRunner {
   public const MAX_ROUNDS = 3;
 
   /**
+   * Seconds to wait for each OpenAI round, instead of the site's 30.
+   *
+   * The owner bot runs a reasoning model over a long conversation with tool
+   * definitions; on 2026-10-13 a round passed 30 s and José waited three
+   * minutes for the queue retry. Client bots keep the site timeout.
+   */
+  public const REQUEST_TIMEOUT = 90;
+
+  /**
    * Largest tool result handed to the model, in bytes.
    */
   private const MAX_RESULT_BYTES = 4000;
@@ -105,7 +114,7 @@ final class OwnerToolRunner {
   public function respond(array $prompt_data, ContentEntityInterface $conversation): array {
     [$tools, $owners] = $this->catalogue();
     $model = $prompt_data['model'] ?? NULL;
-    $options = (is_array($prompt_data['options'] ?? NULL) ? $prompt_data['options'] : []) + ['tools' => $tools];
+    $options = (is_array($prompt_data['options'] ?? NULL) ? $prompt_data['options'] : []) + ['tools' => $tools, 'timeout' => self::REQUEST_TIMEOUT];
 
     $response = $this->openAIService->sendPrompt((string) $prompt_data['prompt'], $model, $options);
     $totals = $this->totals([], $response);

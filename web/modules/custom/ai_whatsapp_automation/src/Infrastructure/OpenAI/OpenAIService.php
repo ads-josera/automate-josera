@@ -66,7 +66,10 @@ final class OpenAIService implements OpenAIServiceInterface {
 
     $selected_model = $this->selectModel($model);
     $payload = $this->buildRequestPayload($prompt, $selected_model, $options);
-    $timeout = (int) ($config->get('openai.timeout') ?: 30);
+    // A caller may wait longer than the site default; only owner tool rounds
+    // do (OwnerToolRunner), so client bots keep the configured timeout.
+    $timeout = (int) ($options['timeout'] ?? 0) ?: (int) ($config->get('openai.timeout') ?: 30);
+    $started = microtime(TRUE);
 
     try {
       $response = $this->httpClient->request('POST', self::RESPONSES_ENDPOINT, [
@@ -106,6 +109,10 @@ final class OpenAIService implements OpenAIServiceInterface {
     $context = [
       'model' => $selected_model,
       'response_id' => (string) ($response_data['id'] ?? ''),
+      // How long OpenAI took. Messages are stored with the time they
+      // arrived, so on 2026-10-13 a 30 s timeout could not be told apart
+      // from a model that is always slow.
+      'seconds' => round(microtime(TRUE) - $started, 1),
     ];
     $tokens = $this->registerTokens($usage, $context);
     $configured_rates = $this->configuredCostRates($config, $selected_model);
@@ -172,9 +179,10 @@ final class OpenAIService implements OpenAIServiceInterface {
     ];
 
     if ($this->shouldLogMetrics()) {
-      $this->logger->info('OpenAI token usage registered for @model: @total total tokens.', [
+      $this->logger->info('OpenAI token usage registered for @model: @total total tokens in @seconds s.', [
         '@model' => (string) ($context['model'] ?? 'unknown'),
         '@total' => (string) $tokens['total_tokens'],
+        '@seconds' => (string) ($context['seconds'] ?? '?'),
       ]);
     }
 

@@ -210,6 +210,8 @@ final class OwnerToolsTest extends KernelTestBase {
     $this->assertCount(2, $bodies);
     $this->assertSame(['estado_servidor'], array_column($bodies[0]['tools'], 'name'), 'The first request offers the tools.');
     $this->assertStringContainsString('OWNER-PROMPT', json_encode($bodies[0]));
+    $this->assertSame([90, 90], $this->timeouts(), 'Every owner round waits 90 s (2026-10-13: a round passed 30 s).');
+    $this->assertArrayNotHasKey('timeout', $bodies[0], 'The timeout is for the HTTP client, never sent to OpenAI.');
     $this->assertSame('resp_1', $bodies[1]['previous_response_id']);
     $this->assertSame('function_call_output', $bodies[1]['input'][0]['type']);
     $this->assertSame('call_1', $bodies[1]['input'][0]['call_id']);
@@ -307,6 +309,24 @@ final class OwnerToolsTest extends KernelTestBase {
       $this->assertStringContainsString($marker, json_encode($body));
     }
     $this->assertSame([], $this->container->get('owner_tools_test.provider')->calls);
+    $this->assertSame(array_fill(0, $count, 30), $this->timeouts(), 'Client bots keep the site timeout.');
+  }
+
+  /**
+   * Returns the timeout of every request sent to OpenAI.
+   *
+   * @return int[]
+   *   Seconds, in order.
+   */
+  private function timeouts(): array {
+    $timeouts = [];
+    foreach ($this->history as $transaction) {
+      if ($transaction['request']->getUri()->getHost() === 'api.openai.com') {
+        $timeouts[] = (int) $transaction['options']['timeout'];
+      }
+    }
+
+    return $timeouts;
   }
 
   /**

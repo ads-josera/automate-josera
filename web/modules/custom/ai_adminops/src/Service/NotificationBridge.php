@@ -10,6 +10,7 @@ use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Mail\MailManagerInterface;
 use Drupal\Core\State\StateInterface;
+use Drupal\Core\Url;
 use Drupal\ai_whatsapp_automation\Application\Webhook\ProviderMessageSenderService;
 use Psr\Log\LoggerInterface;
 
@@ -17,6 +18,27 @@ use Psr\Log\LoggerInterface;
  * Delivers AdminOps event alerts through configured existing channels.
  */
 final class NotificationBridge {
+
+  /**
+   * Severity as the alert template says it.
+   */
+  private const LEVELS = [
+    'critical' => 'Crítica',
+    'warning' => 'Advertencia',
+    'info' => 'Información',
+  ];
+
+  /**
+   * Short titles for the server-wide event types.
+   */
+  private const PROBLEMS = [
+    'server_load_high' => 'Carga del servidor alta',
+    'cpu_usage_high' => 'Uso de CPU alto',
+    'memory_usage_high' => 'Uso de memoria alto',
+    'disk_usage_high' => 'Disco del servidor casi lleno',
+    'exim_queue_high' => 'Cola de correo alta',
+    'server_unreachable' => 'Servidor sin respuesta',
+  ];
 
   /**
    * Creates a NotificationBridge instance.
@@ -106,6 +128,15 @@ final class NotificationBridge {
         'If you are reading this, alerts from this site reach you through this channel.',
         'Sent: ' . date('Y-m-d H:i:s T', $this->time->getRequestTime()),
       ]),
+      'variables' => $this->templateValues([
+        '1' => 'Prueba',
+        '2' => 'AdminOps',
+        '3' => 'todo el servidor',
+        '4' => 'Prueba de aviso de AdminOps',
+        '5' => 'Si lees esto, las alertas reales te llegan por este canal.',
+        '6' => date('Y-m-d H:i', $this->time->getRequestTime()),
+        '7' => Url::fromRoute('ai_adminops.events', [], ['absolute' => TRUE])->toString(),
+      ]),
     ];
     $results = [
       'email' => $this->sendEmail($email, $message),
@@ -135,7 +166,7 @@ final class NotificationBridge {
    *
    * @param array<string, mixed> $settings
    *   Email channel configuration.
-   * @param array{subject: string, body: string} $message
+   * @param array{subject: string, body: string, variables: array<string, string>} $message
    *   Safe, normalized alert content.
    *
    * @return array<int, array<string, mixed>>
@@ -162,7 +193,7 @@ final class NotificationBridge {
    *
    * @param array<string, mixed> $settings
    *   WhatsApp channel configuration.
-   * @param array{subject: string, body: string} $message
+   * @param array{subject: string, body: string, variables: array<string, string>} $message
    *   Safe, normalized alert content.
    *
    * @return array<int, array<string, mixed>>
@@ -192,7 +223,7 @@ final class NotificationBridge {
         'whatsapp_account_id' => $account->id(),
       ];
       $delivery = $provider === 'twilio' && $template_sid !== ''
-        ? $this->messageSender->sendTemplate($provider, $payload, $template_sid, ['1' => $this->templateText($message)])
+        ? $this->messageSender->sendTemplate($provider, $payload, $template_sid, $message['variables'])
         : $this->messageSender->sendText($provider, $payload, $message['body']);
       $results[] = [
         'recipient' => $recipient,
@@ -229,14 +260,63 @@ final class NotificationBridge {
         'Occurred: ' . $time,
         'Event ID: ' . $event->id(),
       ]),
+      'variables' => $this->eventVariables($event, $server_label),
     ];
   }
 
   /**
-   * Reduces alert text to a safe size for a WhatsApp template variable.
+   * The seven values of the approved WhatsApp alert template.
+   *
+   * Template "josera_alerta_servidor" (HX836b…, 2026-10-13): Nivel, Servidor,
+   * Afectado, Problema, Detalle, Desde, Ver alerta. José asked that an alert
+   * name the cPanel account when it is about one (mail flood, quota at 95 %),
+   * so an event's evidence may carry "account", "domain", "problem" and
+   * "detail"; server-wide events say "todo el servidor". Meta rejects empty
+   * values, so every one has a fallback.
+   *
+   * @return array<string, string>
+   *   Values keyed "1" to "7".
    */
-  private function templateText(array $message): string {
-    return substr(str_replace("\n", ' | ', $message['body']), 0, 900);
+  private function eventVariables(ContentEntityInterface $event, string $server_label): array {
+    $evidence = json_decode((string) $event->get('evidence_json')->value, TRUE);
+    $evidence = is_array($evidence) ? $evidence : [];
+    $summary = trim((string) $event->get('summary')->value);
+    $problem = self::PROBLEMS[(string) $event->get('event_type')->value] ?? NULL;
+
+    $account = trim((string) ($evidence['account'] ?? ''));
+    $domain = trim((string) ($evidence['domain'] ?? ''));
+    $affected = $account === '' ? 'todo el servidor' : 'cuenta ' . $account . ($domain !== '' ? ' (' . $domain . ')' : '');
+    $occurred_at = (int) $event->get('occurred_at')->value;
+
+    return $this->templateValues([
+      '1' => self::LEVELS[(string) $event->get('severity')->value] ?? 'Aviso',
+      '2' => $server_label,
+      '3' => $affected,
+      // Known server-wide types get a short title and keep the measured
+      // summary as the detail; anything else uses its summary as the title.
+      '4' => (string) ($evidence['problem'] ?? $problem ?? $summary),
+      '5' => (string) ($evidence['detail'] ?? ($problem !== NULL ? $summary : trim((string) $event->get('details')->value))),
+      '6' => $occurred_at > 0 ? date('Y-m-d H:i', $occurred_at) : 'Sin fecha',
+      '7' => Url::fromRoute('ai_adminops.event_status', ['ai_adminops_event' => $event->id()], ['absolute' => TRUE])->toString(),
+    ]);
+  }
+
+  /**
+   * Makes template values safe: one line, bounded, never empty.
+   *
+   * @param array<string, string> $values
+   *   Raw values.
+   *
+   * @return array<string, string>
+   *   Cleaned values.
+   */
+  private function templateValues(array $values): array {
+    foreach ($values as $key => $value) {
+      $value = preg_replace('/\s+/u', ' ', trim($value)) ?? '';
+      $values[$key] = $value === '' ? 'Sin dato' : mb_substr($value, 0, 300);
+    }
+
+    return $values;
   }
 
   /**

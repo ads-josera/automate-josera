@@ -160,6 +160,29 @@ Depende de él, pero **no lo modifica**, por regla de la especificación. Consum
 - Las horas salen en la zona del sitio, con `hace_minutos` para que Sentinel diga de cuándo es el dato.
 - Pruebas: `tests/src/Kernel/SentinelServerToolsTest.php` (8). Se rompió a propósito cada salvaguarda (límite por minuto, servidores inactivos, fuga de la referencia de credencial, `enum` vacío, tope del historial, eventos resueltos, parámetros de auditoría) y cada una hizo fallar su prueba.
 
+### Alertas por WhatsApp con plantilla (2026-10-13)
+
+Plantilla **`josera_alerta_servidor`** (`HX836b39336b31a26e3c971d66454f40b2`) en la cuenta de Twilio de Josera MKT (`…d28e8f`), categoría UTILITY, enviada a Meta el 2026-10-13. Fuera de la ventana de 24 h, WhatsApp solo deja mandar mensajes con plantilla aprobada.
+
+```
+Alerta del servidor de Josera MKT.
+Nivel: {{1}}  Servidor: {{2}}  Afectado: {{3}}  Problema: {{4}}
+Detalle: {{5}}  Desde: {{6}}  Ver alerta: {{7}}
+Pregúntale a Sentinel si necesitas más detalle.
+```
+
+- `NotificationBridge::eventVariables()` llena los 7 valores desde el evento:
+  - **Nivel**: Crítica, Advertencia o Información.
+  - **Afectado**: «cuenta X (dominio)» si la evidencia del evento trae `account`/`domain`; si no, «todo el servidor». José pidió que una alerta nombre la cuenta de cPanel cuando sea de una cuenta: correo masivo, cuota al 95 %…
+  - **Problema**: un título corto para los tipos del servidor (CPU, memoria, disco, carga, cola, sin respuesta), o `evidence.problem`, o el resumen.
+  - **Detalle**: el resumen medido, o `evidence.detail`, o los detalles.
+  - **Ver alerta**: la URL absoluta del evento.
+- Ningún valor va vacío («Sin dato») ni con saltos de línea, porque Meta los rechaza. Cada valor se corta a 300 caracteres.
+- El botón de prueba llena los mismos 7 valores.
+- **Antes la alerta mandaba todo el texto en una sola variable (`{{1}}`).** Una plantilla de una sola variable ya no sirve.
+- Las alertas por cuenta de C2b deben poner `account`, `domain`, `problem` y `detail` en la evidencia del evento.
+- Pruebas: `tests/src/Kernel/WhatsAppAlertTemplateTest.php` (4), interceptando la llamada a Twilio. Se rompió a propósito cada parte y cada una falló.
+
 ### Consumo por cuenta de cPanel (fase C1, 2026-10-13)
 
 José, como dueño del WHM, pidió saber qué cuenta consume qué. El servidor es AlmaLinux 9.8 **sin CloudLinux**, así que no hay historial de CPU por cuenta: hay lista de cuentas y correo por cuenta (API de WHM) y procesos del momento.

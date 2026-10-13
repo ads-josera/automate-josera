@@ -160,6 +160,20 @@ Depende de él, pero **no lo modifica**, por regla de la especificación. Consum
 - Las horas salen en la zona del sitio, con `hace_minutos` para que Sentinel diga de cuándo es el dato.
 - Pruebas: `tests/src/Kernel/SentinelServerToolsTest.php` (8). Se rompió a propósito cada salvaguarda (límite por minuto, servidores inactivos, fuga de la referencia de credencial, `enum` vacío, tope del historial, eventos resueltos, parámetros de auditoría) y cada una hizo fallar su prueba.
 
+### Consumo por cuenta de cPanel (fase C1, 2026-10-13)
+
+José, como dueño del WHM, pidió saber qué cuenta consume qué. El servidor es AlmaLinux 9.8 **sin CloudLinux**, así que no hay historial de CPU por cuenta: hay lista de cuentas y correo por cuenta (API de WHM) y procesos del momento.
+
+- Herramienta de Sentinel **`cuentas(servidor, orden?, cuenta?)`** en `SentinelServerTools`. Hace tres revisiones nuevas, en la bitácora como las demás, **a lo sumo una vez por minuto** (otra orden o cuenta dentro del minuto se contesta con las mismas lecturas):
+  - `get_accounts`: `whmapi1 listaccts` (disco, cuota, suspendida);
+  - `get_mail_by_account`: `whmapi1 emailtrack_user_stats` de la última hora y del día;
+  - `get_account_processes`: CPU, memoria y procesos por usuario, de `ps`.
+- `AccountUsageReport` (sin E/S, probado aparte) une las tres en una fila por cuenta, ordena (disco, correo, correo_fallido, cpu, memoria) y devuelve **máximo 15** con cuántas quedaron fuera. Lo que no es cuenta de cPanel (root, `-remote-`, mysql, nobody) va aparte en «sistema». Una lectura fallida se nombra en `lecturas_sin_dato`.
+- **Decisión de José:** a OpenAI van el **usuario y el dominio** de cada cuenta; nunca contraseñas ni contenido de correos.
+- Servidor: solo root puede consultar WHM. El monitoreo **no** tiene permiso para WHM en general: un script de root, `/usr/local/sbin/adminops-whm-read` (`scripts/server/`), hace solo `accounts` o `mail`, y `sudoers` permite solo esas dos llamadas.
+- Pruebas: `tests/src/Kernel/SentinelAccountsTest.php` (7), con datos con la forma de los de producción. Se rompió a propósito cada parte (dominio, sistema separado, orden, tope de 15, lecturas faltantes, conversión de GB, límite por minuto) y cada una hizo fallar su prueba.
+- **C2 (pendiente):** alertas por cuenta (correo por hora, fallidos, cuota de disco, CPU sostenida), con umbrales ajustados con datos reales de unos días.
+
 ### Acciones de Sentinel con código por correo (fase B, 2026-10-11)
 
 Decisión de José: **el código llega por correo**, nunca al WhatsApp que lo pide, y en la primera versión solo hay **dos acciones**: reinicio *graceful* de Apache y reinicio de PHP-FPM (MySQL queda fuera a propósito). Nunca hay comandos libres.

@@ -2,6 +2,7 @@
 # Forced command for the adminops_observer key (AI AdminOps monitoring).
 # Installed as /usr/local/sbin/adminops-read, root:root 755. Read only: each
 # check prints one JSON object. Versioned in the repo (scripts/server/).
+# 2026-10-13: per-account checks (accounts, mail, processes) for phase C.
 # 2026-10-11: get_last_action (outcome of Sentinel's last action); Exim
 # through a single sudo rule (active and frozen apart), real SSL readings, and a
 # reboot check.
@@ -102,6 +103,28 @@ case "${SSH_ORIGINAL_COMMAND:-}" in
     # be current and a reboot still due for glibc, systemd, openssl...
     packages=$(printf '%s\n' "$report" | sed -n 's/^ *\* *\([A-Za-z0-9._+-]*\).*/"\1"/p' | head -10 | paste -sd, -)
     printf '{"status":"ok","reboot_required":%s,"updated_packages":[%s],"running_kernel":"%s","newest_installed_kernel":"%s"}\n' "$required" "$packages" "$running" "$installed"
+    ;;
+  'adminops-read get_accounts')
+    # cPanel accounts with disk and quota (phase C). Only root may ask WHM;
+    # sudoers allows exactly this helper call.
+    sudo -n /usr/local/sbin/adminops-whm-read accounts 2>/dev/null || printf '{"status":"unavailable"}\n'
+    ;;
+  'adminops-read get_mail_by_account')
+    # Mail sent, delivered, failed and deferred per user, last hour and day.
+    sudo -n /usr/local/sbin/adminops-whm-read mail 2>/dev/null || printf '{"status":"unavailable"}\n'
+    ;;
+  'adminops-read get_account_processes')
+    # CPU and memory per system user right now. No CloudLinux on this server,
+    # so there is no per-account history: AdminOps keeps it from these
+    # readings. Names outside [A-Za-z0-9._-] are skipped: they go into JSON.
+    ps -eo user:32,pcpu,rss --no-headers | awk '
+      $1 ~ /^[A-Za-z0-9._-]+$/ { c[$1] += $2; m[$1] += $3; n[$1]++ }
+      END {
+        printf "{\"status\":\"ok\",\"users\":["
+        sep = ""
+        for (u in c) { printf "%s{\"user\":\"%s\",\"cpu_percent\":%.1f,\"memory_mb\":%d,\"processes\":%d}", sep, u, c[u], m[u] / 1024, n[u]; sep = "," }
+        print "]}"
+      }'
     ;;
   'adminops-read get_last_action')
     # Written by adminops-act: the last approved action and how it ended.

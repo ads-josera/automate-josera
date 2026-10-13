@@ -105,8 +105,12 @@ services:
       - '@date.formatter'
       - '@ai_adminops.read_only_ssh_connector'
       - '@ai_adminops.execution_audit'
+      - '@ai_adminops.account_usage_report'
     tags:
       - { name: ai_whatsapp_automation.owner_tool_provider }
+
+  ai_adminops.account_usage_report:
+    class: Drupal\ai_adminops\Service\AccountUsageReport
 
   # Phase B: actions with a code emailed to José. Nothing is offered until
   # settings.php has an action SSH profile and an approval address.

@@ -40,6 +40,15 @@ final class SentinelServerTools implements OwnerToolProviderInterface {
   ];
 
   /**
+   * The per-account checks behind "cuentas" (phase C), with their labels.
+   */
+  private const ACCOUNT_CHECKS = [
+    'get_accounts' => 'Get cPanel accounts',
+    'get_mail_by_account' => 'Get mail by account',
+    'get_account_processes' => 'Get processes by account',
+  ];
+
+  /**
    * Seconds between two live readings of the same server.
    */
   private const LIVE_READ_INTERVAL = 60;
@@ -60,6 +69,7 @@ final class SentinelServerTools implements OwnerToolProviderInterface {
     private readonly DateFormatterInterface $dateFormatter,
     private readonly MonitoringCollectorInterface $collector,
     private readonly AdminOpsExecutionAudit $executionAudit,
+    private readonly AccountUsageReport $accountReport,
   ) {}
 
   /**
@@ -101,6 +111,15 @@ final class SentinelServerTools implements OwnerToolProviderInterface {
         ]),
       ],
       [
+        'name' => 'cuentas',
+        'description' => 'Consumo de cada cuenta de cPanel del servidor, leído en este momento: disco contra su cuota, si está suspendida, correos enviados/entregados/fallidos/diferidos de la última hora y del último día, y CPU y memoria de ahora (no hay historial de CPU por cuenta). Úsala para saber qué cuenta consume más o si alguna manda correo masivo.',
+        'parameters' => $this->schema([
+          'servidor' => $server,
+          'orden' => ['type' => 'string', 'enum' => AccountUsageReport::ORDERS, 'description' => 'Por qué ordenar: disco (porcentaje de cuota), correo (enviados en el día), correo_fallido, cpu o memoria.'],
+          'cuenta' => ['type' => 'string', 'description' => 'Opcional: usuario de cPanel o dominio de una sola cuenta.'],
+        ], ['servidor']),
+      ],
+      [
         'name' => 'leer_ahora',
         'description' => 'Se conecta al servidor y hace las ocho revisiones de solo lectura en este momento. Úsala solo si José pide el dato actual o la última lectura es vieja.',
         'parameters' => $this->schema(['servidor' => $server]),
@@ -126,6 +145,7 @@ final class SentinelServerTools implements OwnerToolProviderInterface {
       'estado_servidor' => $this->status($server),
       'historial' => $this->history($server, (string) ($arguments['revision'] ?? ''), (int) ($arguments['lecturas'] ?? 5)),
       'leer_ahora' => $this->readNow($server, $conversation),
+      'cuentas' => $this->accounts($server, (string) ($arguments['orden'] ?? 'disco'), (string) ($arguments['cuenta'] ?? ''), $conversation),
       default => throw new \InvalidArgumentException('Unknown tool.'),
     };
   }
@@ -284,27 +304,72 @@ final class SentinelServerTools implements OwnerToolProviderInterface {
 
     $checks = [];
     foreach (self::CHECKS as $check => $label) {
-      $execution = $this->executionAudit->begin((string) $server->id(), $check, $label, [
-        'source' => 'sentinel',
-        'conversation' => (string) $conversation->id(),
-      ]);
-      $this->executionAudit->markRunning((int) $execution->id());
-      try {
-        $checks[$check] = $this->collector->collect($server, $check);
-        ($checks[$check]['status'] ?? '') === 'ok'
-          ? $this->executionAudit->markSucceeded((int) $execution->id(), $checks[$check])
-          : $this->executionAudit->markNoData((int) $execution->id(), $checks[$check]);
-      }
-      catch (\Throwable) {
-        $checks[$check] = ['status' => 'failed'];
-        $this->executionAudit->markFailed((int) $execution->id(), ['status' => 'failed']);
-      }
+      $checks[$check] = $this->collectAudited($server, $check, $label, $conversation);
     }
 
     $result = ['servidor' => $server->id(), 'leido' => $this->when($now), 'revisiones' => $checks];
     $this->state->set($key, ['at' => $now, 'result' => $result]);
 
     return $result;
+  }
+
+  /**
+   * Reads every cPanel account's usage now, at most once a minute.
+   *
+   * @return array<string, mixed>
+   *   AccountUsageReport's report for the model.
+   */
+  private function accounts(ConfigEntityInterface $server, string $order, string $account, ContentEntityInterface $conversation): array {
+    if (!$this->collector->isConfigured($server)) {
+      return ['servidor' => $server->id(), 'error' => 'Este servidor no tiene lectura en vivo configurada en Drupal.'];
+    }
+
+    // The readings are cached, not the report: another order or account
+    // within the minute is answered without connecting again.
+    $key = 'ai_adminops.sentinel.accounts.' . $server->id();
+    $previous = $this->state->get($key);
+    $now = $this->time->getRequestTime();
+    if (is_array($previous) && $now - (int) ($previous['at'] ?? 0) < self::LIVE_READ_INTERVAL) {
+      ['at' => $read_at, 'readings' => $readings] = $previous;
+    }
+    else {
+      $read_at = $now;
+      $readings = [];
+      foreach (self::ACCOUNT_CHECKS as $check => $label) {
+        $readings[$check] = $this->collectAudited($server, $check, $label, $conversation);
+      }
+      $this->state->set($key, ['at' => $read_at, 'readings' => $readings]);
+    }
+
+    return ['servidor' => $server->id(), 'leido' => $this->when((int) $read_at)]
+      + $this->accountReport->build($readings['get_accounts'], $readings['get_mail_by_account'], $readings['get_account_processes'], $order, $account);
+  }
+
+  /**
+   * Runs one read-only check on behalf of Sentinel, in the AdminOps log.
+   *
+   * @return array<string, mixed>
+   *   The check's output, or status "failed" when the server was not read.
+   */
+  private function collectAudited(ConfigEntityInterface $server, string $check, string $label, ContentEntityInterface $conversation): array {
+    $execution = $this->executionAudit->begin((string) $server->id(), $check, $label, [
+      'source' => 'sentinel',
+      'conversation' => (string) $conversation->id(),
+    ]);
+    $this->executionAudit->markRunning((int) $execution->id());
+    try {
+      $result = $this->collector->collect($server, $check);
+      ($result['status'] ?? '') === 'ok'
+        ? $this->executionAudit->markSucceeded((int) $execution->id(), $result)
+        : $this->executionAudit->markNoData((int) $execution->id(), $result);
+
+      return $result;
+    }
+    catch (\Throwable) {
+      $this->executionAudit->markFailed((int) $execution->id(), ['status' => 'failed']);
+
+      return ['status' => 'failed'];
+    }
   }
 
   /**

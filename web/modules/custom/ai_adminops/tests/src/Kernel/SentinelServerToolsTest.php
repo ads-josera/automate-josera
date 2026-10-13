@@ -47,7 +47,7 @@ final class SentinelServerToolsTest extends AdminOpsKernelTestBase {
     $providers = (new \ReflectionProperty($runner, 'providers'))->getValue($runner);
 
     $this->assertContains($this->tools, $providers);
-    $this->assertSame(['servidores', 'estado_servidor', 'eventos_abiertos', 'historial', 'leer_ahora'], array_column($this->tools->definitions(), 'name'));
+    $this->assertSame(['servidores', 'estado_servidor', 'eventos_abiertos', 'historial', 'cuentas', 'leer_ahora'], array_column($this->tools->definitions(), 'name'));
   }
 
   /**
@@ -87,7 +87,7 @@ final class SentinelServerToolsTest extends AdminOpsKernelTestBase {
         $checked++;
       }
     }
-    $this->assertSame(4, $checked);
+    $this->assertSame(5, $checked, 'Every tool that names a server, "cuentas" included.');
   }
 
   /**

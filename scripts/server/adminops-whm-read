@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Root-owned helper for AI AdminOps (phase C): the two WHM API queries the
+# monitoring account may run through sudo, and nothing else. Installed as
+# /usr/local/sbin/adminops-whm-read, root:root 755; sudoers allows exactly
+# "adminops-whm-read accounts" and "adminops-whm-read mail".
+# Versioned in the repo (scripts/server/).
+#
+# Read only. It prints WHM's own JSON inside a small envelope, so the
+# account list and the mail counts reach Drupal untouched.
+set -euo pipefail
+
+WHMAPI=/usr/local/cpanel/bin/whmapi1
+
+case "${1:-}" in
+  accounts)
+    # Disk used against quota, and whether the account is suspended.
+    raw=$("$WHMAPI" --output=json listaccts want=user,domain,diskused,disklimit,suspended,plan)
+    printf '{"status":"ok","whm":%s}\n' "$raw"
+    ;;
+  mail)
+    # Messages sent, delivered, failed and deferred by each user, over the
+    # last hour and the last day.
+    now=$(date +%s)
+    hour=$("$WHMAPI" --output=json emailtrack_user_stats starttime=$((now - 3600)) endtime="$now")
+    day=$("$WHMAPI" --output=json emailtrack_user_stats starttime=$((now - 86400)) endtime="$now")
+    printf '{"status":"ok","last_hour":%s,"last_day":%s}\n' "$hour" "$day"
+    ;;
+  *)
+    printf '{"status":"denied"}\n' >&2
+    exit 64
+    ;;
+esac

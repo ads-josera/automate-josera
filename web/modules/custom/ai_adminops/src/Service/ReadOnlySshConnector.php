@@ -28,6 +28,9 @@ final class ReadOnlySshConnector implements MonitoringCollectorInterface {
     'get_ssl_status',
     'get_reboot_status',
     'get_last_action',
+    'get_accounts',
+    'get_mail_by_account',
+    'get_account_processes',
   ];
 
   /**

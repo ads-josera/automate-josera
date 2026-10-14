@@ -19,10 +19,10 @@
         "composer/installers": "^2.3",
         "drupal/admin_toolbar": "^3.6",
         "drupal/coffee": "^2.0",
-        "drupal/core-composer-scaffold": "^11.4.9",
-        "drupal/core-project-message": "^11.4.9",
-        "drupal/core-recipe-unpack": "^11.4.9",
-        "drupal/core-recommended": "^11.4.9",
+        "drupal/core-composer-scaffold": "^11.4.10",
+        "drupal/core-project-message": "^11.4.10",
+        "drupal/core-recipe-unpack": "^11.4.10",
+        "drupal/core-recommended": "^11.4.10",
         "drupal/key": "^1.22",
         "drupal/real_aes": "^2.0@beta",
         "drupal/tfa": "^1.12",
@@ -108,7 +108,7 @@
         }
     },
     "require-dev": {
-        "drupal/core-dev": "^11.4.9",
+        "drupal/core-dev": "^11.4.10",
         "drupal/devel": "^5.5"
     }
 }

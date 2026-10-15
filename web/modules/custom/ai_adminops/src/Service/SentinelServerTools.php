@@ -95,12 +95,13 @@ final class SentinelServerTools implements OwnerToolProviderInterface {
       ],
       [
         'name' => 'historial',
-        'description' => 'Lecturas anteriores de una revisión de un servidor, para ver la tendencia.',
+        'description' => 'Lecturas programadas anteriores de una revisión de un servidor (una cada 15 min). Sin "hasta", las más recientes; con "hasta", las que terminan en esa fecha y hora, para preguntas como «¿cómo estuvo a las 2 am?».',
         'parameters' => $this->schema([
           'servidor' => $server,
           'revision' => ['type' => 'string', 'enum' => array_keys(self::CHECKS)],
           'lecturas' => ['type' => 'integer', 'minimum' => 1, 'maximum' => self::MAX_HISTORY],
-        ]),
+          'hasta' => ['type' => 'string', 'pattern' => '^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}$', 'description' => 'Opcional: fecha y hora local AAAA-MM-DD HH:MM. Para «a las 2 am» pide hasta las 02:30 con unas 4 lecturas.'],
+        ], ['servidor', 'revision']),
       ],
       [
         'name' => 'cuentas',
@@ -119,6 +120,7 @@ final class SentinelServerTools implements OwnerToolProviderInterface {
           'cuenta' => ['type' => 'string', 'description' => 'Opcional: usuario de cPanel (no el dominio).'],
           'horas' => ['type' => 'integer', 'minimum' => 1, 'maximum' => AccountUsageHistory::RETENTION_DAYS * 24, 'description' => 'Cuántas horas hacia atrás: 24 = un día, 168 = una semana.'],
           'orden' => ['type' => 'string', 'enum' => AccountUsageHistory::ORDERS, 'description' => 'Sin cuenta: por qué ordenar.'],
+          'por_hora' => ['type' => 'boolean', 'description' => 'Con una cuenta y hasta 48 horas: además, el desglose hora por hora (correos, CPU y memoria máximos de cada hora).'],
         ], ['servidor', 'horas']),
       ],
       [
@@ -145,9 +147,9 @@ final class SentinelServerTools implements OwnerToolProviderInterface {
 
     return match ($name) {
       'estado_servidor' => $this->status($server),
-      'historial' => $this->history($server, (string) ($arguments['revision'] ?? ''), (int) ($arguments['lecturas'] ?? 5)),
+      'historial' => $this->history($server, (string) ($arguments['revision'] ?? ''), (int) ($arguments['lecturas'] ?? 5), (string) ($arguments['hasta'] ?? '')),
       'leer_ahora' => $this->readNow($server, $conversation),
-      'historial_cuenta' => ['servidor' => $server->id()] + $this->accountHistory->summarize((string) $server->id(), (string) ($arguments['cuenta'] ?? ''), (int) ($arguments['horas'] ?? 24), (string) ($arguments['orden'] ?? 'correo')),
+      'historial_cuenta' => ['servidor' => $server->id()] + $this->accountHistory->summarize((string) $server->id(), (string) ($arguments['cuenta'] ?? ''), (int) ($arguments['horas'] ?? 24), (string) ($arguments['orden'] ?? 'correo'), (bool) ($arguments['por_hora'] ?? FALSE)),
       'cuentas' => $this->accounts($server, (string) ($arguments['orden'] ?? 'disco'), (string) ($arguments['cuenta'] ?? ''), $conversation),
       default => throw new \InvalidArgumentException('Unknown tool.'),
     };
@@ -258,17 +260,28 @@ final class SentinelServerTools implements OwnerToolProviderInterface {
    * @return array<string, mixed>
    *   The readings with their time.
    */
-  private function history(ConfigEntityInterface $server, string $check, int $count): array {
+  private function history(ConfigEntityInterface $server, string $check, int $count, string $until = ''): array {
     if (!isset(self::CHECKS[$check])) {
       throw new \InvalidArgumentException('Unknown check.');
     }
 
     $storage = $this->entityTypeManager->getStorage('ai_adminops_tool_execution');
-    $ids = $storage->getQuery()
+    $query = $storage->getQuery()
       ->accessCheck(FALSE)
       ->condition('server', $server->id())
       ->condition('tool_id', $check)
-      ->condition('status', ['succeeded', 'no_data', 'failed'], 'IN')
+      ->condition('status', ['succeeded', 'no_data', 'failed'], 'IN');
+    // On 2026-10-15 Sentinel could not say how the server was at 2 am: it
+    // only had the latest twelve readings. Every reading is kept, so a time
+    // window is just a condition. The time is the site's local time.
+    if ($until !== '') {
+      $limit = \DateTimeImmutable::createFromFormat('!Y-m-d H:i', $until, new \DateTimeZone(date_default_timezone_get()));
+      if ($limit === FALSE) {
+        return ['servidor' => $server->id(), 'error' => 'La fecha debe ser AAAA-MM-DD HH:MM.'];
+      }
+      $query->condition('completed_at', $limit->getTimestamp(), '<=');
+    }
+    $ids = $query
       ->sort('id', 'DESC')
       ->range(0, max(1, min(self::MAX_HISTORY, $count)))
       ->execute();
@@ -283,7 +296,7 @@ final class SentinelServerTools implements OwnerToolProviderInterface {
       ];
     }
 
-    return ['servidor' => $server->id(), 'revision' => $check, 'lecturas' => $readings];
+    return ['servidor' => $server->id(), 'revision' => $check] + ($until !== '' ? ['hasta' => $until] : []) + ['lecturas' => $readings];
   }
 
   /**

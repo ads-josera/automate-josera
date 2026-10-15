@@ -36,7 +36,8 @@ function _ai_adminops_account_usage_schema(): array {
       'mail_sent' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => FALSE, 'description' => 'Sent in the hour before read_at; NULL when not read.'],
       'mail_failed' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => FALSE],
       'mail_deferred' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => FALSE],
-      'mail_limit_reached' => ['type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0],
+      'mail_limit_reached' => ['type' => 'int', 'size' => 'tiny', 'not null' => TRUE, 'default' => 0, 'description' => "WHM's REACHED_MAXEMAILS flag as given; it does not mean mail was held."],
+      'mail_hour_limit' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => FALSE, 'description' => "The account package's hourly mail limit; NULL when unlimited."],
       'cpu_percent' => ['type' => 'float', 'not null' => FALSE, 'description' => 'At read_at; NULL when not read.'],
       'memory_mb' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => FALSE],
       'processes' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => FALSE],
@@ -172,4 +173,19 @@ function ai_adminops_update_10007(): string {
   }
 
   return (string) t('AdminOps keeps 30 days of usage per cPanel account.');
+}
+
+/**
+ * Stores each account's hourly mail limit with its usage.
+ *
+ * Every cPanel package has its own limit (intec 10, most 50 to 120), and the
+ * per-account mail alerts will be measured as a share of it.
+ */
+function ai_adminops_update_10008(): string {
+  $schema = \Drupal::database()->schema();
+  if ($schema->tableExists('ai_adminops_account_usage') && !$schema->fieldExists('ai_adminops_account_usage', 'mail_hour_limit')) {
+    $schema->addField('ai_adminops_account_usage', 'mail_hour_limit', _ai_adminops_account_usage_schema()['fields']['mail_hour_limit']);
+  }
+
+  return (string) t('AdminOps keeps each account package hourly mail limit with its usage.');
 }

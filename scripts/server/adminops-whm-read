@@ -13,8 +13,9 @@ WHMAPI=/usr/local/cpanel/bin/whmapi1
 
 case "${1:-}" in
   accounts)
-    # Disk used against quota, and whether the account is suspended.
-    raw=$("$WHMAPI" --output=json listaccts want=user,domain,diskused,disklimit,suspended,plan)
+    # Disk used against quota, whether the account is suspended, and its
+    # package's hourly mail limit (each package has its own).
+    raw=$("$WHMAPI" --output=json listaccts want=user,domain,diskused,disklimit,suspended,plan,max_email_per_hour)
     printf '{"status":"ok","whm":%s}\n' "$raw"
     ;;
   mail)

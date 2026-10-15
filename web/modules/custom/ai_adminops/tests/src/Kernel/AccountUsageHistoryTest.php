@@ -54,6 +54,9 @@ final class AccountUsageHistoryTest extends AdminOpsKernelTestBase {
     $this->assertSame('2', (string) $rows['intec']->mail_sent);
     $this->assertNull($rows['intec']->quota_mb, 'Unlimited quota.');
     $this->assertSame('1', (string) $rows['esim']->suspended);
+    $this->assertSame('10', (string) $rows['intec']->mail_hour_limit, "The package's hourly limit is kept with the usage.");
+    $this->assertSame('1', (string) $rows['intec']->mail_limit_reached, "WHM's flag is kept as given.");
+    $this->assertNull($rows['humantz']->mail_hour_limit);
     $this->assertSame(['succeeded'], $this->auditStatuses('get_disk_usage'), 'The server checks still run.');
 
     $execution = current($this->container->get('entity_type.manager')->getStorage('ai_adminops_tool_execution')->loadByProperties(['tool_id' => 'get_mail_by_account']));
@@ -144,12 +147,38 @@ final class AccountUsageHistoryTest extends AdminOpsKernelTestBase {
     $this->assertSame(40.0, $summary['cpu_promedio']);
     $this->assertSame(1, $summary['lecturas_cpu_50_o_mas']);
     $this->assertSame(40, $summary['correo_max_en_una_hora']);
+    $this->assertSame(50, $summary['limite_correos_hora_del_paquete']);
+    $this->assertSame(80, $summary['pico_como_porcentaje_del_limite'], '40 of 50 at its peak.');
+    $this->assertArrayNotHasKey('alcanzo_limite_de_correo', $summary);
     $this->assertSame(16.0, $summary['correo_promedio_por_hora']);
     $this->assertSame(13.67, $summary['disco_gb_al_inicio']);
     $this->assertSame(14.26, $summary['disco_gb_al_final']);
     $date = $this->container->get('date.formatter')->format($now - 2 * 3600, 'custom', 'Y-m-d H:i');
     $this->assertSame($date, $summary['hora_de_mas_correo']);
     $this->assertSame($date, $summary['hora_de_mas_cpu']);
+  }
+
+  /**
+   * One account hour by hour: the highest reading of each hour, not a sum.
+   */
+  public function testOneAccountHourByHour(): void {
+    $formatter = $this->container->get('date.formatter');
+    $now = $this->container->get('datetime.time')->getRequestTime();
+    $hour = intdiv($now, 3600) * 3600;
+    $history = $this->container->get('ai_adminops.account_usage_history');
+    $history->record('produccion', [$this->row('intec', 5.0, 4)], $hour - 3600 + 300);
+    $history->record('produccion', [$this->row('intec', 9.0, 7)], $hour - 3600 + 1200);
+    $history->record('produccion', [$this->row('intec', 2.0, 3)], $hour + 60);
+
+    $summary = $this->ask(['cuenta' => 'intec', 'horas' => 24, 'por_hora' => TRUE]);
+
+    $this->assertCount(2, $summary['por_hora']);
+    $this->assertSame($formatter->format($hour - 3600 + 300, 'custom', 'Y-m-d H:00'), $summary['por_hora'][0]['hora']);
+    $this->assertSame(7, $summary['por_hora'][0]['correo_max'], 'The highest of the hour, not 4 + 7.');
+    $this->assertSame(9.0, $summary['por_hora'][0]['cpu_max']);
+    $this->assertSame(3, $summary['por_hora'][1]['correo_max']);
+    $this->assertArrayNotHasKey('por_hora', $this->ask(['cuenta' => 'intec', 'horas' => 24]), 'Only when asked.');
+    $this->assertIsString($this->ask(['cuenta' => 'intec', 'horas' => 72, 'por_hora' => TRUE])['por_hora'], 'Not for more than 48 hours.');
   }
 
   /**
@@ -220,7 +249,8 @@ final class AccountUsageHistoryTest extends AdminOpsKernelTestBase {
       'cuota_mb' => 20480.0,
       'disco_gb' => round($disk_mb / 1024, 2),
       'cuota_gb' => 20.0,
-      'correo_ultima_hora' => ['enviados' => $mail_sent, 'entregados' => $mail_sent, 'fallidos' => 0, 'diferidos' => 0, 'limite_alcanzado' => FALSE],
+      'correo_ultima_hora' => ['enviados' => $mail_sent, 'entregados' => $mail_sent, 'fallidos' => 0, 'diferidos' => 0, '_indicador_whm' => FALSE],
+      'limite_correos_hora' => 50,
       'cpu_porcentaje' => $cpu,
       'memoria_mb' => 100,
       'procesos' => 1,

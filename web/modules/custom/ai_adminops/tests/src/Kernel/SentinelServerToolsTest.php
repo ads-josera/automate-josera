@@ -173,4 +173,28 @@ final class SentinelServerToolsTest extends AdminOpsKernelTestBase {
     $this->assertSame(15, $history['lecturas'][0]['resultado']['used_percent'], 'Newest first.');
   }
 
+  /**
+   * Readings up to a given local time ("how was it at 2 am?").
+   */
+  public function testHistoryUpToATime(): void {
+    for ($i = 1; $i <= 6; $i++) {
+      $this->readings['get_memory_usage'] = ['status' => 'ok', 'used_percent' => $i];
+      $this->runMonitoring(['get_memory_usage']);
+    }
+    // Spread the six readings one hour apart, ending now.
+    $storage = $this->container->get('entity_type.manager')->getStorage('ai_adminops_tool_execution');
+    $now = $this->container->get('datetime.time')->getRequestTime();
+    $executions = array_values($storage->loadByProperties(['tool_id' => 'get_memory_usage']));
+    foreach ($executions as $index => $execution) {
+      $execution->set('completed_at', $now - (5 - $index) * 3600)->save();
+    }
+    $until = date('Y-m-d H:i', $now - 3 * 3600 + 60);
+
+    $history = $this->tools->execute('historial', ['servidor' => 'produccion', 'revision' => 'get_memory_usage', 'lecturas' => 2, 'hasta' => $until], $this->conversation);
+
+    $this->assertSame($until, $history['hasta']);
+    $this->assertSame([3, 2], array_map(static fn (array $reading) => $reading['resultado']['used_percent'], $history['lecturas']), 'The two readings up to that time, newest first.');
+    $this->assertArrayHasKey('error', $this->tools->execute('historial', ['servidor' => 'produccion', 'revision' => 'get_memory_usage', 'hasta' => 'ayer a las 2'], $this->conversation));
+  }
+
 }

@@ -203,7 +203,12 @@ José, como dueño del WHM, pidió saber qué cuenta consume qué. El servidor e
 - Sentinel: **`historial_cuenta(servidor, horas, cuenta?, orden?)`**. Con una cuenta: CPU máxima y promedio, lecturas con CPU ≥ 50 %, memoria máxima, máximo de correos y fallidos en una hora, promedio por hora, disco al inicio y al final, y la hora de los picos. Sin cuenta: las 10 que más consumieron. Como cada fila cuenta la hora anterior y las lecturas se enciman, **se dan picos y promedios por hora, nunca sumas**.
 - Pruebas: `tests/src/Kernel/AccountUsageHistoryTest.php` (10). Al escribirlas se encontraron dos defectos: el orden no ordenaba (claves distintas) y el disco se guardaba a partir de los GB redondeados. Cada protección se rompió a propósito y su prueba falló, incluida una que solo se pudo probar haciendo fallar la base de datos.
 - **CPU por cuenta corregida el mismo día** (ver `AI_ADMINOPS_READ_ONLY_SSH.md`): medida en 3 s y en % del servidor. Las primeras filas, con la medición vieja, quedaron con la CPU en NULL.
-- **C2b (pendiente):** alertas por cuenta (correo por hora, fallidos, cuota de disco, CPU sostenida), con umbrales sacados de este historial tras unos días.
+- **Mejoras del 2026-10-15** (de las pruebas de José con Sentinel):
+  - **Límite de correo por cuenta:** cada paquete de cPanel tiene su propio `max_email_per_hour` (intec 20 desde el 15 de octubre, la mayoría 50, Plata 120); no hay límite general del servidor. `adminops-whm-read accounts` lo pide a WHM, `cuentas` lo muestra con el paquete y el % del límite de la última hora, y el historial lo guarda (`mail_hour_limit`, update 10008). `historial_cuenta` da el pico como % del límite.
+  - **El indicador `REACHED_MAXEMAILS` de WHM ya no se le muestra a Sentinel.** Lo marcó para intec con 2 correos de un límite de 10, y el registro de Exim no tenía ningún correo retenido: no significa «se retuvo correo». Se guarda tal cual en `mail_limit_reached`.
+  - **`historial` con «hasta»** (hora local): antes solo daba las últimas 12 lecturas y Sentinel no podía decir cómo estuvo el servidor a las 2 am. Todas las lecturas se conservan.
+  - **`historial_cuenta` con «por_hora»** (hasta 48 horas): el máximo de correo, fallidos, CPU y memoria de cada hora (máximo, no suma, porque cada fila cuenta la hora anterior).
+- **C2b (pendiente):** alertas por cuenta, medidas como **% del límite de su paquete**, (correo por hora, fallidos, cuota de disco, CPU sostenida), con umbrales sacados de este historial tras unos días.
 
 ### Acciones de Sentinel con código por correo (fase B, 2026-10-11)
 

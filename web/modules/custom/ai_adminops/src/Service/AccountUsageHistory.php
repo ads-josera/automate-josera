@@ -34,6 +34,11 @@ final class AccountUsageHistory {
    */
   public const ORDERS = ['correo', 'correo_fallido', 'cpu', 'memoria'];
 
+  /**
+   * Longest period with an hour-by-hour breakdown: 48 rows at most.
+   */
+  public const MAX_HOURLY_HOURS = 48;
+
   private const TABLE = 'ai_adminops_account_usage';
 
   /**
@@ -54,7 +59,7 @@ final class AccountUsageHistory {
   public function record(string $server_id, array $rows, int $read_at): int {
     $insert = $this->database->insert(self::TABLE)->fields([
       'server', 'account', 'read_at', 'suspended', 'disk_mb', 'quota_mb',
-      'mail_sent', 'mail_failed', 'mail_deferred', 'mail_limit_reached',
+      'mail_sent', 'mail_failed', 'mail_deferred', 'mail_limit_reached', 'mail_hour_limit',
       'cpu_percent', 'memory_mb', 'processes',
     ]);
     foreach ($rows as $row) {
@@ -70,7 +75,10 @@ final class AccountUsageHistory {
         'mail_sent' => is_array($mail) ? (int) $mail['enviados'] : NULL,
         'mail_failed' => is_array($mail) ? (int) $mail['fallidos'] : NULL,
         'mail_deferred' => is_array($mail) ? (int) $mail['diferidos'] : NULL,
-        'mail_limit_reached' => (int) (is_array($mail) && $mail['limite_alcanzado']),
+        // WHM's REACHED_MAXEMAILS flag, as WHM gives it (see
+        // AccountUsageReport::mailCounts(): it does not mean mail was held).
+        'mail_limit_reached' => (int) (is_array($mail) && !empty($mail['_indicador_whm'])),
+        'mail_hour_limit' => $row['limite_correos_hora'] ?? NULL,
         'cpu_percent' => $row['cpu_porcentaje'] ?? NULL,
         'memory_mb' => $row['memoria_mb'] ?? NULL,
         'processes' => $row['procesos'] ?? NULL,
@@ -93,7 +101,7 @@ final class AccountUsageHistory {
    * @return array<string, mixed>
    *   What the model receives.
    */
-  public function summarize(string $server_id, string $account, int $hours, string $order = 'correo'): array {
+  public function summarize(string $server_id, string $account, int $hours, string $order = 'correo', bool $by_hour = FALSE): array {
     $hours = max(1, min(self::RETENTION_DAYS * 24, $hours));
     $since = $this->time->getRequestTime() - $hours * 3600;
     $account = mb_strtolower(trim($account));
@@ -112,7 +120,7 @@ final class AccountUsageHistory {
     $query->addExpression('MAX(u.mail_sent)', 'correo_max_hora');
     $query->addExpression('AVG(u.mail_sent)', 'correo_promedio_hora');
     $query->addExpression('MAX(u.mail_failed)', 'fallidos_max_hora');
-    $query->addExpression('MAX(u.mail_limit_reached)', 'limite_alcanzado');
+    $query->addExpression('MAX(u.mail_hour_limit)', 'limite_hora');
     $query->groupBy('u.account');
     if ($account !== '') {
       $query->condition('u.account', $account);
@@ -131,7 +139,14 @@ final class AccountUsageHistory {
     }
 
     if ($account !== '') {
-      return $period + ['cuenta' => $account] + $accounts[$account] + $this->disk($server_id, $account, $since) + $this->peaks($server_id, $account, $since);
+      $detail = $period + ['cuenta' => $account] + $accounts[$account] + $this->disk($server_id, $account, $since) + $this->peaks($server_id, $account, $since);
+      if ($by_hour) {
+        $detail['por_hora'] = $hours <= self::MAX_HOURLY_HOURS
+          ? $this->hourly($server_id, $account, $since)
+          : 'Solo para periodos de hasta ' . self::MAX_HOURLY_HOURS . ' horas.';
+      }
+
+      return $detail;
     }
 
     $order = in_array($order, self::ORDERS, TRUE) ? $order : 'correo';
@@ -166,7 +181,8 @@ final class AccountUsageHistory {
       'correo_max_en_una_hora' => $stats['correo_max_hora'] === NULL ? NULL : (int) $stats['correo_max_hora'],
       'correo_promedio_por_hora' => $number($stats['correo_promedio_hora']),
       'fallidos_max_en_una_hora' => $stats['fallidos_max_hora'] === NULL ? NULL : (int) $stats['fallidos_max_hora'],
-      'alcanzo_limite_de_correo' => (bool) $stats['limite_alcanzado'],
+      'limite_correos_hora_del_paquete' => $stats['limite_hora'] === NULL ? NULL : (int) $stats['limite_hora'],
+      'pico_como_porcentaje_del_limite' => $stats['limite_hora'] && $stats['correo_max_hora'] !== NULL ? (int) round($stats['correo_max_hora'] * 100 / $stats['limite_hora']) : NULL,
     ];
   }
 
@@ -219,6 +235,44 @@ final class AccountUsageHistory {
     }
 
     return $peaks;
+  }
+
+  /**
+   * One account hour by hour: the most mail, CPU and memory of each hour.
+   *
+   * Sentinel offered an hourly breakdown on 2026-10-15 that its tool could
+   * not give. Each row's mail is that of the hour before the reading, so the
+   * hour's figure is the highest of its readings, never their sum.
+   *
+   * @return list<array<string, mixed>>
+   *   Hours in order, in the site's time zone.
+   */
+  private function hourly(string $server_id, string $account, int $since): array {
+    $rows = $this->database->select(self::TABLE, 'u')
+      ->fields('u', ['read_at', 'mail_sent', 'mail_failed', 'cpu_percent', 'memory_mb'])
+      ->condition('u.server', $server_id)
+      ->condition('u.account', $account)
+      ->condition('u.read_at', $since, '>=')
+      ->orderBy('u.read_at')
+      ->execute()
+      ->fetchAll();
+
+    $hours = [];
+    foreach ($rows as $row) {
+      $hour = $this->dateFormatter->format((int) $row->read_at, 'custom', 'Y-m-d H:00');
+      $current = $hours[$hour] ?? ['hora' => $hour, 'correo_max' => NULL, 'fallidos_max' => NULL, 'cpu_max' => NULL, 'memoria_max_mb' => NULL];
+      foreach (['correo_max' => $row->mail_sent, 'fallidos_max' => $row->mail_failed, 'memoria_max_mb' => $row->memory_mb] as $key => $value) {
+        if ($value !== NULL) {
+          $current[$key] = max((int) $current[$key], (int) $value);
+        }
+      }
+      if ($row->cpu_percent !== NULL) {
+        $current['cpu_max'] = max((float) $current['cpu_max'], round((float) $row->cpu_percent, 1));
+      }
+      $hours[$hour] = $current;
+    }
+
+    return array_values($hours);
   }
 
   /**

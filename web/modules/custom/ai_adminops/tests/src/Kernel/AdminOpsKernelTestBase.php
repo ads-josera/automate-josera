@@ -104,14 +104,14 @@ abstract class AdminOpsKernelTestBase extends KernelTestBase {
       'metadata' => ['result' => 1, 'command' => 'listaccts'],
       'data' => ['acct' => [
         ['user' => 'humantz', 'domain' => 'humantz.com.mx', 'diskused' => '92M', 'disklimit' => '500M', 'suspended' => 0],
-        ['user' => 'koemx', 'domain' => 'koe.com.mx', 'diskused' => '14630M', 'disklimit' => '21000M', 'suspended' => 0],
+        ['user' => 'koemx', 'domain' => 'koe.com.mx', 'diskused' => '14630M', 'disklimit' => '21000M', 'suspended' => 0, 'plan' => 'Oro', 'max_email_per_hour' => '100'],
         ['user' => 'esim', 'domain' => 'esimbron.org', 'diskused' => '479M', 'disklimit' => '4500M', 'suspended' => 1],
-        ['user' => 'intec', 'domain' => 'tsd.lat', 'diskused' => '1.5G', 'disklimit' => 'unlimited', 'suspended' => 0],
+        ['user' => 'intec', 'domain' => 'tsd.lat', 'diskused' => '1.5G', 'disklimit' => 'unlimited', 'suspended' => 0, 'plan' => 'Oro_indestec', 'max_email_per_hour' => '10'],
       ]],
     ]];
     $this->readings['get_mail_by_account'] = ['status' => 'ok',
       'last_hour' => ['metadata' => ['result' => 1], 'data' => ['records' => [
-        ['USER' => 'intec', 'SENDCOUNT' => 2, 'SUCCESSCOUNT' => 2, 'FAILCOUNT' => 0, 'DEFERCOUNT' => 0, 'REACHED_MAXEMAILS' => 0],
+        ['USER' => 'intec', 'SENDCOUNT' => 2, 'SUCCESSCOUNT' => 2, 'FAILCOUNT' => 0, 'DEFERCOUNT' => 0, 'REACHED_MAXEMAILS' => 1],
       ]]],
       'last_day' => ['metadata' => ['result' => 1], 'data' => ['records' => [
         ['USER' => '-remote-', 'SENDCOUNT' => 284, 'SUCCESSCOUNT' => 247, 'FAILCOUNT' => 74, 'DEFERCOUNT' => 1, 'REACHED_MAXEMAILS' => 0],

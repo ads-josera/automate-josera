@@ -57,7 +57,7 @@ final class AccountUsageReport {
   public function build(array $accounts, array $mail, array $processes, string $order = 'disco', string $account = ''): array {
     [$rows, $system] = $this->collate($accounts, $mail, $processes);
 
-    $rows = array_map(static fn (array $row) => array_diff_key($row, ['disco_mb' => TRUE, 'cuota_mb' => TRUE]), $rows);
+    $rows = array_map($this->forModel(...), $rows);
     $report = [
       'total_cuentas' => count($rows),
       'suspendidas' => count(array_filter($rows, static fn (array $row) => $row['suspendida'])),
@@ -121,6 +121,11 @@ final class AccountUsageReport {
         // the model only sees the GB.
         'disco_mb' => $used,
         'cuota_mb' => $limit,
+        // Every package has its own hourly mail limit (José, 2026-10-15):
+        // that, not a server-wide figure, is what an account's mail is
+        // measured against. intec's is 10; most are 50 to 120.
+        'paquete' => (string) ($acct['plan'] ?? ''),
+        'limite_correos_hora' => $this->hourLimit($acct['max_email_per_hour'] ?? NULL),
         'disco_gb' => $used === NULL ? NULL : round($used / 1024, 2),
         'cuota_gb' => $limit === NULL ? NULL : round($limit / 1024, 2),
         'disco_porcentaje' => $used !== NULL && $limit ? round($used * 100 / $limit, 1) : NULL,
@@ -211,7 +216,11 @@ final class AccountUsageReport {
       'entregados' => (int) ($record['SUCCESSCOUNT'] ?? 0),
       'fallidos' => (int) ($record['FAILCOUNT'] ?? 0),
       'diferidos' => (int) ($record['DEFERCOUNT'] ?? 0),
-      'limite_alcanzado' => (bool) ($record['REACHED_MAXEMAILS'] ?? FALSE),
+      // WHM's REACHED_MAXEMAILS. Kept for the history, never shown to the
+      // model: on 2026-10-14 it was set for intec with 2 messages sent of a
+      // limit of 10, and Exim's log showed no message held, so it does not
+      // mean "mail was delayed".
+      '_indicador_whm' => (bool) ($record['REACHED_MAXEMAILS'] ?? FALSE),
     ];
   }
 
@@ -227,8 +236,35 @@ final class AccountUsageReport {
    */
   private function noMail(mixed $whm): ?array {
     return is_array($whm) && (int) ($whm['metadata']['result'] ?? 0) === 1
-      ? ['enviados' => 0, 'entregados' => 0, 'fallidos' => 0, 'diferidos' => 0, 'limite_alcanzado' => FALSE]
+      ? ['enviados' => 0, 'entregados' => 0, 'fallidos' => 0, 'diferidos' => 0, '_indicador_whm' => FALSE]
       : NULL;
+  }
+
+  /**
+   * Shapes a row for the model: GB only, the hourly mail against the
+   * package limit, and nothing it could misread.
+   *
+   * @return array<string, mixed>
+   *   The row without its internal fields.
+   */
+  private function forModel(array $row): array {
+    foreach (['correo_ultima_hora', 'correo_ultimo_dia'] as $window) {
+      if (is_array($row[$window])) {
+        unset($row[$window]['_indicador_whm']);
+      }
+    }
+    if (is_array($row['correo_ultima_hora']) && $row['limite_correos_hora']) {
+      $row['correo_ultima_hora']['porcentaje_del_limite'] = round($row['correo_ultima_hora']['enviados'] * 100 / $row['limite_correos_hora']);
+    }
+
+    return array_diff_key($row, ['disco_mb' => TRUE, 'cuota_mb' => TRUE]);
+  }
+
+  /**
+   * A package's hourly mail limit, or NULL when it has none.
+   */
+  private function hourLimit(mixed $value): ?int {
+    return is_numeric($value) && (int) $value > 0 ? (int) $value : NULL;
   }
 
   /**

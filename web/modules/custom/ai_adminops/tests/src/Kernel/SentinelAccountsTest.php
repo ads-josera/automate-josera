@@ -51,8 +51,16 @@ final class SentinelAccountsTest extends AdminOpsKernelTestBase {
     $this->assertSame('koe.com.mx', $koemx['dominio'], 'José chose user and domain.');
     $this->assertSame(69.7, $koemx['disco_porcentaje']);
     $this->assertSame(7.4, $koemx['cpu_porcentaje']);
-    $this->assertSame(['enviados' => 3, 'entregados' => 4, 'fallidos' => 9, 'diferidos' => 0, 'limite_alcanzado' => TRUE], $koemx['correo_ultimo_dia']);
-    $this->assertSame(['enviados' => 0, 'entregados' => 0, 'fallidos' => 0, 'diferidos' => 0, 'limite_alcanzado' => FALSE], $koemx['correo_ultima_hora'], 'Missing from a window that was read means it sent nothing (2026-10-13: Sentinel said "sin dato").');
+    $this->assertSame(['enviados' => 3, 'entregados' => 4, 'fallidos' => 9, 'diferidos' => 0], $koemx['correo_ultimo_dia'], "WHM's REACHED_MAXEMAILS is never shown: it does not mean mail was held.");
+    $this->assertSame('Oro', $koemx['paquete']);
+    $this->assertSame(100, $koemx['limite_correos_hora']);
+    $intec = $this->row($report, 'intec');
+    $this->assertSame(10, $intec['limite_correos_hora'], 'Every package has its own hourly limit.');
+    $this->assertSame(20.0, $intec['correo_ultima_hora']['porcentaje_del_limite'], '2 of 10 in the last hour.');
+    $this->assertArrayNotHasKey('_indicador_whm', $intec['correo_ultima_hora']);
+    $this->assertNull($this->row($report, 'humantz')['limite_correos_hora'], 'A package without a limit.');
+    $this->assertArrayNotHasKey('porcentaje_del_limite', $this->row($report, 'humantz')['correo_ultima_hora']);
+    $this->assertSame(['enviados' => 0, 'entregados' => 0, 'fallidos' => 0, 'diferidos' => 0, 'porcentaje_del_limite' => 0.0], $koemx['correo_ultima_hora'], 'Missing from a window that was read means it sent nothing (2026-10-13: Sentinel said "sin dato").');
     $this->assertSame(14.29, $koemx['disco_gb'], 'Gigabytes come worked out, so every reply gives the same number.');
     $this->assertSame(20.51, $koemx['cuota_gb']);
     $this->assertArrayNotHasKey('disco_mb', $koemx, 'The model sees only GB, so it never converts.');

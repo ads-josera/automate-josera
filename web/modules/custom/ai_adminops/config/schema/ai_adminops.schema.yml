@@ -40,6 +40,31 @@ ai_adminops.settings:
         consecutive_readings:
           type: integer
           label: 'Consecutive readings required before alerting'
+        ssl_days_warning:
+          type: integer
+          label: 'Alert when a certificate has fewer days left than this (0 turns it off)'
+        accounts:
+          type: mapping
+          label: 'Alerts about single cPanel accounts'
+          mapping:
+            enabled:
+              type: boolean
+              label: 'Enable account alerts'
+            mail_percent_warning:
+              type: integer
+              label: 'Warn at this percentage of the package hourly mail limit'
+            failed_mail_warning:
+              type: integer
+              label: 'Failed messages in an hour'
+            disk_percent_warning:
+              type: integer
+              label: 'Percentage of the account disk quota'
+            cpu_percent_warning:
+              type: integer
+              label: 'Percentage of the whole server CPU'
+            cpu_consecutive_readings:
+              type: integer
+              label: 'Readings in a row above the CPU threshold'
     notifications:
       type: mapping
       label: 'Notification settings'

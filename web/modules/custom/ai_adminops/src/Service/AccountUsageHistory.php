@@ -96,6 +96,32 @@ final class AccountUsageHistory {
   }
 
   /**
+   * One account's newest readings, newest first.
+   *
+   * What the account alerts use to tell a sustained problem from a spike.
+   *
+   * @return list<array{read_at: int, cpu_percent: ?float, mail_failed: ?int}>
+   *   At most $count readings since $since.
+   */
+  public function recent(string $server_id, string $account, int $count, int $since): array {
+    $rows = $this->database->select(self::TABLE, 'u')
+      ->fields('u', ['read_at', 'cpu_percent', 'mail_failed'])
+      ->condition('u.server', $server_id)
+      ->condition('u.account', $account)
+      ->condition('u.read_at', $since, '>=')
+      ->orderBy('u.read_at', 'DESC')
+      ->range(0, max(1, $count))
+      ->execute()
+      ->fetchAll();
+
+    return array_map(static fn (object $row) => [
+      'read_at' => (int) $row->read_at,
+      'cpu_percent' => $row->cpu_percent === NULL ? NULL : (float) $row->cpu_percent,
+      'mail_failed' => $row->mail_failed === NULL ? NULL : (int) $row->mail_failed,
+    ], $rows);
+  }
+
+  /**
    * Summarizes a period: one account in detail, or the busiest accounts.
    *
    * @return array<string, mixed>

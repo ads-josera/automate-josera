@@ -285,7 +285,12 @@ final class NotificationBridge {
 
     $account = trim((string) ($evidence['account'] ?? ''));
     $domain = trim((string) ($evidence['domain'] ?? ''));
-    $affected = $account === '' ? 'todo el servidor' : 'cuenta ' . $account . ($domain !== '' ? ' (' . $domain . ')' : '');
+    $affected = match (TRUE) {
+      $account !== '' => 'cuenta ' . $account . ($domain !== '' ? ' (' . $domain . ')' : ''),
+      // A certificate is about a domain, not an account.
+      $domain !== '' => 'dominio ' . $domain,
+      default => 'todo el servidor',
+    };
     $occurred_at = (int) $event->get('occurred_at')->value;
 
     return $this->templateValues([

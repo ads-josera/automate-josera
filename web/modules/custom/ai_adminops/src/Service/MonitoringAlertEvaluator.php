@@ -38,6 +38,10 @@ final class MonitoringAlertEvaluator {
     if (!(bool) $rules['enabled'] || ($result['status'] ?? '') !== 'ok') {
       return;
     }
+    if ($tool_id === 'get_ssl_status') {
+      $this->evaluateCertificates($server_id, $result, (int) $rules['ssl_days_warning']);
+      return;
+    }
 
     $definition = match ($tool_id) {
       'get_server_load' => [
@@ -118,6 +122,68 @@ final class MonitoringAlertEvaluator {
   }
 
   /**
+   * One alert per domain whose certificate is about to expire.
+   *
+   * AutoSSL renews certificates on its own about 30 days before they
+   * expire; one still under 20 days means the renewal is failing (added on
+   * 2026-10-14, when the shortest certificate had 32 days). A certificate
+   * days away does not change from one reading to the next, so one reading
+   * is enough. A certificate that could not be read, or that belongs to
+   * another name, neither opens nor closes its domain's alert.
+   *
+   * @param array<string, mixed> $result
+   *   Reading of get_ssl_status.
+   */
+  private function evaluateCertificates(string $server_id, array $result, int $threshold): void {
+    if ($threshold <= 0) {
+      return;
+    }
+
+    $expiring = [];
+    $unknown = [];
+    foreach (is_array($result['certificates'] ?? NULL) ? $result['certificates'] : [] as $certificate) {
+      $domain = mb_strtolower(trim((string) ($certificate['domain'] ?? '')));
+      if ($domain === '') {
+        continue;
+      }
+      if (!is_numeric($certificate['days_left'] ?? NULL) || empty($certificate['matches_domain'])) {
+        $unknown[$domain] = TRUE;
+        continue;
+      }
+      $days = (int) $certificate['days_left'];
+      if ($days >= $threshold) {
+        continue;
+      }
+      $expiring[$domain] = TRUE;
+      $when = $days <= 0 ? 'ya venció' : sprintf('vence en %d %s', $days, $days === 1 ? 'día' : 'días');
+      $this->eventManager->record(
+        $server_id,
+        'ssl_expiring',
+        $days <= 7 ? 'critical' : 'warning',
+        $domain . ': el certificado SSL ' . $when . '.',
+        sprintf('El certificado SSL de %s %s (aviso con menos de %d días). AutoSSL debió renovarlo: revisa en WHM → Manage AutoSSL por qué no lo hizo.', $domain, $when, $threshold),
+        [
+          'domain' => $domain,
+          'problem' => 'Certificado SSL por vencer',
+          'detail' => sprintf('El certificado %s; AutoSSL no lo ha renovado. Revisa WHM → Manage AutoSSL.', $when),
+          'value' => $days,
+          'threshold' => $threshold,
+        ],
+        NULL,
+        $domain,
+      );
+    }
+
+    foreach ($this->eventManager->openEvents($server_id, 'ssl_expiring') as $event) {
+      $evidence = json_decode((string) $event->get('evidence_json')->value, TRUE);
+      $domain = is_array($evidence) ? (string) ($evidence['domain'] ?? '') : '';
+      if (!isset($expiring[$domain]) && !isset($unknown[$domain])) {
+        $this->eventManager->resolveCondition($server_id, 'ssl_expiring', $domain);
+      }
+    }
+  }
+
+  /**
    * Records a critical event when the server cannot be reached by SSH.
    */
   public function recordServerUnreachable(string $server_id): void {
@@ -170,6 +236,7 @@ final class MonitoringAlertEvaluator {
       'disk_percent_warning' => (float) ($configured['disk_percent_warning'] ?? 85),
       'exim_queue_warning' => (float) ($configured['exim_queue_warning'] ?? 100),
       'consecutive_readings' => max(1, (int) ($configured['consecutive_readings'] ?? 2)),
+      'ssl_days_warning' => (int) ($configured['ssl_days_warning'] ?? 20),
     ];
   }
 

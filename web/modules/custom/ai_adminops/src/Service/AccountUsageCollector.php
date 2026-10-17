@@ -11,7 +11,8 @@ use Psr\Log\LoggerInterface;
  * Reads every cPanel account on a scheduled run and stores the history.
  *
  * Phase C2 (2026-10-13). Runs inside the monitoring job, after the server
- * checks. Each of the three reads is in the AdminOps log, with a short
+ * checks, and then opens or closes the alerts about single accounts
+ * (phase C2b). Each of the three reads is in the AdminOps log, with a short
  * summary instead of WHM's full answer (about 30 KB a reading): the full
  * data lives in the usage history, which keeps 30 days.
  */
@@ -26,6 +27,7 @@ final class AccountUsageCollector {
     private readonly AccountUsageReport $report,
     private readonly AccountUsageHistory $history,
     private readonly LoggerInterface $logger,
+    private readonly AccountAlertEvaluator $alertEvaluator,
   ) {}
 
   /**
@@ -60,6 +62,8 @@ final class AccountUsageCollector {
       '@count' => (string) $stored,
       '@server' => $server_id,
     ]);
+    // After storing: the alerts read this reading back from the history.
+    $this->alertEvaluator->evaluate($server_id, $rows, $missing, $read_at);
 
     return ['cuentas' => $stored, 'sin_dato' => $missing];
   }

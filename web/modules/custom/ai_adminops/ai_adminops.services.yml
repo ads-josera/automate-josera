@@ -155,3 +155,11 @@ services:
       - '@ai_adminops.account_usage_report'
       - '@ai_adminops.account_usage_history'
       - '@logger.channel.ai_adminops'
+      - '@ai_adminops.account_alert_evaluator'
+
+  ai_adminops.account_alert_evaluator:
+    class: Drupal\ai_adminops\Service\AccountAlertEvaluator
+    arguments:
+      - '@config.factory'
+      - '@ai_adminops.event_manager'
+      - '@ai_adminops.account_usage_history'

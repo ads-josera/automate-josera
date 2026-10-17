@@ -10,6 +10,14 @@ alerts:
   disk_percent_warning: 85
   exim_queue_warning: 100
   consecutive_readings: 2
+  ssl_days_warning: 20
+  accounts:
+    enabled: true
+    mail_percent_warning: 80
+    failed_mail_warning: 10
+    disk_percent_warning: 90
+    cpu_percent_warning: 50
+    cpu_consecutive_readings: 4
 notifications:
   enabled: true
   minimum_severity: warning

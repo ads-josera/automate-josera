@@ -208,7 +208,27 @@ José, como dueño del WHM, pidió saber qué cuenta consume qué. El servidor e
   - **El indicador `REACHED_MAXEMAILS` de WHM ya no se le muestra a Sentinel.** Lo marcó para intec con 2 correos de un límite de 10, y el registro de Exim no tenía ningún correo retenido: no significa «se retuvo correo». Se guarda tal cual en `mail_limit_reached`.
   - **`historial` con «hasta»** (hora local): antes solo daba las últimas 12 lecturas y Sentinel no podía decir cómo estuvo el servidor a las 2 am. Todas las lecturas se conservan.
   - **`historial_cuenta` con «por_hora»** (hasta 48 horas): el máximo de correo, fallidos, CPU y memoria de cada hora (máximo, no suma, porque cada fila cuenta la hora anterior).
-- **C2b (pendiente):** alertas por cuenta, medidas como **% del límite de su paquete**, (correo por hora, fallidos, cuota de disco, CPU sostenida), con umbrales sacados de este historial tras unos días.
+
+### Alertas por cuenta y de SSL (fase C2b, 2026-10-17)
+
+- **`AccountAlertEvaluator`** corre en cada lectura programada, justo después de que `AccountUsageCollector` guarda las filas (las lecturas sostenidas se leen del historial). Cada problema de cada cuenta es **su propio evento**: `AdminOpsEventManager::record()` acepta un *sujeto* (la cuenta o el dominio) que entra en la huella. Sin sujeto la huella es la de siempre, así que los eventos del servidor ya abiertos siguen casando.
+- Reglas (`alerts.accounts.*`, update 10009, editables en los ajustes):
+
+  | Evento | Cuándo se abre | Gravedad | Cuándo se cierra |
+  |---|---|---|---|
+  | `account_mail_near_limit` | correos de la última hora ≥ **80 %** del límite **de su paquete** | Advertencia | al bajar de 80 % |
+  | `account_mail_limit` | ≥ **100 %** del límite del paquete | Crítica | al bajar de 80 % (entre 80 y 100 sigue abierto: no manda un segundo aviso más suave) |
+  | `account_mail_failed` | ≥ **10** fallidos en una hora, en `consecutive_readings` (2) lecturas seguidas | Advertencia | al bajar de 10 |
+  | `account_disk_high` | ≥ **90 %** de su cuota | Advertencia | al bajar de 85 % (margen de 5 puntos para que no abra y cierre cada hora) |
+  | `account_cpu_sustained` | ≥ **50 %** de la CPU de todo el servidor en **4** lecturas seguidas (~1 hora) | Advertencia | al bajar de 50 % |
+  | `ssl_expiring` (por dominio, en `MonitoringAlertEvaluator`) | certificado con < **20** días (`alerts.ssl_days_warning`) | Advertencia; **Crítica en los últimos 7 días** | al renovarse |
+
+- Sin límite de paquete no hay alerta de correo; sin cuota, no hay de disco. Las cuentas **suspendidas** se saltan y sus alertas se cierran; las de una cuenta que **ya no existe**, también.
+- **Una lectura sin datos no cierra nada**: si no se leyó el correo, sus alertas siguen como estaban; si no se leyó la lista de cuentas, no se evalúa ninguna; si no se leyeron los procesos, la de CPU sigue como estaba. Un certificado ilegible o de otro nombre tampoco abre ni cierra.
+- «Sostenido» exige las últimas N lecturas **dentro de su ventana** (N − 1 intervalos y medio más): con un hueco (monitoreo parado) no cuenta.
+- **Un evento que sube de gravedad vuelve a avisar** (SSL a 7 días); uno que solo sigue igual, no. El enfriamiento de 60 min por evento sigue aplicando.
+- La plantilla de WhatsApp dice «cuenta intec (tsd.lat)» o, para SSL, «dominio tsd.lat».
+- Pruebas: `tests/src/Kernel/AccountAlertsTest.php` (9), interceptando Twilio (`CapturesWhatsAppAlerts`, compartido con `WhatsAppAlertTemplateTest`). Se rompieron a propósito 7 protecciones (histéresis del correo, margen del disco, ventana de lo sostenido, aviso al escalar, correo no leído, sujeto en la huella, cuentas suspendidas) y cada una hizo fallar su prueba.
 
 ### Acciones de Sentinel con código por correo (fase B, 2026-10-11)
 

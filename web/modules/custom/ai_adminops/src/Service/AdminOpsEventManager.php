@@ -30,6 +30,10 @@ final class AdminOpsEventManager {
    *
    * @param array<string, mixed> $evidence
    *   Structured context that is sanitized before storage.
+   * @param string $subject
+   *   What the condition is about when it is not the whole server: a cPanel
+   *   account or a domain. Each subject is its own event, so two accounts
+   *   over their limit are two alerts.
    */
   public function record(
     string $server_id,
@@ -39,6 +43,7 @@ final class AdminOpsEventManager {
     string $details = '',
     array $evidence = [],
     ?int $occurred_at = NULL,
+    string $subject = '',
   ): ContentEntityInterface {
     $server = $this->entityTypeManager->getStorage('ai_adminops_server')->load($server_id);
     if ($server === NULL) {
@@ -55,15 +60,22 @@ final class AdminOpsEventManager {
     }
 
     $occurred_at ??= $this->time->getRequestTime();
-    $fingerprint = hash('sha256', implode('|', [$server_id, $event_type]));
+    $fingerprint = $this->fingerprint($server_id, $event_type, $subject);
     $existing = $this->openEventByFingerprint($fingerprint);
     if ($existing !== NULL) {
+      $levels = ['info' => 0, 'warning' => 1, 'critical' => 2];
+      $escalated = $levels[$severity] > ($levels[(string) $existing->get('severity')->value] ?? 0);
       $existing->set('severity', $severity);
       $existing->set('summary', $summary);
       $existing->set('details', trim($details));
       $existing->set('evidence_json', $this->payloadSanitizer->encode($evidence));
       $existing->set('occurred_at', $occurred_at);
       $existing->save();
+      // A condition that gets worse (a certificate down to its last week) is
+      // news; one that merely lasts is not.
+      if ($escalated) {
+        $this->notify($existing);
+      }
 
       return $existing;
     }
@@ -80,16 +92,7 @@ final class AdminOpsEventManager {
       'occurred_at' => $occurred_at,
     ]);
     $event->save();
-
-    try {
-      $this->notificationBridge->notifyEvent($event);
-    }
-    catch (\Throwable $exception) {
-      $this->logger->error('AdminOps event @event was stored, but notification delivery failed: @message', [
-        '@event' => (string) $event->id(),
-        '@message' => $exception->getMessage(),
-      ]);
-    }
+    $this->notify($event);
 
     $this->logger->notice('AdminOps event @event recorded for server @server with @severity severity.', [
       '@event' => (string) $event->id(),
@@ -128,9 +131,8 @@ final class AdminOpsEventManager {
   /**
    * Resolves an open condition when a later metric returns to normal.
    */
-  public function resolveCondition(string $server_id, string $event_type): void {
-    $fingerprint = hash('sha256', implode('|', [$server_id, trim($event_type)]));
-    $event = $this->openEventByFingerprint($fingerprint);
+  public function resolveCondition(string $server_id, string $event_type, string $subject = ''): void {
+    $event = $this->openEventByFingerprint($this->fingerprint($server_id, trim($event_type), $subject));
     if ($event === NULL) {
       return;
     }
@@ -138,6 +140,54 @@ final class AdminOpsEventManager {
     $event->set('status', 'resolved');
     $event->set('resolved_at', $this->time->getRequestTime());
     $event->save();
+  }
+
+  /**
+   * Sends the alert of an event; a failed delivery never loses the event.
+   */
+  private function notify(ContentEntityInterface $event): void {
+    try {
+      $this->notificationBridge->notifyEvent($event);
+    }
+    catch (\Throwable $exception) {
+      $this->logger->error('AdminOps event @event was stored, but notification delivery failed: @message', [
+        '@event' => (string) $event->id(),
+        '@message' => $exception->getMessage(),
+      ]);
+    }
+  }
+
+  /**
+   * Lists the open or acknowledged events of one type on one server.
+   *
+   * @return \Drupal\Core\Entity\ContentEntityInterface[]
+   *   Events, keyed by ID.
+   */
+  public function openEvents(string $server_id, string $event_type): array {
+    $storage = $this->entityTypeManager->getStorage('ai_adminops_event');
+    $ids = $storage->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('server', $server_id)
+      ->condition('event_type', $event_type)
+      ->condition('status', ['open', 'acknowledged'], 'IN')
+      ->execute();
+
+    return $ids === [] ? [] : $storage->loadMultiple($ids);
+  }
+
+  /**
+   * The stable key of one condition.
+   *
+   * Without a subject it is the key events have had since the start, so
+   * events opened before subjects existed still match.
+   */
+  private function fingerprint(string $server_id, string $event_type, string $subject): string {
+    $parts = [$server_id, $event_type];
+    if (trim($subject) !== '') {
+      $parts[] = mb_strtolower(trim($subject));
+    }
+
+    return hash('sha256', implode('|', $parts));
   }
 
   /**

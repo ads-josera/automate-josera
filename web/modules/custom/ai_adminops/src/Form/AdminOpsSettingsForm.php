@@ -142,6 +142,51 @@ final class AdminOpsSettingsForm extends ConfigFormBase {
       '#step' => 1,
       '#description' => $this->t('Number of queued messages that generates a warning. Use 0 to disable this alert.'),
     ];
+    $form['alerts']['ssl_days_warning'] = [
+      '#type' => 'number',
+      '#title' => $this->t('Certificate days left warning threshold'),
+      '#default_value' => $alerts['ssl_days_warning'] ?? 20,
+      '#min' => 0,
+      '#max' => 365,
+      '#step' => 1,
+      '#description' => $this->t('One alert per domain whose SSL certificate has fewer days left; it turns critical in the last 7 days. AutoSSL renews about 30 days ahead, so a certificate under 20 days means renewal is failing. Use 0 to disable this alert.'),
+    ];
+
+    $accounts = $alerts['accounts'] ?? [];
+    $form['alerts']['accounts'] = [
+      '#type' => 'details',
+      '#title' => $this->t('Alerts about single cPanel accounts'),
+      '#open' => TRUE,
+      '#description' => $this->t("Read on every scheduled check that reads the accounts. Each problem of each account is its own alert, naming the account and its domain. Suspended accounts are skipped. Use 0 to disable an individual threshold."),
+    ];
+    $form['alerts']['accounts']['enabled'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Enable account alerts'),
+      '#default_value' => (bool) ($accounts['enabled'] ?? TRUE),
+    ];
+    $form['alerts']['accounts']['mail_percent_warning'] = $this->thresholdElement($this->t('Mail sent in an hour, as % of the package limit'), $accounts['mail_percent_warning'] ?? 80);
+    $form['alerts']['accounts']['mail_percent_warning']['#description'] = $this->t("Each account is measured against its own package's hourly limit in WHM. This percentage is a warning; reaching the limit is a critical alert. Accounts without a limit are skipped. Use 0 to disable mail alerts.");
+    $form['alerts']['accounts']['failed_mail_warning'] = [
+      '#type' => 'number',
+      '#title' => $this->t('Failed messages in an hour'),
+      '#default_value' => $accounts['failed_mail_warning'] ?? 10,
+      '#min' => 0,
+      '#max' => 100000,
+      '#step' => 1,
+      '#description' => $this->t('Alerts when an account reaches this many failed messages in an hour, on as many readings in a row as set above. Use 0 to disable this alert.'),
+    ];
+    $form['alerts']['accounts']['disk_percent_warning'] = $this->thresholdElement($this->t('Disk used, as % of the account quota'), $accounts['disk_percent_warning'] ?? 90);
+    $form['alerts']['accounts']['cpu_percent_warning'] = $this->thresholdElement($this->t('CPU, as % of the whole server'), $accounts['cpu_percent_warning'] ?? 50);
+    $form['alerts']['accounts']['cpu_consecutive_readings'] = [
+      '#type' => 'number',
+      '#title' => $this->t('Readings in a row above the CPU threshold'),
+      '#default_value' => $accounts['cpu_consecutive_readings'] ?? 4,
+      '#min' => 1,
+      '#max' => 96,
+      '#step' => 1,
+      '#required' => TRUE,
+      '#description' => $this->t('With checks every 15 minutes, 4 means about an hour: a cron job or a backup does not alert, an account busy for an hour does.'),
+    ];
 
     $form['notifications'] = [
       '#type' => 'details',
@@ -296,6 +341,15 @@ final class AdminOpsSettingsForm extends ConfigFormBase {
         'disk_percent_warning' => (int) $form_state->getValue(['alerts', 'disk_percent_warning']),
         'exim_queue_warning' => (int) $form_state->getValue(['alerts', 'exim_queue_warning']),
         'consecutive_readings' => max(1, (int) $form_state->getValue(['alerts', 'consecutive_readings'])),
+        'ssl_days_warning' => (int) $form_state->getValue(['alerts', 'ssl_days_warning']),
+        'accounts' => [
+          'enabled' => (bool) $form_state->getValue(['alerts', 'accounts', 'enabled']),
+          'mail_percent_warning' => (int) $form_state->getValue(['alerts', 'accounts', 'mail_percent_warning']),
+          'failed_mail_warning' => (int) $form_state->getValue(['alerts', 'accounts', 'failed_mail_warning']),
+          'disk_percent_warning' => (int) $form_state->getValue(['alerts', 'accounts', 'disk_percent_warning']),
+          'cpu_percent_warning' => (int) $form_state->getValue(['alerts', 'accounts', 'cpu_percent_warning']),
+          'cpu_consecutive_readings' => max(1, (int) $form_state->getValue(['alerts', 'accounts', 'cpu_consecutive_readings'])),
+        ],
       ])
       ->set('notifications.enabled', (bool) $form_state->getValue(['notifications', 'enabled']))
       ->set('notifications.minimum_severity', (string) $form_state->getValue(['notifications', 'minimum_severity']))
@@ -335,6 +389,16 @@ final class AdminOpsSettingsForm extends ConfigFormBase {
       if ($value < 0 || $value > 100) {
         $form_state->setErrorByName('alerts][' . $name, $this->t('Percentage thresholds must be between 0 and 100.'));
       }
+    }
+    foreach (['mail_percent_warning', 'disk_percent_warning', 'cpu_percent_warning'] as $name) {
+      $value = (int) $form_state->getValue(['alerts', 'accounts', $name]);
+      if ($value < 0 || $value > 100) {
+        $form_state->setErrorByName('alerts][accounts][' . $name, $this->t('Percentage thresholds must be between 0 and 100.'));
+      }
+    }
+    $days = (int) $form_state->getValue(['alerts', 'ssl_days_warning']);
+    if ($days < 0 || $days > 365) {
+      $form_state->setErrorByName('alerts][ssl_days_warning', $this->t('The certificate threshold must be between 0 and 365 days.'));
     }
     $queue = (int) $form_state->getValue(['alerts', 'exim_queue_warning']);
     if ($queue < 0 || $queue > 1000000) {

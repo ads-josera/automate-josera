@@ -189,3 +189,23 @@ function ai_adminops_update_10008(): string {
 
   return (string) t('AdminOps keeps each account package hourly mail limit with its usage.');
 }
+
+/**
+ * Adds the alerts about single cPanel accounts and expiring certificates.
+ */
+function ai_adminops_update_10009(): string {
+  $config = \Drupal::configFactory()->getEditable('ai_adminops.settings');
+  $alerts = $config->get('alerts') ?: [];
+  $alerts += ['ssl_days_warning' => 20];
+  $alerts['accounts'] = ($alerts['accounts'] ?? []) + [
+    'enabled' => TRUE,
+    'mail_percent_warning' => 80,
+    'failed_mail_warning' => 10,
+    'disk_percent_warning' => 90,
+    'cpu_percent_warning' => 50,
+    'cpu_consecutive_readings' => 4,
+  ];
+  $config->set('alerts', $alerts)->save();
+
+  return (string) t('AdminOps alerts about single cPanel accounts and expiring certificates are configured.');
+}
